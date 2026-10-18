@@ -28,15 +28,17 @@
   'use strict';
   var el = function (id) { return document.getElementById(id); }, e = GI.escapar;
   var pagina = 1, geracao = 0, candidatas = [], total = 0;
-  function data(d) { return d ? d.split('-').reverse().join('/') : '—'; }
+  // Só aceita o formato do contrato: o que vier diferente não entra no HTML.
+  function data(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? String(d).split('-').reverse().join('/') : '—'; }
   function pessoas(l, papel) {
     var cs = (l.contatos || []).filter(function (c) { return c.papel === papel; });
     return cs.length ? cs.map(function (c) { return e(c.nome) + (papel === 'locatario' && c.telefone ? '<div class="gi-ajuda">' + e(c.telefone) + '</div>' : ''); }).join('<br>') : '—';
   }
   function prazo(l) {
     if (l.encerrada_em) return '<span class="gi-chip">Encerrado</span>';
-    var dias = l.vence_em_dias;
-    if (dias === null || dias === undefined) return '';
+    // Número de verdade ou nada: o valor cru nunca é concatenado no HTML.
+    var dias = Number(l.vence_em_dias);
+    if (l.vence_em_dias === null || l.vence_em_dias === undefined || !Number.isFinite(dias)) return '';
     return '<span class="' + (dias < 0 ? 'gi-prazo--erro' : dias <= 60 ? 'gi-prazo--warn' : '') + '">' +
       (dias < 0 ? 'Vencido há ' + Math.abs(dias) + ' dias' : 'Vence em ' + dias + ' dias') + '</span>';
   }

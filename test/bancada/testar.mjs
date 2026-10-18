@@ -115,6 +115,27 @@ try {
   await b.navegar(origem + '/app/locados.html?modo=fora'); await b.esperar(() => document.querySelector('#b-novo').disabled);
   prova('modo local e portal fora desabilitam ações, exibem aviso e não gravam storage');
 
+  // Dado hostil vindo do portal nunca vira elemento: tudo é texto, até o que deveria ser data ou número.
+  await b.navegar(origem + '/app/locados.html'); await aguardarLista('Casa Demonstração Beta');
+  await b.avaliar(async () => {
+    const hostil = '<img src=x onerror="window.__xss=1">';
+    await GI.locacoesCriar({ imovel: { titulo: hostil }, contrato_numero: hostil, observacao: hostil,
+      contatos: [{ papel: 'locatario', nome: hostil, telefone: hostil }, { papel: 'proprietario', nome: hostil }] });
+    const original = GI.locacoes;
+    GI.locacoes = async (...a) => {
+      const r = await original(...a);
+      r.rows = r.rows.map(l => Object.assign({}, l, { inicio: '<img src=x onerror="window.__xss=2">',
+        fim: '<img src=x onerror="window.__xss=3">', vence_em_dias: '<img src=x onerror="window.__xss=4">' }));
+      return r;
+    };
+  });
+  await b.clicar('#b-buscar'); await b.esperar(() => document.querySelectorAll('#gi-corpo tr').length >= 3);
+  await new Promise(r => setTimeout(r, 300));
+  assert.equal(await b.avaliar(() => window.__xss), undefined);
+  assert.equal(await b.avaliar(() => document.querySelectorAll('#gi-corpo img, #gi-corpo script').length), 0);
+  assert.ok((await texto('#gi-corpo')).includes('<img src=x'));
+  prova('dado hostil (título, nome, telefone, contrato, data e prazo) vira texto, nunca elemento');
+
   await b.navegar(origem + '/app/locados.html?tema=escuro'); await aguardarLista('Casa Demonstração Beta');
   await b.captura('07-locados-escuro'); await b.viewport(390, 844);
   await b.clicar('#b-novo'); await b.captura('08-modal-estreito');
