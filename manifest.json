@@ -148,7 +148,7 @@
       "url": "app/painel.html",
       "icon": "app/icone-casa.svg",
       "visibility": {
-        "userTypes": [0]
+        "userTypes": [0, 1, 2]
       }
     }
   ],

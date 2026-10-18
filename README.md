@@ -231,3 +231,18 @@ Provas locais: `test/fotos.test.mjs`, `test/fotos-portal.test.mjs`, helpers em
 pela bancada de chamados. As imagens são geradas por canvas no próprio teste,
 escolhidas pelo CDP e removidas no final. As capturas `fotos-*.png` ficam em
 `test/bancada/capturas/`. Nenhuma imagem real é usada.
+
+## Integração real
+
+`PORTAL_DIR=/caminho/gestao-imoveis-portal-fotos node test/integracao/real.mjs`
+executa os cenários de ouro no Chromium contra o router e schema originais do
+portal, com PGlite em memória e SDK simulado. Não altera o portal nem acessa
+instâncias; usa somente dados e imagens sintéticos. Sem portal disponível,
+imprime aviso e pula. A bancada aceita `PORTAL_REAL_URL` para encaminhar a API
+sem reescrever respostas. Instruções, limites da prova e fricções observadas em
+[test/integracao/LEIA-ME.md](test/integracao/LEIA-ME.md).
+
+O cockpit atende tipos 0, 1 e 2. Locados, Chamados e Prestadores continuam apenas
+para administrador. O atendente consulta dados, fotos e observações no cockpit,
+abre chamado vinculado ao chat e registra notas/avisos quando a escrita está
+habilitada; não recebe atalhos da gestão. A escrita continua desligada por padrão.
