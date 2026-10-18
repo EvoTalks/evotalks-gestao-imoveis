@@ -22,7 +22,13 @@ test('manifest 0.20.0 declara navegação ordenada, cockpit e escrita opt-in', (
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
   assert.equal(cockpit.type, 'chatPanel'); assert.equal(cockpit.url, 'app/painel.html');
   assert.equal(cockpit.title, 'Manutenção'); assert.equal(cockpit.presentation, undefined);
-  assert.deepEqual(cockpit.visibility.userTypes, [0, 1, 2]);
+  assert.deepEqual(cockpit.visibility.userTypes, [0]);
+  for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
+    assert.deepEqual(m.contributions[0].items.find(i => i.id === id).visibility.userTypes, [0]);
+  }
+  for (const id of ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']) {
+    assert.equal(m.contributions[0].items.find(i => i.id === id).visibility, undefined);
+  }
   for (const k of ['cockpitAbreChamado', 'modoDemonstracao']) {
     const c = m.config.find(c => c.key === k);
     assert.equal(c.type, 'boolean'); assert.equal(c.default, false); assert.ok(c.help);

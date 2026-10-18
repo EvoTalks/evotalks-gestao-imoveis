@@ -104,6 +104,19 @@ try {
   const soProtocolo = await gravarNovo();
   assert.equal(soProtocolo.atendimento.chat_id, null);
   assert.equal(soProtocolo.atendimento.protocolo, 'DEMO-PROTOCOLO-INFORMADO');
+  await b.avaliar(() => { const original = omni.http.request; omni.http.request = async op => {
+    const r = await original(op);
+    if (op.method === 'GET' && op.url.includes('/atendimentos/vinculados')) r.body = JSON.stringify({ rows: [
+      { chat_id: null, protocolo: 'PROTOCOLO-OUTRO-SINTETICO', canal: 'WhatsApp', chamados: [] },
+      { chat_id: null, protocolo: 'PROTOCOLO-DIFERENTE-SINTETICO', canal: 'WhatsApp', chamados: [] }
+    ] });
+    return r;
+  }; });
+  await b.clicar('[data-editar="' + soProtocolo.id + '"]'); await esperarModal(); await b.clicar('#c-trocar');
+  await b.esperar(() => document.querySelector('#c-atendimentos').textContent.includes('DEMO-PROTOCOLO-INFORMADO'));
+  assert.match(await texto('#c-atendimentos'), /DEMO-PROTOCOLO-INFORMADO/);
+  await fechar();
+  prova('vínculo original sem chat_id é comparado pelo protocolo, mesmo com outros grupos protocolados');
   await novo(); await b.clicar('#c-atendimentos input[value="manual"]');
   await b.preencher('#c-protocolo', 'DEMO-PROTOCOLO-INFORMADO');
   await b.preencher('#c-chat-id', '8877');

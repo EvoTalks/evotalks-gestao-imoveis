@@ -239,21 +239,37 @@ try {
     await GI.chamadosAprovacao(chamado.id, { acao: 'aprovada', por: h, canal: h, observacao: h });
     return chamado.id;
   }, hostil);
-  await b.navegar(origem + '/app/prestadores.html'); await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('<img'));
+  await b.avaliar(async () => GI.prestadoresCriar({ nome: 'Categorias hostis Demonstração', categorias: ['outros'] }));
+  await b.navegar(origem + '/app/prestadores.html');
+  await b.avaliar(() => { const original = GI.prestadores; GI.prestadores = async (...args) => {
+    const r = await original(...args); const p = r.rows.find(item => item.nome === 'Categorias hostis Demonstração');
+    if (p) p.categorias = ['constructor', '__proto__']; return r;
+  }; });
+  await b.clicar('#b-buscar'); await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('<img'));
   assert.equal(await b.avaliar(() => document.querySelectorAll('#gi-corpo img').length), 0);
   await b.avaliar(() => Array.from(document.querySelectorAll('#gi-corpo tr')).find(r => r.textContent.includes('<img')).querySelector('[data-editar]').click());
   assert.equal(await valor('#p-nome'), hostil); assert.equal(await b.avaliar(() => document.querySelectorAll('.gi-modal img').length), 0);
   await b.captura('fatia4-12-prestador-hostil'); await fechar();
+  await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Categorias hostis Demonstração'));
+  assert.match(await b.avaliar(() => document.querySelector('#gi-corpo').textContent), /Não informada · Não informada/);
+  prova('lookups de categoria constructor e __proto__ retornam o rótulo padrão');
   await b.navegar(origem + '/app/chamados.html'); await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), hostilId);
   await b.avaliar(h => { const original = omni.http.request; omni.http.request = async op => {
     const r = await original(op);
     if (op.method === 'GET' && /\/chamados\/\d+$/.test(op.url)) { const d = JSON.parse(r.body);
       d.orcamentos.forEach(o => { o.prazo_dias = h; o.visita_em = h; o.valor_centavos = h; });
       d.chamado.visita = { inicio: h, fim: h }; d.chamado.aprovacao.enviada_em = h; d.chamado.aprovacao.resposta_em = h;
+      d.chamado.aprovacao.status = 'constructor';
+      d.eventos = [{ id: 99001, em: d.chamado.criado_em, autor: 'Bancada', tipo: '__proto__', texto: null },
+        { id: 99002, em: d.chamado.criado_em, autor: 'Bancada', tipo: 'constructor', texto: null }];
       d.chamado.sla.prazo_solucao_em = h; d.locacao.contatos.push({ papel: 'proprietario', nome: h, telefone: h });
       r.body = JSON.stringify(d); }
     return r; }; }, hostil);
   await abrir(hostilId);
+  assert.match(await b.avaliar(() => document.querySelector('#c-aprovacao').textContent), /Não informada/);
+  assert.equal(await b.avaliar(() => document.querySelectorAll('#c-historico li').length), 2);
+  assert.equal(await b.avaliar(() => Array.from(document.querySelectorAll('#c-historico li')).some(n => n.textContent.includes('function Object'))), false);
+  prova('lookup de aprovação constructor usa fallback e eventos constructor/__proto__ não expõem protótipos');
   assert.equal(await b.avaliar(() => document.querySelectorAll('#c-orcamentos img, #c-aprovacao img, #c-prestador img, #c-visita img').length), 0);
   assert.equal(await valor('#c-visita-inicio'), ''); assert.equal(await b.avaliar(() => !!window.executouHostil), false);
   await capturar('fatia4-13-chamado-hostil', '#c-orcamentos'); await fechar();
