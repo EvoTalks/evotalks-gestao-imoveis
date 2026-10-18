@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.17.0">
+<link rel="stylesheet" href="estilo.css?v=0.18.0">
 
 <div class="gi-topo">
   <div>
@@ -27,6 +27,12 @@
       </select>
     </div>
     <div class="gi-campo">
+      <label for="f-situacao">Situação · nesta página</label>
+      <select id="f-situacao">
+        <option value="">todas</option><option value="disponiveis">Disponíveis</option><option value="locados">Locados</option>
+      </select>
+    </div>
+    <div class="gi-campo">
       <label for="f-porpagina">Por página</label>
       <select id="f-porpagina">
         <option>25</option><option>50</option><option>100</option>
@@ -46,11 +52,12 @@
           <th style="width:120px" class="gi-direita">Valor</th>
           <th style="width:120px">Preenchido</th>
           <th style="width:130px">Status</th>
-          <th style="width:110px" class="gi-direita">Funções</th>
+          <th>Situação</th>
+          <th style="width:150px" class="gi-direita">Funções</th>
         </tr>
       </thead>
       <tbody id="gi-corpo">
-        <tr><td colspan="7" class="gi-mudo">carregando…</td></tr>
+        <tr><td colspan="8" class="gi-mudo">carregando…</td></tr>
       </tbody>
     </table>
   </div>
@@ -67,15 +74,18 @@
   <span id="gi-modo">verificando onde os dados são gravados…</span>
 </p>
 
-<script src="comum.js?v=0.17.0"></script>
+<div class="gi-aviso" id="gi-locados-aviso" hidden></div>
+<script src="comum.js?v=0.18.0"></script>
+<script src="locacao.js?v=0.18.0"></script>
 <script>
 (function () {
   'use strict';
 
   var estado = {
-    pagina: 1, porPagina: 25, termo: '', filtroEstado: '',
-    itens: [], campos: [], valores: {}, preenchidos: {}
+    pagina: 1, porPagina: 25, termo: '', filtroEstado: '', filtroSituacao: '',
+    itens: [], campos: [], valores: {}, preenchidos: {}, locados: null
   };
+  var geracao = 0;
 
   var el = function (id) { return document.getElementById(id); };
 
@@ -115,9 +125,12 @@
     } else if (estado.filtroEstado === 'preenchido') {
       linhas = linhas.filter(function (p) { return quantosPreenchidos(p.internalcode) > 0; });
     }
+    if (estado.filtroSituacao && estado.locados) {
+      linhas = linhas.filter(function (p) { return !!estado.locados[p.internalcode] === (estado.filtroSituacao === 'locados'); });
+    }
 
     if (!linhas.length) {
-      corpo.innerHTML = '<tr><td colspan="7"><div class="gi-vazio">' +
+      corpo.innerHTML = '<tr><td colspan="8"><div class="gi-vazio">' +
         'Nenhum imóvel nesta página com esses filtros.<br>' +
         '<span class="gi-pequeno">Alargue um filtro por vez — não invente resultado para o cliente.</span>' +
         '</div></td></tr>';
@@ -129,6 +142,12 @@
       var cat = GI.partesCategoria(p.category);
       var n = quantosPreenchidos(p.internalcode);
       var codigo = GI.escapar(p.internalcode);
+      var locacao = estado.locados && estado.locados[p.internalcode];
+      var tituloLocacao = !estado.locados ? 'Locados exigem o portal conectado e o mapa de locações disponível' : locacao ? 'Ver a locação' : 'Marcar como locado';
+      var situacao = !estado.locados ? '<span class="gi-mudo">—</span>' :
+        '<span class="gi-estado ' + (locacao ? 'gi-estado-escuro' : 'gi-disponivel') + '"><span class="gi-ponto ' +
+        (locacao ? 'gi-ponto-escuro' : 'gi-ponto-ok') + '"></span>' + (locacao ? 'Locado' : 'Disponível') + '</span>' +
+        (locacao ? '<div class="gi-ajuda">contrato ' + GI.escapar(locacao.contrato_numero || '—') + ' · ' + GI.escapar(locacao.locatario_nome || '') + '</div>' : '');
       return '<tr>' +
         '<td class="gi-nowrap"><strong>' + GI.escapar(GI.codigoCurto(p.internalcode)) + '</strong>' +
           '<div class="gi-ajuda">' + GI.escapar(p.internalcode) + '</div></td>' +
@@ -137,10 +156,13 @@
         '<td class="gi-direita gi-nowrap">' + GI.dinheiro(p.value) + '</td>' +
         '<td>' + (n ? '<span class="gi-chip">' + n + ' campo' + (n > 1 ? 's' : '') + '</span>' : '<span class="gi-mudo gi-pequeno">nada ainda</span>') + '</td>' +
         '<td>' + selo(p.internalcode) + '</td>' +
+        '<td>' + situacao + '</td>' +
         '<td>' +
           '<div class="gi-acoes">' +
             '<button type="button" class="btn btn-slim btn-icone" title="Editar" aria-label="Editar" ' +
               'data-abrir="' + codigo + '">' + ICONE_ABRIR + '</button>' +
+            '<button type="button" class="btn btn-slim btn-icone" title="' + tituloLocacao + '" aria-label="' + tituloLocacao + '" ' +
+              (estado.locados ? '' : 'disabled ') + 'data-locacao="' + codigo + '">' + GI.iconeLocacao(locacao ? 'ver' : 'chave') + '</button>' +
             '<button type="button" class="btn btn-slim btn-icone btn-perigo" ' +
               'title="' + (n ? 'Excluir as informações preenchidas' : 'Nada preenchido para excluir') + '" ' +
               'aria-label="Excluir as informações preenchidas" ' +
@@ -155,6 +177,17 @@
     });
     Array.prototype.forEach.call(corpo.querySelectorAll('[data-excluir]'), function (b) {
       b.addEventListener('click', function () { excluirImovel(b.getAttribute('data-excluir')); });
+    });
+    Array.prototype.forEach.call(corpo.querySelectorAll('[data-locacao]'), function (b) {
+      b.onclick = function () {
+        var codigo = b.getAttribute('data-locacao');
+        var l = estado.locados && estado.locados[codigo];
+        var acao = l ? GI.editarLocacao(l.locacao_id) : GI.modalLocacao({ imovel: estado.itens.filter(function (p) { return String(p.internalcode) === codigo; })[0] });
+        acao.then(function (gravado) {
+          if (!gravado) return;
+          return carregarMapa().then(desenharLista);
+        }).catch(GI.erroFatal);
+      };
     });
     GI.ajustarAltura();
   }
@@ -194,10 +227,12 @@
   }
 
   function carregar() {
-    el('gi-corpo').innerHTML = '<tr><td colspan="7" class="gi-mudo">buscando…</td></tr>';
+    var atual = ++geracao;
+    el('gi-corpo').innerHTML = '<tr><td colspan="8" class="gi-mudo">buscando…</td></tr>';
     return GI.buscarImoveis({
       termo: estado.termo, pagina: estado.pagina, porPagina: estado.porPagina
     }).then(function (r) {
+      if (atual !== geracao) return;
       estado.itens = r.itens;
       el('gi-pagina').textContent = String(estado.pagina);
       el('gi-origem').textContent = r.itens.length + ' nesta página · ' +
@@ -205,6 +240,23 @@
       el('b-anterior').disabled = estado.pagina <= 1;
       el('b-proxima').disabled = r.itens.length < estado.porPagina;
       desenharLista();
+    });
+  }
+
+  function carregarMapa() {
+    estado.locados = null;
+    el('f-situacao').disabled = true;
+    if (GI.modo !== 'portal') {
+      el('gi-locados-aviso').hidden = false;
+      el('gi-locados-aviso').textContent = 'Locados exigem o portal conectado.';
+      return Promise.resolve();
+    }
+    return GI.locacoesMapa().then(function (mapa) {
+      estado.locados = mapa; el('f-situacao').disabled = false;
+      el('gi-locados-aviso').hidden = true;
+    }).catch(function (err) {
+      el('gi-locados-aviso').hidden = false;
+      el('gi-locados-aviso').textContent = 'Situação indisponível: ' + err.message + '. Reabra a tela para tentar novamente.';
     });
   }
 
@@ -403,12 +455,15 @@
     });
     el('f-termo').addEventListener('keydown', function (e) { if (e.key === 'Enter') el('b-buscar').click(); });
     el('b-limpar').addEventListener('click', function () {
-      el('f-termo').value = ''; el('f-estado').value = '';
-      estado.termo = ''; estado.filtroEstado = ''; estado.pagina = 1;
+      el('f-termo').value = ''; el('f-estado').value = ''; el('f-situacao').value = '';
+      estado.termo = ''; estado.filtroEstado = ''; estado.filtroSituacao = ''; estado.pagina = 1;
       carregar().catch(GI.erroFatal);
     });
     el('f-estado').addEventListener('change', function () {
       estado.filtroEstado = el('f-estado').value; desenharLista();
+    });
+    el('f-situacao').addEventListener('change', function () {
+      estado.filtroSituacao = el('f-situacao').value; desenharLista();
     });
     el('f-porpagina').addEventListener('change', function () {
       estado.porPagina = Number(el('f-porpagina').value); estado.pagina = 1;
@@ -421,7 +476,10 @@
       estado.pagina++; carregar().catch(GI.erroFatal);
     });
 
-    return Promise.all([GI.campos(), GI.valores(), GI.preenchidos()]).then(function (r) {
+    return Promise.all([
+      GI.campos().catch(function (err) { GI.erroFatal(err); return []; }),
+      GI.valores().catch(function () { return {}; }), GI.preenchidos().catch(function () { return {}; }), carregarMapa()
+    ]).then(function (r) {
       estado.campos = r[0];
       estado.valores = r[1];
       estado.preenchidos = r[2];
