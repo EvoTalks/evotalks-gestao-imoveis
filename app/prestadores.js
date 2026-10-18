@@ -10,7 +10,7 @@
   }
   function desenhar() {
     var tamanho = Number(el('f-porpagina').value), inicio = (pagina - 1) * tamanho, rows = itens.slice(inicio, inicio + tamanho);
-    el('gi-resumo').textContent = itens.length + ' prestador(es) neste filtro';
+    el('gi-resumo').textContent = itens.length + ' ' + GI.plural(itens.length, 'prestador', 'prestadores') + ' neste filtro';
     el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = rows.length + ' nesta página · ' + itens.length + ' no total';
     el('b-anterior').disabled = pagina <= 1; el('b-proxima').disabled = inicio + tamanho >= itens.length;
     el('gi-corpo').innerHTML = rows.length ? rows.map(function (p, i) {

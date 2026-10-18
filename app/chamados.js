@@ -3,6 +3,7 @@
   'use strict';
   var e = GI.escapar, el = function (id) { return document.getElementById(id); };
   var pagina = 1, geracao = 0, total = 0, itens = [];
+  function valorMapa(mapa, chave) { return Object.hasOwn(mapa, chave) ? mapa[chave] : undefined; }
   function numero(v) { var n = Number(v); return Number.isFinite(n) ? n : 0; }
   function idValido(v) { var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; }
   function data(v) {
@@ -13,7 +14,7 @@
     return Object.keys(mapa).map(function (k) { return '<option value="' + e(k) + '"' + (k === atual ? ' selected' : '') + '>' + e(mapa[k]) + '</option>'; }).join('');
   }
   function status(c) {
-    return '<span class="gi-estado ' + (GI.CHAMADO_STATUS_CLASSES[c.status] || 'gi-estado-off') + '"><span class="gi-ponto"></span>' + e(GI.CHAMADO_STATUS[c.status] || 'Não informado') + '</span>';
+    return '<span class="gi-estado ' + (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off') + '"><span class="gi-ponto"></span>' + e(valorMapa(GI.CHAMADO_STATUS, c.status) || 'Não informado') + '</span>';
   }
   function icone(tipo) {
     return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
@@ -41,18 +42,18 @@
       if (atual !== geracao) return;
       itens = r.rows || []; total = numero(r.total);
       var resumo = r.resumo || {};
-      el('gi-resumo').textContent = numero(resumo.abertos) + ' chamados abertos · ' + numero(resumo.prazo_estourado) + ' com prazo estourado · ' +
-        numero(resumo.aguardando_proprietario) + ' aguardando o proprietário · ' + numero(resumo.emergencia_sem_triagem) + ' emergências sem triagem';
+      el('gi-resumo').textContent = numero(resumo.abertos) + ' ' + GI.plural(numero(resumo.abertos), 'chamado aberto', 'chamados abertos') + ' · ' + numero(resumo.prazo_estourado) + ' com prazo estourado · ' +
+        numero(resumo.aguardando_proprietario) + ' aguardando o proprietário · ' + numero(resumo.emergencia_sem_triagem) + ' ' + GI.plural(numero(resumo.emergencia_sem_triagem), 'emergência', 'emergências') + ' sem triagem';
       el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = itens.length + ' nesta página · ' + total + ' no total';
       el('b-anterior').disabled = pagina <= 1; el('b-proxima').disabled = pagina * numero(r.pageSize) >= total;
       el('gi-corpo').innerHTML = itens.length ? itens.map(function (c, i) {
         var a = c.atendimento, im = c.imovel || {}, solicitante = c.solicitante || {};
         return '<tr><td class="gi-nowrap"><strong>' + e(GI.chamadoNumero(c.numero)) + '</strong><div class="gi-ajuda">' + e(data(c.criado_em)) + '</div></td>' +
-          '<td>' + e(c.titulo) + '<div class="gi-ajuda">' + e(GI.CHAMADO_CATEGORIAS[c.categoria] || '—') + '</div></td>' +
+          '<td>' + e(c.titulo) + '<div class="gi-ajuda">' + e(valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || '—') + '</div></td>' +
           '<td>' + e(im.titulo) + '<div class="gi-ajuda">' + e(solicitante.nome) + '</div></td>' +
           '<td>' + (a ? '<strong>' + (idValido(a.chat_id) ? '#' + idValido(a.chat_id) : e(a.protocolo || 'Informado')) + '</strong><div class="gi-ajuda">' + e(a.canal || '') + '</div>' : '—') +
           '<div class="gi-ajuda">' + e(c.atendente && c.atendente.nome || 'Sem atendente') + '</div></td>' +
-          '<td><span class="gi-prio ' + (GI.CHAMADO_PRIORIDADE_CLASSES[c.prioridade] || '') + '">' + e(GI.CHAMADO_PRIORIDADES[c.prioridade] || '—') + '</span></td>' +
+          '<td><span class="gi-prio ' + (valorMapa(GI.CHAMADO_PRIORIDADE_CLASSES, c.prioridade) || '') + '">' + e(valorMapa(GI.CHAMADO_PRIORIDADES, c.prioridade) || '—') + '</span></td>' +
           '<td>' + e(GI.chamadoPrazo(c)) + '</td><td>' + e(c.prestador && c.prestador.nome || '—') + '<div class="gi-ajuda">' +
           (c.valor_estimado_centavos != null && Number.isFinite(Number(c.valor_estimado_centavos)) ? e(GI.dinheiro(Number(c.valor_estimado_centavos))) : '') + '</div></td>' +
           '<td>' + status(c) + '</td><td><div class="gi-acoes"><button type="button" class="btn btn-slim btn-icone" data-editar="' + e(c.id) + '" aria-label="Editar ' + e(GI.chamadoNumero(c.numero)) + '" title="Editar chamado">' + icone('editar') + '</button>' +
@@ -95,10 +96,10 @@
     return a ? (idValido(a.chat_id) ? '#' + idValido(a.chat_id) + ' · ' : '') + (a.protocolo || '') + ' · ' + (a.canal || 'Canal não informado') : 'Sem atendimento vinculado';
   }
   function seletorAtendimento() {
-    return '<p class="gi-ajuda">Mostrando os atendimentos em andamento e os já vinculados. O SDK não consulta os encerrados por contato. Você pode informar o protocolo e o número, ou não vincular.</p>' +
+    return '<p class="gi-ajuda">Mostrando os atendimentos em andamento e os já vinculados. O SDK não consulta os encerrados por contato. Você pode informar o protocolo ou o número, ou não vincular.</p>' +
       '<div id="c-atendimentos" class="gi-lista-atend" role="radiogroup" aria-label="Atendimento vinculado"></div>' +
-      '<div id="c-manual" class="gi-grade-modal" hidden>' + campo('chat-id', 'Número do atendimento · obrigatório para vincular', '', 'number', 'min="1" step="1"') +
-      campo('protocolo', 'Protocolo informado', '') + '<p class="gi-ajuda gi-campo-caixa--todo">Não verificado. Se você só conhece o protocolo, obtenha também o número do atendimento no EvoTalks.</p></div>' +
+      '<div id="c-manual" class="gi-grade-modal" hidden>' + campo('chat-id', 'Número do atendimento (opcional com protocolo)', '', 'number', 'min="1" step="1"') +
+      campo('protocolo', 'Protocolo informado', '') + '<p class="gi-ajuda gi-campo-caixa--todo">Não verificado. Informe ao menos o protocolo ou o número do atendimento.</p></div>' +
       '<p id="c-atendimento-aviso" class="gi-ajuda" aria-live="polite"></p>';
   }
   function formulario(detalhe) {
@@ -156,7 +157,7 @@
     }
     function historico(eventos) {
       no('historico').innerHTML = eventos.length ? eventos.slice().sort(function (a, b) { return String(a.em).localeCompare(String(b.em)) || numero(a.id) - numero(b.id); }).map(function (ev) {
-        var d = ev.detalhe || {}, texto = ev.texto || (ev.tipo === 'status' ? 'Status: ' + (GI.CHAMADO_STATUS[d.de] || d.de || '') + ' → ' + (GI.CHAMADO_STATUS[d.para] || d.para || '') + (d.motivo ? ' · ' + d.motivo : '') :
+        var d = ev.detalhe || {}, texto = ev.texto || (ev.tipo === 'status' ? 'Status: ' + (valorMapa(GI.CHAMADO_STATUS, d.de) || d.de || '') + ' → ' + (valorMapa(GI.CHAMADO_STATUS, d.para) || d.para || '') + (d.motivo ? ' · ' + d.motivo : '') :
           { criou: 'Chamado aberto', atualizou: 'Dados atualizados', vinculou_atendimento: 'Atendimento vinculado alterado', nota: 'Nota interna', anexo: 'Anexo incluído',
             orcamento: 'Orçamento · ' + (d.acao || 'registrado'), aprovacao: 'Aprovação · ' + (d.acao || d.status || 'atualizada'), prestador: 'Prestador alterado', sla: 'SLA · ' + (d.acao || 'atualizado') }[ev.tipo] || ev.tipo);
         return '<li><time class="gi-ajuda">' + e(data(ev.em)) + ' · ' + e(ev.autor) + '</time><p>' + e(texto) + '</p>' + (ev.notificou_cliente ? '<span class="gi-chip">Cliente avisado</span>' : '') + '</li>';
@@ -198,10 +199,10 @@
       var orcamentos = detalhe.orcamentos || [], ap = c.aprovacao || { status: 'nao_necessaria' }, visita = c.visita || {};
       var escolhido = orcamentos.find(function (o) { return o.escolhido; });
       var desabilitado = fechado ? ' disabled' : '';
-      no('orcamentos').innerHTML = '<div class="gi-secao"><strong>Orçamentos</strong><span class="gi-ajuda">' + orcamentos.length + ' recebidos · um escolhido por chamado</span></div>' +
+      no('orcamentos').innerHTML = '<div class="gi-secao"><strong>Orçamentos</strong><span class="gi-ajuda">' + orcamentos.length + ' ' + GI.plural(orcamentos.length, 'recebido', 'recebidos') + ' · um escolhido por chamado</span></div>' +
         '<fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-tabela-rolagem"><table><thead><tr><th>Prestador</th><th>Valor</th><th>Prazo</th><th>Visita</th><th>Funções</th></tr></thead><tbody>' +
         (orcamentos.length ? orcamentos.map(function (o, i) {
-          var dias = o.prazo_dias == null || !Number.isFinite(Number(o.prazo_dias)) ? '—' : Number(o.prazo_dias) + ' dia(s)';
+          var dias = o.prazo_dias == null || !Number.isFinite(Number(o.prazo_dias)) ? '—' : Number(o.prazo_dias) + ' ' + GI.plural(Number(o.prazo_dias), 'dia', 'dias');
           return '<tr><td>' + e(o.prestador_nome) + '<div class="gi-ajuda">' + e(o.observacao) + '</div></td><td>' + e(moeda(o.valor_centavos)) + '</td><td>' + e(dias) + '</td><td>' + e(data(o.visita_em)) + '</td><td>' +
             (o.escolhido ? '<span class="gi-estado gi-estado-ok">Escolhido</span>' : '<button class="btn btn-slim" type="button" data-escolher-orcamento="' + i + '">Escolher</button>') +
             (!o.escolhido || ['novo', 'triagem', 'orcamento'].includes(c.status) ? ' <button class="btn btn-slim btn-perigo" type="button" data-apagar-orcamento="' + i + '">Remover</button>' : '') + '</td></tr>';
@@ -268,7 +269,7 @@
         var donos = (detalhe.locacao && detalhe.locacao.contatos || []).filter(function (p) { return p.papel === 'proprietario'; });
         var dono = donos[Number(no('proprietario').value)];
         var texto = 'Solicitação de aprovação · ' + GI.chamadoNumero(c.numero) + '\nImóvel: ' + (c.imovel && c.imovel.titulo || '') + '\n' + c.titulo +
-          '\nPrestador: ' + escolhido.prestador_nome + '\nValor: ' + moeda(escolhido.valor_centavos) + '\nPrazo: ' + (escolhido.prazo_dias == null ? 'não informado' : numero(escolhido.prazo_dias) + ' dia(s)') +
+          '\nPrestador: ' + escolhido.prestador_nome + '\nValor: ' + moeda(escolhido.valor_centavos) + '\nPrazo: ' + (escolhido.prazo_dias == null ? 'não informado' : numero(escolhido.prazo_dias) + ' ' + GI.plural(numero(escolhido.prazo_dias), 'dia', 'dias')) +
           '\nVisita proposta: ' + data(escolhido.visita_em) + '\nVocê aprova este orçamento?';
         confirmarAcao('Solicitar aprovação de ' + (dono && dono.nome || 'proprietário não vinculado') + '?\n\n' + texto + '\n\nSó será enviado se houver atendimento aberto acessível deste proprietário. Caso contrário, será registrada uma nota interna.', function () {
           return solicitarAprovacao(dono, texto);
@@ -321,8 +322,9 @@
     function atendimentoEscolhido() {
       if (modoAtendimento === 'manual') {
         var n = idValido(no('chat-id').value);
-        if (!n) throw new Error('Informe o número do atendimento. O portal exige esse número mesmo quando há protocolo.');
-        return { chat_id: n, protocolo: no('protocolo').value.trim() || null, canal: null, fila: null, iniciado_em: null };
+        var protocolo = no('protocolo').value.trim();
+        if (!n && !protocolo) throw new Error('Informe o protocolo ou o número do atendimento.');
+        return { chat_id: n, protocolo: protocolo || null, canal: null, fila: null, iniciado_em: null };
       }
       return selecionado;
     }
@@ -455,15 +457,16 @@
           return sdk('chats', 'get', [a.chat_id]).then(function (chat) {
             if (Number(chat.contactId) !== Number(c.solicitante.contato_id)) throw new Error('O atendimento não pertence ao solicitante. Confira o vínculo antes de enviar.');
             return sdk('chats', 'sendMessage', [a.chat_id, { text: texto }]);
-          }).then(function () { enviado = chave; }).catch(function (err) {
+          }).then(function (r) { if (r && r.sent === true) enviado = chave; }).catch(function (err) {
             if (err.code === 'forbidden') throw new Error('Envio não permitido: a janela de 24 horas pode estar encerrada ou faltar permissão. A nota foi mantida. Desmarque o aviso para salvar só internamente.');
             throw err;
           });
-        }).then(function () { return GI.chamadosNota(c.id, { texto: texto, notificou_cliente: avisar || enviado === chave }); }).then(function () {
+        }).then(function () { return GI.chamadosNota(c.id, { texto: texto, notificou_cliente: enviado === chave }); }).then(function () {
           mudou = true;
           if (no('nota').value.trim() === texto) no('nota').value = '';
+          var semAviso = avisar && enviado !== chave;
           no('avisar').checked = false; enviado = null;
-          return GI.chamadosObter(c.id).then(function (r) { historico(r.eventos || []); no('ultima').textContent = 'Última alteração: ' + data(r.chamado.atualizado_em); mensagem('Nota salva.'); });
+          return GI.chamadosObter(c.id).then(function (r) { historico(r.eventos || []); no('ultima').textContent = 'Última alteração: ' + data(r.chamado.atualizado_em); mensagem(semAviso ? 'Nota salva sem aviso ao cliente: o envio não foi confirmado.' : 'Nota salva.'); });
         });
       }
       if (avisar) confirmarAcao('Enviar esta nota ao cliente ' + c.solicitante.nome + ' no atendimento ' + atendimentoTexto(a) + '?\n\n' + texto, gravar);
@@ -511,7 +514,7 @@
               revisao = dados(); mensagem('');
               no('confirmacao-texto').textContent = 'Abrir chamado para ' + contato.name + '\nImóvel: ' + locacoes[Number(no('locacao').value)].imovel_titulo + '\nAtendente: ' +
                 (revisao.atendente && revisao.atendente.nome || 'Sem atendente') + '\nAtendimento: ' + atendimentoTexto(revisao.atendimento) + (modoAtendimento === 'manual' ? ' · informado, não verificado' : '') +
-                '\n' + GI.CHAMADO_CATEGORIAS[revisao.categoria] + ' · ' + GI.CHAMADO_PRIORIDADES[revisao.prioridade] + '\n' + revisao.titulo + '\n' + revisao.descricao + '\nAcesso: ' +
+                '\n' + valorMapa(GI.CHAMADO_CATEGORIAS, revisao.categoria) + ' · ' + valorMapa(GI.CHAMADO_PRIORIDADES, revisao.prioridade) + '\n' + revisao.titulo + '\n' + revisao.descricao + '\nAcesso: ' +
                 revisao.acesso.disponibilidade + ' · ' + (revisao.acesso.sem_cliente ? 'Pode entrar sem o cliente' : 'Com o cliente') + '\nChaves: ' + revisao.acesso.chaves + '\nFotos: ' + revisao.anexos.length;
               no('confirmacao').hidden = false; no('confirmar-acao').hidden = true; no('dados').disabled = true; ok.textContent = 'Abrir chamado'; no('confirmacao').scrollIntoView({ block: 'nearest' }); ok.focus();
             } catch (err) { mensagem(erro(err)); }
@@ -541,7 +544,7 @@
             if (no('nota').value.trim()) { mensagem('Salve a nota antes de alterar o status.'); return; }
             if (dadosAlterados) { mensagem('Atualize os dados digitados antes de alterar o status.'); return; }
             var motivo = no('motivo') && no('motivo').value.trim();
-            confirmarAcao('Alterar ' + GI.chamadoNumero(c.numero) + ' de ' + GI.CHAMADO_STATUS[c.status] + ' para ' + GI.CHAMADO_STATUS[destino] + '?' + (motivo ? '\nMotivo: ' + motivo : ''), function () {
+            confirmarAcao('Alterar ' + GI.chamadoNumero(c.numero) + ' de ' + valorMapa(GI.CHAMADO_STATUS, c.status) + ' para ' + valorMapa(GI.CHAMADO_STATUS, destino) + '?' + (motivo ? '\nMotivo: ' + motivo : ''), function () {
               if (dadosAlterados || no('nota').value.trim()) return Promise.reject(new Error('Salve os dados e a nota antes de alterar o status.'));
               return GI.chamadosStatus(c.id, destino, motivo).then(function () { mudou = true; return GI.chamadosObter(c.id); }).then(function () {
                 // A releitura confirma o estado antes de remontar o formulário.
@@ -590,7 +593,7 @@
       aoConfirmar: function (caixa) { return GI.chamadosStatus(c.id, 'cancelado', caixa.querySelector('input').value.trim()).then(function () { return GI.chamadosObter(c.id); }).catch(function (err) { throw new Error(erro(err)); }); }
     }).then(function (r) { if (r) return carregar(); });
   }
-  GI.pronto(function () {
+  GI.pronto(function (ctx) {
     el('gi-nav').innerHTML = GI.cabecalho('gi-chamados'); GI.ligarNavegacao(); GI.manutencaoMostrarModo();
     el('f-status').innerHTML += opcoes(GI.CHAMADO_STATUS); el('f-prioridade').innerHTML += opcoes(GI.CHAMADO_PRIORIDADES);
     if (GI.modo !== 'portal') {
@@ -605,6 +608,10 @@
     el('b-anterior').onclick = function () { if (pagina > 1) { pagina--; carregar(); } };
     el('b-proxima').onclick = function () { if (pagina * Number(el('f-porpagina').value) < total) { pagina++; carregar(); } };
     el('b-novo').onclick = function () { formulario().catch(GI.erroFatal); };
-    return carregar();
+    return carregar().then(function () {
+      var params = ctx && ctx.contribution && ctx.contribution.params;
+      var chamadoId = idValido(params && params.chamadoId);
+      if (chamadoId) abrirEdicao(chamadoId).catch(GI.erroFatal);
+    });
   });
 })();

@@ -73,13 +73,14 @@
   var observer = new ResizeObserver(GI.ajustarAltura);
   observer.observe($('gi-cockpit'));
 
+  function valorMapa(mapa, chave) { return Object.hasOwn(mapa, chave) ? mapa[chave] : undefined; }
   function numero(v) { var n = Number(v); return Number.isFinite(n) ? n : 0; }
   function id(v) { var n = numero(v); return Number.isSafeInteger(n) && n > 0 ? n : null; }
   function linhas(r) { return Array.isArray(r) ? r : r && Array.isArray(r.rows) ? r.rows : []; }
   function locacao() { return locacoes[selecionada]; }
   function abertos(c) { return c.status !== 'concluido' && c.status !== 'cancelado'; }
   function lista() { return chamados.filter(function (c) { return String(c.locacao_id) === String(locacao() && locacao().id); }); }
-  function papel(v) { return ({ locatario: 'LOCATÁRIO', proprietario: 'PROPRIETÁRIO', fiador: 'FIADOR', outro: 'OUTRO' })[v] || 'CONTATO'; }
+  function papel(v) { return valorMapa({ locatario: 'LOCATÁRIO', proprietario: 'PROPRIETÁRIO', fiador: 'FIADOR', outro: 'OUTRO' }, v) || 'CONTATO'; }
   function moeda(v) { return v == null || !Number.isFinite(Number(v)) ? '—' : (Number(v) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
   function data(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v.split('-').reverse().join('/') : '—'; }
   function instante(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v) && Number.isFinite(Date.parse(v)) ? new Date(v).toLocaleString('pt-BR') : '—'; }
@@ -89,7 +90,7 @@
     $('cp-conteudo').innerHTML = '<div class="gi-cartao state"><p id="cp-estado"></p>' + (tentar ? '<button type="button" class="btn" id="cp-tentar">Tentar novamente</button>' : '') + '</div>';
     $('cp-estado').textContent = t;
     $('cp-conteudo').setAttribute('aria-busy', t.indexOf('Carregando') === 0 ? 'true' : 'false');
-    if (tentar) $('cp-tentar').onclick = function () { iniciar(); };
+    if (tentar) $('cp-tentar').onclick = function () { iniciar(true); };
   }
   async function atual(g, c) {
     if (g !== geracao) return false;
@@ -112,14 +113,15 @@
       categoria: 'hidraulica', prioridade: 'alta', status: 'orcamento', solicitante: { nome: 'Cliente Demonstração' },
       atendimento: { chat_id: 8800, protocolo: 'DEMO-INVALIDO', canal: 'Demonstração' }, sla: {}, prestador: { nome: 'Prestador Demonstração' }, orcamentos_total: 1 }];
   }
-  async function iniciar() {
+  async function iniciar(forcar) {
+    if (forcar) cache.clear();
     var g = ++geracao;
     limpar(); estado('Carregando contato, imóvel e chamados…');
     $('cp-demo').hidden = !demo();
     if (demo()) { dadosDemo(); cabecalho(); render(); return; }
     if (GI.modo !== 'portal') {
       estado('Manutenção exige o portal conectado. ' + (GI.portalErro || ''), true);
-      $('cp-tentar').onclick = async function () { await GI.definirModo(); if (g === geracao) { GI.manutencaoMostrarModo(); iniciar(); } };
+      $('cp-tentar').onclick = async function () { await GI.definirModo(); if (g === geracao) { GI.manutencaoMostrarModo(); iniciar(true); } };
       return;
     }
     try {
@@ -140,7 +142,7 @@
     var l = locacao(), rows = lista();
     $('cp-nome').textContent = contato.name || 'Contato do atendimento';
     $('cp-contexto').innerHTML = '<span class="panel__tax-id">' + e(GI.mascaraDocumento(contato.document)) + '</span><span class="gi-cp-pill">' + e(papel(l && l.papel_do_contato)) + '</span>';
-    $('cp-resumo').innerHTML = rows.filter(abertos).length + ' abertos · ' + rows.filter(function (c) { return c.status === 'concluido'; }).length + ' concluídos · <em class="panel__updated">atualizado às ' + e(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) + '</em>';
+    $('cp-resumo').innerHTML = rows.filter(abertos).length + ' ' + GI.plural(rows.filter(abertos).length, 'aberto', 'abertos') + ' · ' + rows.filter(function (c) { return c.status === 'concluido'; }).length + ' ' + GI.plural(rows.filter(function (c) { return c.status === 'concluido'; }).length, 'concluído', 'concluídos') + ' · <em class="panel__updated">atualizado às ' + e(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) + '</em>';
     $('cp-selecao').hidden = locacoes.length < 2;
     $('cp-imovel').innerHTML = locacoes.map(function (l, i) { return '<option value="' + i + '">' + e(l.imovel_titulo) + '</option>'; }).join('');
     $('cp-imovel').value = String(selecionada);
@@ -157,16 +159,19 @@
     else renderNovo();
     GI.ajustarAltura();
   }
+  function dado(rotulo, valor) {
+    return valor == null || valor === '' || valor === '—' || valor === 'A definir' || valor === 'Não necessária' || valor === 'Não informada' || valor === 'Prazo não informado' || valor === 'Não vinculado' || rotulo === 'Orçamentos' && !valor ? '' : kv(rotulo, valor);
+  }
   function renderChamados() {
     var prioridade = { emergencia: 0, alta: 1, normal: 2 };
     function urgencia(c) {
       var prazo = GI.chamadoPrazo(c);
       return prazo === 'Responder já' || prazo.indexOf('Atrasado') === 0 ? 0 : c.sla && c.sla.pausado ? 2 : 1;
     }
-    var rows = lista().slice().sort(function (a, b) { return Number(!abertos(a)) - Number(!abertos(b)) || (prioridade[a.prioridade] ?? 3) - (prioridade[b.prioridade] ?? 3) || urgencia(a) - urgencia(b) || numero(b.numero) - numero(a.numero); });
+    var rows = lista().slice().sort(function (a, b) { return Number(!abertos(a)) - Number(!abertos(b)) || (valorMapa(prioridade, a.prioridade) ?? 3) - (valorMapa(prioridade, b.prioridade) ?? 3) || urgencia(a) - urgencia(b) || numero(b.numero) - numero(a.numero); });
     $('cp-conteudo').innerHTML = rows.map(function (c, i) {
-      var status = GI.CHAMADO_STATUS[c.status] || 'Status não informado', at = c.atendimento, trilha = GI.chamadoTrilha(c.status);
-      return '<details class="gi-cp-acc' + (c.prioridade === 'emergencia' && abertos(c) ? ' gi-cp-urgente' : '') + '" data-chamado="' + i + '"' + (i === 0 && abertos(c) ? ' open' : '') + '><summary><span class="gi-cp-linha"><strong>' + e(GI.chamadoNumero(c.numero)) + '</strong><span class="gi-cp-pill gi-cp-status--' + (Object.hasOwn(GI.CHAMADO_STATUS, c.status) ? c.status : 'novo') + '">' + e(status) + '</span></span><span class="gi-cp-titulo">' + e(c.titulo) + '</span><span class="gi-cp-meta">' + e(GI.CHAMADO_PRIORIDADES[c.prioridade] || 'Prioridade não informada') + ' · ' + e(GI.chamadoPrazo(c)) + '</span></summary><div class="gi-cp-detalhe"><div class="gi-cp-trilha" aria-label="Trilha de status">' + trilha.map(function (s) { return '<i title="' + e(s.rotulo) + '" class="' + (s.atual ? 'atual' : s.feito ? 'feito' : '') + '"></i>'; }).join('') + '</div>' + kv('Status', status) + kv('Categoria', GI.CHAMADO_CATEGORIAS[c.categoria] || 'Não informada') + kv('Aberto em', instante(c.criado_em)) + kv('Relato', c.descricao) + kv('Solicitante', c.solicitante && c.solicitante.nome) + kv('Atendimento', at ? '#' + (id(at.chat_id) || '—') + ' · ' + (at.canal || '—') : 'Não vinculado') + kv('Atendente', c.atendente && c.atendente.nome) + kv('Quem paga', ({ proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária', indefinido: 'A definir' })[c.quem_paga] || 'A definir') + kv('Valor estimado', moeda(c.valor_estimado_centavos)) + kv('Prestador', c.prestador && c.prestador.nome) + kv('Orçamentos', numero(c.orcamentos_total)) + kv('Aprovação do proprietário', ({ pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada', nao_necessaria: 'Não necessária' })[(c.aprovacao || {}).status] || 'Não informada') + kv('Visita', instante((c.visita || {}).inicio)) + kv('Prazo de solução', instante((c.sla || {}).prazo_solucao_em)) + kv('SLA', GI.chamadoPrazo(c)) + '<div class="gi-cp-acoes"><button class="btn btn-primario" type="button" data-gestao="' + i + '">Abrir na gestão</button><button class="btn" type="button" data-copiar="' + i + '">Copiar protocolo</button></div></div></details>';
+      var status = valorMapa(GI.CHAMADO_STATUS, c.status) || 'Status não informado', at = c.atendimento, trilha = GI.chamadoTrilha(c.status);
+      return '<details class="gi-cp-acc' + (c.prioridade === 'emergencia' && abertos(c) ? ' gi-cp-urgente' : '') + '" data-chamado="' + i + '"' + (i === 0 && abertos(c) ? ' open' : '') + '><summary><span class="gi-cp-linha"><strong>' + e(GI.chamadoNumero(c.numero)) + '</strong><span class="gi-cp-pill gi-cp-status--' + (Object.hasOwn(GI.CHAMADO_STATUS, c.status) ? c.status : 'novo') + '">' + e(status) + '</span></span><span class="gi-cp-titulo">' + e(c.titulo) + '</span><span class="gi-cp-meta">' + e(valorMapa(GI.CHAMADO_PRIORIDADES, c.prioridade) || 'Prioridade não informada') + ' · ' + e(GI.chamadoPrazo(c)) + '</span></summary><div class="gi-cp-detalhe"><div class="gi-cp-trilha" aria-label="Trilha de status">' + trilha.map(function (s) { return '<i title="' + e(s.rotulo) + '" class="' + (s.atual ? 'atual' : s.feito ? 'feito' : '') + '"></i>'; }).join('') + '</div>' + dado('Status', status) + dado('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || 'Não informada') + dado('Aberto em', instante(c.criado_em)) + dado('Relato', c.descricao) + dado('Solicitante', c.solicitante && c.solicitante.nome) + dado('Atendimento', at ? (id(at.chat_id) ? '#' + id(at.chat_id) : at.protocolo || '') + (at.canal ? ' · ' + at.canal : '') : null) + dado('Atendente', c.atendente && c.atendente.nome) + dado('Quem paga', valorMapa({ proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária', indefinido: 'A definir' }, c.quem_paga) || 'A definir') + dado('Valor estimado', moeda(c.valor_estimado_centavos)) + dado('Prestador', c.prestador && c.prestador.nome) + dado('Orçamentos', numero(c.orcamentos_total)) + dado('Aprovação do proprietário', valorMapa({ pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada', nao_necessaria: 'Não necessária' }, (c.aprovacao || {}).status) || 'Não informada') + dado('Visita', instante((c.visita || {}).inicio)) + dado('Prazo de solução', instante((c.sla || {}).prazo_solucao_em)) + dado('SLA', GI.chamadoPrazo(c)) + '<div class="gi-cp-acoes"><button class="btn btn-primario" type="button" data-gestao="' + i + '">Abrir na gestão</button><button class="btn" type="button" data-copiar="' + i + '">Copiar protocolo</button></div></div></details>';
     }).join('') + (!rows.length ? '<p class="gi-cartao state">Nenhum chamado deste imóvel.</p>' : '') + '<button type="button" class="btn btn-primario" id="cp-abrir">Abrir chamado</button><p class="panel__note">Chamados da locação selecionada, inclusive os abertos por outras pessoas.</p>';
     $('cp-abrir').onclick = function () { mudarAba('novo'); };
     document.querySelectorAll('[data-gestao]').forEach(function (b) { b.onclick = function () { abrirGestao(rows[Number(b.dataset.gestao)]); }; });
@@ -184,7 +189,7 @@
   function renderNovo() {
     if (!escrita()) { $('cp-conteudo').innerHTML = '<p class="gi-cartao state">Abertura de chamados desligada neste cockpit. Peça ao administrador para habilitar a opção de abertura.</p>'; return; }
     var f = rascunho();
-    $('cp-conteudo').innerHTML = '<form id="cp-form" class="gi-cartao gi-cp-form"><div><span class="gi-cp-rotulo">Atendimento vinculado</span><p id="cp-vinculo"></p><span class="gi-cp-meta">O chamado fica ligado a esta conversa.</span></div>' + kv('Solicitante', contato.name) + kv('Imóvel', locacao().imovel_titulo) + '<div><label for="cp-titulo">Título do chamado</label><input id="cp-titulo" maxlength="180" required value="' + e(f.titulo) + '"></div><fieldset><legend>O que aconteceu?</legend><div class="gi-cp-chips">' + Object.keys(GI.CHAMADO_CATEGORIAS).map(function (c) { return '<button type="button" data-categoria="' + c + '" aria-pressed="' + (f.categoria === c) + '">' + e(GI.CHAMADO_CATEGORIAS[c]) + '</button>'; }).join('') + '</div></fieldset><fieldset><legend>Urgência</legend><div class="gi-cp-chips">' + ['normal', 'alta', 'emergencia'].map(function (p) { return '<button type="button" data-prioridade="' + p + '" aria-pressed="' + (f.prioridade === p) + '">' + e(GI.CHAMADO_PRIORIDADES[p]) + '</button>'; }).join('') + '</div></fieldset><div><label for="cp-descricao">Descrição</label><textarea id="cp-descricao" maxlength="10000">' + e(f.descricao) + '</textarea></div><div><span class="gi-cp-rotulo">Fotos da conversa</span><div id="cp-fotos" aria-live="polite"></div></div><div><label for="cp-disponibilidade">Quando dá para entrar</label><input id="cp-disponibilidade" maxlength="500" value="' + e(f.disponibilidade) + '"><label class="gi-cp-check"><input id="cp-sem-cliente" type="checkbox"' + (f.sem_cliente ? ' checked' : '') + '>Autoriza entrar sem o cliente</label></div><div><label for="cp-chaves">Chaves / acesso</label><input id="cp-chaves" maxlength="500" value="' + e(f.chaves) + '"></div><button class="btn btn-primario" id="cp-revisar" type="submit">Revisar e abrir chamado</button><p class="panel__note">Nada é gravado antes da confirmação.</p></form>';
+    $('cp-conteudo').innerHTML = '<form id="cp-form" class="gi-cartao gi-cp-form"><div><span class="gi-cp-rotulo">Atendimento vinculado</span><p id="cp-vinculo"></p><span class="gi-cp-meta">O chamado fica ligado a esta conversa.</span></div>' + kv('Solicitante', contato.name) + kv('Imóvel', locacao().imovel_titulo) + '<div><label for="cp-titulo">Título do chamado</label><input id="cp-titulo" maxlength="180" required value="' + e(f.titulo) + '"></div><fieldset><legend>O que aconteceu?</legend><div class="gi-cp-chips">' + Object.keys(GI.CHAMADO_CATEGORIAS).map(function (c) { return '<button type="button" data-categoria="' + c + '" aria-pressed="' + (f.categoria === c) + '">' + e(valorMapa(GI.CHAMADO_CATEGORIAS, c)) + '</button>'; }).join('') + '</div></fieldset><fieldset><legend>Urgência</legend><div class="gi-cp-chips">' + ['normal', 'alta', 'emergencia'].map(function (p) { return '<button type="button" data-prioridade="' + p + '" aria-pressed="' + (f.prioridade === p) + '">' + e(valorMapa(GI.CHAMADO_PRIORIDADES, p)) + '</button>'; }).join('') + '</div></fieldset><div><label for="cp-descricao">Descrição</label><textarea id="cp-descricao" maxlength="10000">' + e(f.descricao) + '</textarea></div><div><span class="gi-cp-rotulo">Fotos da conversa</span><div id="cp-fotos" aria-live="polite"></div></div><div><label for="cp-disponibilidade">Quando dá para entrar</label><input id="cp-disponibilidade" maxlength="500" value="' + e(f.disponibilidade) + '"><label class="gi-cp-check"><input id="cp-sem-cliente" type="checkbox"' + (f.sem_cliente ? ' checked' : '') + '>Autoriza entrar sem o cliente</label></div><div><label for="cp-chaves">Chaves / acesso</label><input id="cp-chaves" maxlength="500" value="' + e(f.chaves) + '"></div><button class="btn btn-primario" id="cp-revisar" type="submit">Revisar e abrir chamado</button><p class="panel__note">Nada é gravado antes da confirmação.</p></form>';
     $('cp-vinculo').textContent = vinculo();
     ['titulo', 'descricao', 'disponibilidade', 'chaves'].forEach(function (k) { $('cp-' + k).oninput = function () { f[k] = this.value; }; });
     $('cp-sem-cliente').onchange = function () { f.sem_cliente = this.checked; };
@@ -217,7 +222,7 @@
   function revisar() {
     confirmado = { geracao: geracao, chat: chat, locacao: locacao(), contato: contato, dados: JSON.parse(JSON.stringify(rascunho())) };
     var f = confirmado.dados;
-    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2 id="cp-confirmacao-titulo" tabindex="-1">Confirme antes de abrir</h2>' + kv('Cliente', contato.name) + kv('Imóvel', locacao().imovel_titulo) + kv('Atendimento', vinculo()) + kv('Título', f.titulo) + kv('Descrição', f.descricao) + kv('Categoria', GI.CHAMADO_CATEGORIAS[f.categoria]) + kv('Urgência', GI.CHAMADO_PRIORIDADES[f.prioridade]) + kv('Fotos', f.anexos.length) + kv('Acesso', f.disponibilidade) + kv('Sem o cliente', f.sem_cliente ? 'Autorizado' : 'Não autorizado') + kv('Chaves', f.chaves) + '<p class="gi-cp-meta">O portal calcula o SLA pela prioridade configurada.</p><label class="gi-cp-check"><input type="checkbox" id="cp-conferi">Conferi os dados com o cliente</label></div><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-voltar">Voltar e editar</button><button type="button" class="btn btn-primario" id="cp-confirmar" disabled>Abrir chamado</button></div>';
+    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2 id="cp-confirmacao-titulo" tabindex="-1">Confirme antes de abrir</h2>' + kv('Cliente', contato.name) + kv('Imóvel', locacao().imovel_titulo) + kv('Atendimento', vinculo()) + kv('Título', f.titulo) + kv('Descrição', f.descricao) + kv('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, f.categoria)) + kv('Urgência', valorMapa(GI.CHAMADO_PRIORIDADES, f.prioridade)) + kv('Fotos', f.anexos.length) + kv('Acesso', f.disponibilidade) + kv('Sem o cliente', f.sem_cliente ? 'Autorizado' : 'Não autorizado') + kv('Chaves', f.chaves) + '<p class="gi-cp-meta">O portal calcula o SLA pela prioridade configurada.</p><label class="gi-cp-check"><input type="checkbox" id="cp-conferi">Conferi os dados com o cliente</label></div><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-voltar">Voltar e editar</button><button type="button" class="btn btn-primario" id="cp-confirmar" disabled>Abrir chamado</button></div>';
     $('cp-conferi').onchange = function () { $('cp-confirmar').disabled = !this.checked; };
     $('cp-voltar').onclick = function () { confirmado = null; renderNovo(); $('cp-titulo').focus(); };
     $('cp-confirmar').onclick = salvar;
@@ -229,9 +234,15 @@
     gravando = true; $('cp-confirmar').disabled = true; $('cp-voltar').disabled = true; recado('Abrindo chamado…');
     var g = plano.geracao, c = plano.chat, f = plano.dados;
     try {
-      if (!await atual(g, c)) return;
+      if (!await atual(g, c)) {
+        if (g === geracao && $('cp-confirmar')) { $('cp-confirmar').disabled = false; $('cp-voltar').disabled = false; recado('O atendimento mudou; revise de novo.'); }
+        return;
+      }
       var u = demo() ? { id: 9990, name: 'Agente Demonstração' } : await omni.session.getUser();
-      if (!await atual(g, c)) return;
+      if (!await atual(g, c)) {
+        if (g === geracao && $('cp-confirmar')) { $('cp-confirmar').disabled = false; $('cp-voltar').disabled = false; recado('O atendimento mudou; revise de novo.'); }
+        return;
+      }
       if (!u || !id(u.id)) throw new Error('Usuário da sessão indisponível. Tente novamente.');
       var d = { locacao_id: plano.locacao.id, titulo: f.titulo.trim(), descricao: f.descricao, categoria: f.categoria, prioridade: f.prioridade,
         origem: 'atendimento', solicitante: { contato_id: c.contactId, nome: plano.contato.name, telefone: plano.contato.phone || null },
@@ -281,7 +292,7 @@
     mudarAba(botoes[n].dataset.aba); botoes[n].focus();
   };
   $('cp-imovel').onchange = function () { if (gravando) { this.value = String(selecionada); return; } selecionada = Number(this.value); formulario = confirmado = null; cabecalho(); render(); };
-  $('cp-atualizar').onclick = function () { if (!gravando) iniciar(); };
+  $('cp-atualizar').onclick = function () { if (!gravando) iniciar(true); };
   function trocarChat() {
     ++geracao; clearTimeout(temporizador); limpar(); estado('Carregando atendimento selecionado…');
     temporizador = setTimeout(iniciar, 400);

@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.18.0">
+<link rel="stylesheet" href="estilo.css?v=0.20.0">
 
 <div class="gi-topo">
   <div>
@@ -75,8 +75,8 @@
 </p>
 
 <div class="gi-aviso" id="gi-locados-aviso" hidden></div>
-<script src="comum.js?v=0.18.0"></script>
-<script src="locacao.js?v=0.18.0"></script>
+<script src="comum.js?v=0.20.0"></script>
+<script src="locacao.js?v=0.20.0"></script>
 <script>
 (function () {
   'use strict';
@@ -477,8 +477,7 @@
     });
 
     return Promise.all([
-      GI.campos().catch(function (err) { GI.erroFatal(err); return []; }),
-      GI.valores().catch(function () { return {}; }), GI.preenchidos().catch(function () { return {}; }), carregarMapa()
+      GI.campos(), GI.valores(), GI.preenchidos(), carregarMapa()
     ]).then(function (r) {
       estado.campos = r[0];
       estado.valores = r[1];

@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.18.0">
+<link rel="stylesheet" href="estilo.css?v=0.20.0">
 
 <div class="gi-topo">
   <div><h1>Imóveis locados</h1><p class="gi-sub" id="gi-resumo">carregando locações…</p></div>
@@ -21,8 +21,9 @@
   <div class="gi-rodape"><button class="btn btn-slim" id="b-anterior" type="button">&larr; anterior</button><span class="gi-pagina-atual" id="gi-pagina">1</span><button class="btn btn-slim" id="b-proxima" type="button">próxima &rarr;</button><span class="gi-pequeno gi-mudo" id="gi-total"></span></div>
 </section>
 <p class="gi-nota"><span id="gi-modo">verificando conexão…</span></p>
-<script src="comum.js?v=0.18.0"></script>
-<script src="locacao.js?v=0.18.0"></script>
+<script src="comum.js?v=0.20.0"></script>
+<script src="locacao.js?v=0.20.0"></script>
+<script src="manutencao.js?v=0.20.0"></script>
 <script>
 (function () {
   'use strict';
@@ -40,7 +41,7 @@
     var dias = Number(l.vence_em_dias);
     if (l.vence_em_dias === null || l.vence_em_dias === undefined || !Number.isFinite(dias)) return '';
     return '<span class="' + (dias < 0 ? 'gi-prazo--erro' : dias <= 60 ? 'gi-prazo--warn' : '') + '">' +
-      (dias < 0 ? 'Vencido há ' + Math.abs(dias) + ' dias' : 'Vence em ' + dias + ' dias') + '</span>';
+      (dias < 0 ? 'Vencido há ' + Math.abs(dias) + ' ' + GI.plural(Math.abs(dias), 'dia', 'dias') : 'Vence em ' + dias + ' ' + GI.plural(dias, 'dia', 'dias')) + '</span>';
   }
   function carregar() {
     if (GI.modo !== 'portal') return Promise.resolve();
@@ -51,7 +52,7 @@
       origem: el('f-origem').value, pagina: pagina, por_pagina: el('f-porpagina').value }).then(function (r) {
       if (atual !== geracao) return;
       total = r.total;
-      el('gi-resumo').textContent = r.resumo.ativas + ' imóveis locados · ' + r.resumo.vencendo_60d + ' contratos vencem em 60 dias';
+      el('gi-resumo').textContent = r.resumo.ativas + ' ' + GI.plural(r.resumo.ativas, 'imóvel locado', 'imóveis locados') + ' · ' + r.resumo.vencendo_60d + ' ' + GI.plural(r.resumo.vencendo_60d, 'contrato vence', 'contratos vencem') + ' em 60 dias';
       el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = r.rows.length + ' nesta página · ' + total + ' no total';
       el('b-anterior').disabled = pagina <= 1;
       el('b-proxima').disabled = pagina * r.pageSize >= total;
@@ -83,7 +84,7 @@
       candidatas = r.rows;
       el('gi-candidatas').hidden = !r.total;
       el('b-candidatas').disabled = !r.total;
-      el('gi-candidatas-texto').textContent = r.total + ' imóveis de locação saíram do anúncio nos últimos 60 dias';
+      el('gi-candidatas-texto').textContent = r.total + ' ' + GI.plural(r.total, 'imóvel de locação saiu', 'imóveis de locação saíram') + ' do anúncio nos últimos 60 dias';
     }).catch(function (err) {
       el('gi-candidatas').hidden = false;
       el('gi-candidatas-texto').textContent = 'Não foi possível consultar os imóveis que saíram do anúncio: ' + err.message;

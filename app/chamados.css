@@ -2,10 +2,10 @@
 #gi-manutencao table { min-width: 1120px; }
 #gi-manutencao th:first-child { width: 100px; }
 #gi-manutencao td { max-width: 260px; overflow-wrap: anywhere; }
-.gi-estado-azul { color: var(--gi-texto); background: color-mix(in srgb, var(--ext-color-info, #337ab7) 16%, var(--gi-surface)); }
+.gi-estado-azul { color: color-mix(in srgb, var(--gi-texto) 85%, var(--ext-color-info, var(--gi-texto))); background: color-mix(in srgb, var(--ext-color-info, var(--gi-texto)) 16%, var(--gi-surface)); }
 .gi-estado-cancelado { color: var(--gi-mudo); background: var(--gi-campo-bg); }
 .gi-estado .gi-ponto { background: currentColor; width: 8px; height: 8px; }
-.gi-estado-azul .gi-ponto { background: var(--ext-color-info, #337ab7); }
+.gi-estado-azul .gi-ponto { background: var(--ext-color-info, var(--gi-texto)); }
 .gi-prio { display: inline-block; border-radius: var(--gi-raio-p); padding: 5px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .gi-prio--emerg { color: var(--gi-erro); background: color-mix(in srgb, var(--gi-erro) 10%, var(--gi-surface)); }
 .gi-prio--alta { color: var(--gi-texto); background: color-mix(in srgb, var(--gi-pendente) 18%, var(--gi-surface)); }

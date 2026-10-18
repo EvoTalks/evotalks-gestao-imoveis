@@ -321,8 +321,7 @@
   GI.preenchidos = function () {
     if (GI.modo === 'portal') {
       return chamar('/preenchidos')
-        .then(function (r) { return (r && r.preenchidos) || {}; })
-        .catch(function () { return {}; });   // portal antigo, sem a rota: some o verde, não a tela
+        .then(function (r) { return (r && r.preenchidos) || {}; });
     }
     if (GI.modo === 'portal-fora') return exigePortal();
     return ler(CHAVES.valores, {}).then(function (mapa) {

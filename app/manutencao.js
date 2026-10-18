@@ -1,6 +1,7 @@
 /* Contrato compartilhado pelas telas de manutenção. Nenhum fallback para storage. */
 (function () {
   'use strict';
+  GI.plural = function (n, singular, plural) { return Number(n) === 1 ? singular : plural; };
   GI.CHAMADO_STATUS = { novo: 'Novo', triagem: 'Triagem', orcamento: 'Orçamento', aprovacao: 'Aprovação',
     agendado: 'Agendado', execucao: 'Em execução', concluido: 'Concluído', cancelado: 'Cancelado' };
   GI.CHAMADO_STATUS_CLASSES = { novo: 'gi-estado-off', triagem: 'gi-estado-off', orcamento: 'gi-estado-pendente',

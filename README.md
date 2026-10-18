@@ -75,7 +75,7 @@ O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o v
 prestador e **Status**. Novo chamado seleciona o cliente, um dos imóveis locados dele,
 atendente e atendimento; revisão e confirmação precedem a gravação. O seletor traz
 atendimentos em andamento e os já vinculados. O SDK não consulta encerrados por contato:
-o vínculo por número/protocolo informado fica explicitamente não verificado.
+o vínculo informado por número e/ou protocolo fica explicitamente não verificado. Só o protocolo é suficiente; o número permanece vazio quando desconhecido.
 
 Em **Editar**, salve custos (quem paga, valor estimado e repasse) antes de escolher um
 orçamento. As cotações aceitam prestador cadastrado ou nome avulso, valor em reais,
@@ -150,15 +150,13 @@ Sem npm install: `node test/checar.mjs`, `node --test test/*.test.mjs`,
 `node test/bancada/cockpit.testar.mjs` e `node test/bancada/fatia4.testar.mjs`. Uso manual e cenários em
 [test/bancada/LEIA-ME.md](test/bancada/LEIA-ME.md). A bancada tem portal em memória e
 SDK sintético, isolados de qualquer instância real; os PNGs gerados não são versionados.
+O teste `test/lote2.test.mjs` cobre falha de preenchidos, acordeão sem linhas neutras,
+atualização sem cache, troca de chat antes do envio, mapas com chaves hostis,
+confirmação de aviso e abertura do chamado por `ctx.contribution.params.chamadoId`.
 O roteiro `fatia4.testar.mjs` prova escolha única, alçada, aprovação/recusa e envio real
 simulado ou nota sem envio, travas de status/visita, SLA, prestadores e configuração.
 Inclui dados hostis que não viram elementos, portal ausente/indisponível, demonstração
 sem rede e capturas `test/bancada/capturas/fatia4-*.png` em claro, escuro e 390 px.
-O teste legado de versão em `test/manutencao.test.mjs` ainda exige `0.19.0` e precisa
-ser atualizado para `0.20.0` pelo nó responsável pelos testes compartilhados; o roteiro
-da Fatia 4 já confere a versão nova.
-O roteiro legado `chamados.testar.mjs` também ainda exige os quatro pontos de extensão
-da Fatia 4 vazios; essa asserção deve passar a esperar as seções preenchidas.
 
 ## Instalar
 
