@@ -53,9 +53,9 @@ export async function testarFotos(b, origem) {
 
     await b.preencher('#c-cliente', 'Demonstração Um');
     await b.esperar(() => !!document.querySelector('[data-contato="0"]')); await b.clicar('[data-contato="0"]');
-    await b.esperar(() => document.querySelector('#c-locacao').options.length >= 2 && document.querySelectorAll('#c-atendimentos input').length >= 4);
+    await b.esperar(() => document.querySelector('#c-locacao').options.length >= 2 && document.querySelectorAll('[data-atendimento]').length >= 1);
     await b.preencher('#c-locacao', '0'); await b.preencher('#c-titulo', 'Fotos sintéticas F5');
-    await b.clicar('#c-atendimentos input[value="0"]'); await b.clicar('#c-carregar-fotos');
+    await b.clicar('[data-atendimento="0"]'); await b.esperar(() => !document.querySelector('#c-carregar-fotos').disabled); await b.clicar('#c-carregar-fotos');
     await b.esperar(() => !!document.querySelector('[data-foto]')); await b.clicar('[data-foto]');
     assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes .gi-foto').length), 2);
     const antes = await contar();
@@ -73,8 +73,6 @@ export async function testarFotos(b, origem) {
       };
     });
     await b.clicar('.gi-modal [data-ok]');
-    assert.equal(await contar(), antes);
-    await b.clicar('.gi-modal [data-ok]');
     await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Enviando foto'));
     assert.equal(await b.avaliar(() => Array.from(document.querySelectorAll('.gi-modal button')).every(b => b.disabled)), true);
     await b.avaliar(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
@@ -86,13 +84,13 @@ export async function testarFotos(b, origem) {
     assert.equal(await b.avaliar(() => bancada.uploadsAtivosMax), 1);
     await b.captura('fotos-01-parcial-retomada');
     const salvoId = await b.avaliar(async () => (await GI.chamados({ busca: 'Fotos sintéticas F5' })).rows[0].id);
-    await b.preencher('#c-status', 'triagem'); await b.clicar('#c-mudar-status');
-    assert.match(await b.avaliar(() => document.querySelector('#c-mensagem').textContent), /fotos pendentes/);
-    assert.equal(await b.avaliar(() => document.querySelector('#c-confirmacao').hidden), true);
+    await b.preencher('#c-status', 'triagem');
+    assert.equal(await b.avaliar(() => document.querySelector('#c-mudar-status')), null);
     await pendentes(1);
     await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
     assert.equal(await contar(), antes + 1);
     let d = await b.avaliar(async n => GI.chamadosObter(n), salvoId);
+    assert.equal(d.chamado.status, 'triagem');
     assert.equal(d.anexos.length, 3); assert.equal(d.anexos.filter(a => a.origem === 'upload').length, 2);
     prova('chat + pasta coexistem; upload sequencial, bloqueio de clique/Escape e falha 500 retomada em edição sem duplicar chamado');
 
@@ -109,10 +107,9 @@ export async function testarFotos(b, origem) {
     await b.avaliar(() => document.querySelector('#c-pendentes').scrollIntoView({ block: 'center' }));
     await b.captura('fotos-02-editar-390-escuro');
     assert.equal(await b.avaliar(() => { const m = document.querySelector('.gi-modal'); return m.scrollWidth <= m.clientWidth + 1; }), true);
-    // O formulário retomado também protege pendentes ao mudar de status.
-    await b.preencher('#c-status', 'triagem'); await b.clicar('#c-mudar-status');
-    assert.match(await b.avaliar(() => document.querySelector('#c-mensagem').textContent), /fotos pendentes/);
-    assert.equal(await b.avaliar(() => document.querySelector('#c-confirmacao').hidden), true);
+    // O Salvar aplica status e fotos juntos, preservando os pendentes se a cota recusar.
+    await b.preencher('#c-status', 'triagem');
+    assert.equal(await b.avaliar(() => document.querySelector('#c-mudar-status')), null);
     const uploadsAntes = await b.avaliar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/anexos/upload')).length);
     await b.avaliar(() => {
       bancada.instanteCota = 0;
@@ -131,6 +128,27 @@ export async function testarFotos(b, origem) {
     assert.equal(d.chamado.anexos_total, 4);
     prova('cota bloqueia o upload antes da rede, mantém pendentes e libera repetição idempotente após 60s; status preserva fotos');
     prova('editar acrescenta foto, recupera bytes do portal e exibe prévias em 390 px e tema escuro');
+
+    // Mesmo concluindo junto, uma falha de upload permite repetir só as fotos, sem reabrir.
+    await b.navegar(origem + '/app/chamados.html');
+    await b.esperar(n => !!document.querySelector('[data-editar="' + n + '"]'), salvoId);
+    await b.clicar('[data-editar="' + salvoId + '"]'); await modal();
+    await b.esperar(() => !!document.querySelector('#c-orc-nome'));
+    await b.arquivos('#c-pasta', [path.join(pasta, 'sintetica.jpg')]); await pendentes(1);
+    await b.avaliar(() => {
+      const request = omni.http.request;
+      omni.http.request = op => {
+        if (op.url.endsWith('/anexos/upload')) { omni.http.request = request; return Promise.resolve({ status: 500, body: '{"erro":"falha_sintetica"}' }); }
+        return request(op);
+      };
+    });
+    await b.preencher('#c-status', 'concluido'); await b.clicar('.gi-modal [data-ok]');
+    await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('0 de 1 fotos enviadas'));
+    await pendentes(1);
+    await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
+    d = await b.avaliar(async n => GI.chamadosObter(n), salvoId);
+    assert.equal(d.chamado.status, 'concluido'); assert.equal(d.chamado.anexos_total, 4);
+    prova('concluir e enviar fotos no mesmo Salvar; falha parcial permite repetir upload sem reabrir nem perder fotos');
 
     await b.navegar(origem + '/app/chamados.html'); await b.esperar(() => !document.querySelector('#b-novo').disabled);
     await b.clicar('#b-novo'); await modal();

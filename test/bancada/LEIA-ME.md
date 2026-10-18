@@ -166,3 +166,20 @@ O stub acelera **somente o relógio da cota de transporte** (2100 ms por reserva
 para executar os fluxos extensos sem esperar minutos; datas de negócio e caches
 continuam no relógio real. O teste da janela 30/60s usa relógio controlado e a
 bancada de fotos reinstala a cota real para provar bloqueio antes da rede e retry.
+
+## Simplificação dos chamados (0.21.0)
+
+A bancada de chamados executa `simplificar.cenarios.mjs` e preserva `fotos.cenarios.mjs`.
+Prova Salvar único para dados/status/fotos, atualização imediata da lista/resumo,
+recusa parcial, orçamento livre sem valor e prestador automático reutilizado em sugestões,
+lista de chats por contato e filas sem duplicatas, protocolo manual e fallback,
+nota interna direta e aviso só com chat aberto e `sent:true`, Mais opções e faixa da decisão.
+As capturas `simplificar-{novo,editar}-390-{claro,escuro}.png` mostram a tela nova;
+o teste também mede 260/300/334 px e verifica dados hostis como texto.
+
+`?perfil=supervisor` e `?perfil=admin` habilitam as permissões correspondentes.
+O chat 8805 do contato 9901 está só na fila 93, fora de `listMine`; o contato 9904 não
+tem chat aberto. `bancada.falharLista` recusa listagem e `bancada.semConfirmarEnvio`
+devolve `sent:false`. `queues.list` e `session.getPermissions` respeitam o perfil.
+O portal simulado salva prestador pelo nome normalizado (caixa/acentos/espaços),
+reaproveita inclusive inativos e aceita valor ausente/null, sem zerar a estimativa.

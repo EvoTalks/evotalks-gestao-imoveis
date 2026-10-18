@@ -92,7 +92,7 @@ test('lote 2: regressões no navegador', async t => {
         await b.captura('lote2-classes-' + pagina);
       }
     });
-    await t.test('20: envio sem sent true salva nota sem aviso', async () => {
+    await t.test('20: só sent true registra nota enviada; falha preserva o texto', async () => {
       for (const resposta of [null, {}, { sent: false }, { sent: 'true' }, { sent: true }]) {
         await abrir('chamados'); await b.esperar(() => !!document.querySelector('[data-editar="1"]'));
         await b.clicar('[data-editar="1"]'); await b.esperar(() => !!document.querySelector('#c-nota'));
@@ -101,11 +101,19 @@ test('lote 2: regressões no navegador', async t => {
           omni.chats.get = async id => ({ ...await get(id), contactId: d.chamado.solicitante.contato_id });
           omni.chats.sendMessage = async () => r;
         }, resposta);
+        await b.clicar('#c-trocar'); await b.clicar('#c-informar'); await b.preencher('#c-chat-id', '8801');
+        await b.clicar('#c-vincular-manual'); await b.esperar(() => !document.querySelector('#c-avisar').disabled && !document.querySelector('#c-tirar-vinculo').disabled);
         await b.preencher('#c-nota', 'Nota sintética sem confirmação de envio'); await b.clicar('#c-avisar');
         await b.clicar('#c-salvar-nota'); await b.clicar('#c-confirmar-acao');
-        await b.esperar(() => bancada.chamadas.some(c => c.caminho.endsWith('/notas')));
-        assert.equal(await b.avaliar(() => JSON.parse(bancada.chamadas.find(c => c.caminho.endsWith('/notas')).body).notificou_cliente), resposta?.sent === true);
-        await b.esperar(esperado => document.querySelector('#c-mensagem').textContent.includes(esperado), resposta?.sent === true ? 'Nota salva.' : 'sem aviso');
+        if (resposta?.sent === true) {
+          await b.esperar(() => bancada.chamadas.some(c => c.caminho.endsWith('/notas')));
+          assert.equal(await b.avaliar(() => JSON.parse(bancada.chamadas.find(c => c.caminho.endsWith('/notas')).body).notificou_cliente), true);
+          await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Nota salva.'));
+        } else {
+          await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Envio não confirmado'));
+          assert.equal(await b.avaliar(() => bancada.chamadas.some(c => c.caminho.endsWith('/notas'))), false);
+          assert.equal(await b.avaliar(() => document.querySelector('#c-nota').value), 'Nota sintética sem confirmação de envio');
+        }
       }
       await b.captura('lote2-nota-sem-aviso');
     });

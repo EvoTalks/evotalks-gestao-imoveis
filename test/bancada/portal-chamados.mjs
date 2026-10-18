@@ -162,8 +162,9 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     }
     if (rota === '/prestadores' && get) {
       const rows = prestadores.filter(p => (!q.get('categoria') || p.categorias.includes(q.get('categoria'))) &&
-        (q.get('ativos') !== '1' || p.ativo) && normalizar(p.nome + ' ' + p.telefone + ' ' + p.email).includes(normalizar(q.get('busca'))));
-      return resposta({ rows, total: rows.length });
+        (q.get('ativos') !== '1' && q.get('ativo') !== '1' || p.ativo) && normalizar(p.nome + ' ' + p.telefone + ' ' + p.email).includes(normalizar(q.get('busca'))));
+      rows.sort((a, b) => a.nome.localeCompare(b.nome));
+      return resposta({ rows: rows.slice(0, Number(q.get('por_pagina')) || rows.length), total: rows.length });
     }
     const pm = rota.match(/^\/prestadores(?:\/(\d+)(?:\/(ativar|desativar))?)?$/);
     if (pm && post) {
@@ -247,19 +248,24 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
           arr.splice(arr.indexOf(o), 1);
         } else {
           arr.forEach(x => { x.escolhido = x.id === o.id; });
-          c.valor_estimado_centavos = o.valor_centavos;
+          if (o.valor_centavos != null) c.valor_estimado_centavos = o.valor_centavos;
           c.prestador = o.prestador_id ? { id: o.prestador_id, nome: o.prestador_nome } : null;
-          c.aprovacao = { status: o.valor_centavos > config.alcada_centavos && c.quem_paga === 'proprietario' ? 'pendente' : 'nao_necessaria',
+          c.aprovacao = { status: (o.valor_centavos ?? c.valor_estimado_centavos) > config.alcada_centavos && c.quem_paga === 'proprietario' ? 'pendente' : 'nao_necessaria',
             enviada_em: null, resposta_em: null, por: null, canal: null, observacao: null };
           evento(c, 'aprovacao', autor, { status: c.aprovacao.status });
         }
         evento(c, 'orcamento', autor, { orcamento_id: o.id, acao: cm[4] });
       } else {
-        const p = prestadores.find(p => p.id === d.prestador_id);
-        if (!dinheiro(d.valor_centavos) || d.prazo_dias != null && !dinheiro(d.prazo_dias) ||
+        let p = prestadores.find(p => p.id === d.prestador_id);
+        if (d.valor_centavos != null && !dinheiro(d.valor_centavos) || d.prazo_dias != null && !dinheiro(d.prazo_dias) ||
           d.prestador_id != null && !p || !p && !texto(d.prestador_nome) || d.visita_em != null && !iso(d.visita_em)) erro(422, 'dados_invalidos', { orcamento: 'Orçamento inválido.' });
+        if (!p) {
+          const chave = v => normalizar(v).trim().replace(/\s+/g, ' ');
+          p = prestadores.find(p => chave(p.nome) === chave(d.prestador_nome));
+          if (!p) { p = { id: proximoPrestador++, nome: d.prestador_nome.trim(), ativo: true, categorias: [], criado_por: autor, criado_em: instante() }; prestadores.push(p); }
+        }
         const o = { id: proximoOrcamento++, chamado_id: c.id, prestador_id: p?.id ?? null, prestador_nome: p?.nome || d.prestador_nome,
-          valor_centavos: d.valor_centavos, prazo_dias: d.prazo_dias ?? null, visita_em: d.visita_em ?? null, observacao: d.observacao ?? null,
+          valor_centavos: d.valor_centavos ?? null, prazo_dias: d.prazo_dias ?? null, visita_em: d.visita_em ?? null, observacao: d.observacao ?? null,
           escolhido: false, criado_por: autor, criado_em: instante() };
         arr.push(o); evento(c, 'orcamento', autor, { orcamento_id: o.id }); return resposta({ ok: true, orcamento: o }, 201);
       }
