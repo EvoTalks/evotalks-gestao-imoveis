@@ -14,9 +14,9 @@ function carregar() {
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
-test('manifest 0.20.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
+test('manifest 0.21.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.20.0');
+  assert.equal(m.version, '0.21.0');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
@@ -82,6 +82,8 @@ test('helpers cobrem o contrato, preservam payloads e recusam manutenção sem p
     [() => GI.chamadosStatus(1, 'triagem', 'DEMO'), '/chamados/1/status', { status: 'triagem', motivo: 'DEMO' }],
     [() => GI.chamadosNota(1, { texto: 'DEMO' }), '/chamados/1/notas', { texto: 'DEMO' }],
     [() => GI.chamadosAnexos(1, []), '/chamados/1/anexos', { anexos: [] }],
+    [() => GI.chamadosAnexoUpload(1, { nome: 'sintetica.jpg' }), '/chamados/1/anexos/upload', { nome: 'sintetica.jpg' }],
+    [() => GI.chamadosAnexoArquivo(1, 2), '/chamados/1/anexos/2/arquivo'],
     [() => GI.chamadosPorLocacao(1, { abertos: 1 }), '/locacoes/1/chamados?abertos=1'],
     [() => GI.chamadosPorContato(9901), '/contatos/9901/chamados'],
     [() => GI.chamadosAtendimentosVinculados(9901), '/atendimentos/vinculados?contato_id=9901'],

@@ -85,7 +85,14 @@
         return Promise.resolve({ sent: true, id: 'DEMO-ENVIO-' + window.bancada.mensagens.length });
       }
     },
-    ready: function (fn) { Promise.resolve().then(function () { fn(ctx); }); },
+    ready: function (fn) { Promise.resolve().then(function () {
+      // Só a cota usa relógio acelerado; datas de negócio e cache continuam reais.
+      if (window.GI && GI.criarCotaPortal) {
+        var instanteCota = 0;
+        GI.cotaPortal = GI.criarCotaPortal(function () { instanteCota += 2100; return instanteCota; });
+      }
+      fn(ctx);
+    }); },
     session: { get: function () { return Promise.resolve(ctx); },
       getUser: function () { return Promise.resolve(ctx.user); },
       getPermissions: function () { return Promise.resolve({ isAdmin: false, isSupervisor: false }); },

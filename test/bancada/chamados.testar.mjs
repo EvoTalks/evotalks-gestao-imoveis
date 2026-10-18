@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
+import { testarFotos } from './fotos.cenarios.mjs';
 
 const servidor = criarServidor();
 await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));
@@ -139,10 +140,20 @@ try {
   assert.equal(await b.avaliar(async id => (await GI.chamadosObter(id)).chamado.atendimento.chat_id, manual.id), 8877);
   prova('Editar permite voltar ao vínculo manual original depois de selecionar não vincular');
 
+  // As seções chegam depois do modal: uma resposta lenta também precisa ser testada.
+  await b.avaliar(() => {
+    const original = omni.http.request;
+    omni.http.request = async op => {
+      if (/\/(?:prestadores|config\/manutencao)$/.test(op.url)) await new Promise(r => setTimeout(r, 200));
+      return original(op);
+    };
+    bancada.restaurarHttpSecoes = () => { omni.http.request = original; };
+  });
   await b.clicar('[data-editar="' + criado.id + '"]'); await esperarModal();
   assert.equal(await b.avaliar(() => document.querySelectorAll('.gi-trilha li').length), 7);
   // A Fatia 4 preenche estas seções: elas existem e têm conteúdo (a prova detalhada está em fatia4.testar.mjs).
-  assert.equal(await b.avaliar(() => ['orcamentos', 'aprovacao', 'prestador', 'visita'].every(id => !!document.querySelector('#c-' + id) && document.querySelector('#c-' + id).childNodes.length > 0)), true);
+  await b.esperar(() => ['orcamentos', 'aprovacao', 'prestador', 'visita'].every(id => document.querySelector('#c-' + id)?.childNodes.length > 0));
+  await b.avaliar(() => { bancada.restaurarHttpSecoes(); delete bancada.restaurarHttpSecoes; });
   assert.match(await texto('#c-historico'), /Chamado aberto/);
   await b.clicar('#c-abrir-atendimento');
   assert.equal(await b.avaliar(() => bancada.eventos.at(-1).dados.id), 8801);
@@ -330,6 +341,7 @@ try {
   assert.equal(await b.avaliar(() => bancada.chamadas.length), 0);
   assert.equal(await b.avaliar(() => bancada.rede.length), 0);
   assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
+  await testarFotos(b, origem);
   assert.deepEqual(b.erros, []);
   prova('sem portal e portal indisponível: ações bloqueadas, zero POST, zero storage; demonstração sem rede; zero exceções no navegador');
 } finally {

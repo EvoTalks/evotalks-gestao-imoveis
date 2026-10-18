@@ -1,4 +1,5 @@
 /* Portal de mentira: estado por servidor, relógio injetável e somente dados sintéticos. */
+import { createHash } from 'node:crypto';
 export const STATUS = ['novo', 'triagem', 'orcamento', 'aprovacao', 'agendado', 'execucao', 'concluido', 'cancelado'];
 export const CATEGORIAS = ['hidraulica', 'eletrica', 'gas', 'estrutura', 'esquadrias', 'pintura', 'chaveiro', 'outros'];
 export const PADROES = { alcada_centavos: 25000, sla: { emergencia: { resposta_min: 15, solucao_h: 24 },
@@ -15,6 +16,8 @@ function validar(campos) { if (Object.keys(campos).length) erro(422, 'dados_inva
 export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFixtures = false }) {
   let chamados = [], prestadores = [], config = copia(PADROES), eventos = {}, anexos = {}, orcamentos = {}, pausas = {};
   let numero = 1001, proximo = 1, proximoPrestador = 1, proximoOrcamento = 1, proximoEvento = 1, proximoAnexo = 1;
+  const arquivos = new Map();
+  let falhasUpload = 0;
   const instante = () => new Date(agora()).toISOString();
   const locacao = n => locacoes.find(l => l.id === Number(n));
   const porContato = n => locacoes.filter(l => !l.encerrada_em && l.contatos.some(c => c.contato_id === Number(n))).map(l => l.id);
@@ -107,6 +110,40 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
   function executar(method, rota, q, d, autor) {
     const get = method === 'GET', post = method === 'POST';
     const resposta = (corpo, status = 200) => ({ status, corpo: copia(corpo) });
+    const upload = rota.match(/^\/chamados\/(\d+)\/anexos\/upload$/);
+    const arquivo = rota.match(/^\/chamados\/(\d+)\/anexos\/([^/]+)\/arquivo$/);
+    if (upload && post) {
+      const c = chamados.find(c => c.id === Number(upload[1]));
+      if (!c) erro(404, 'nao_encontrado');
+      if (falhasUpload > 0) { falhasUpload--; erro(500, 'upload_indisponivel'); }
+      const campos = {}, tipos = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!tipos.includes(d.mimetype)) campos.mimetype = 'Escolha uma imagem JPEG, PNG, WEBP ou GIF.';
+      const base64 = typeof d.dados_base64 === 'string' && d.dados_base64;
+      const bytes = base64 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64) ? Buffer.from(base64, 'base64') : null;
+      if (!bytes || bytes.toString('base64') !== base64 || bytes.length < 1 || bytes.length > 2 * 1024 * 1024) campos.dados_base64 = 'Informe base64 válido de 1 byte a 2 MiB, sem prefixo.';
+      if (bytes && !campos.dados_base64) {
+        const tipo = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255 ? 'image/jpeg' :
+          bytes.subarray(0, 4).equals(Buffer.from([137,80,78,71])) ? 'image/png' :
+          /^GIF8[79]a/.test(bytes.subarray(0, 6).toString('latin1')) ? 'image/gif' :
+          bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : null;
+        if (!tipo || tipo !== d.mimetype) campos.dados_base64 = 'Os bytes iniciais não correspondem ao tipo da imagem.';
+      }
+      validar(campos);
+      const file_ref = 'upload:' + createHash('sha256').update(bytes).digest('hex'), lista = anexos[c.id] ||= [];
+      const existente = lista.find(a => a.file_ref === file_ref);
+      if (existente) return resposta({ ok: true, repetido: true, anexo: existente });
+      if (lista.filter(a => a.origem === 'upload').length >= 20) erro(409, 'limite_anexos');
+      const nome = String(d.nome || '').replace(/[\\/"'<>\x00-\x1f\x7f]/g, '_').slice(0, 120).trim() || 'foto';
+      const a = { id: proximoAnexo++, chamado_id: c.id, file_ref, nome, mimetype: d.mimetype,
+        origem: 'upload', tamanho: bytes.length, criado_por: autor, criado_em: instante() };
+      lista.push(a); arquivos.set(a.id, bytes.toString('base64')); evento(c, 'anexo', autor, { arquivos: [file_ref] });
+      return resposta({ ok: true, repetido: false, anexo: a });
+    }
+    if (arquivo && get) {
+      const a = anexos[Number(arquivo[1])]?.find(a => a.id === Number(arquivo[2]) && a.origem === 'upload' && arquivos.has(a.id));
+      if (!a) erro(404, 'anexo_nao_encontrado');
+      return { ...resposta({ mimetype: a.mimetype, nome: a.nome, tamanho: a.tamanho, dados_base64: arquivos.get(a.id) }), headers: { 'Cache-Control': 'no-store' } };
+    }
     if (rota === '/config/manutencao') {
       if (get) return resposta(config);
       if (!post) return null;
@@ -269,5 +306,5 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
       if (status !== 'novo') mudarStatus(c, status, 'Exemplo sintético', 'Agente Demonstração');
     });
   }
-  return { responder, contarAbertos };
+  return { responder, contarAbertos, falharUpload: n => { falhasUpload = n; } };
 }

@@ -145,3 +145,24 @@ alçada, aprovação, visita, prestadores, configuração e SLA com relógio con
 Também abre Chromium para verificar os esqueletos, o SDK, escrita desligada,
 demonstração sem rede e larguras 260/300/334 px. O teste completo de Locados continua
 em `node test/bancada/testar.mjs`.
+
+## Fotos da pasta (0.21.0)
+
+`node test/bancada/chamados.testar.mjs` inclui os cenários de `fotos.cenarios.mjs`:
+PNG/JPEG gerados no canvas e selecionados por `DOM.setFileInputFiles`, redução real,
+fundo branco, prévia, nome hostil como texto, remover, limites 10/20/25 MB, SVG
+com extensão PNG recusado, chat e pasta juntos, falha parcial 500 e repetição sem
+novo chamado, edição, deduplicação e espera de cota preservando pendentes. Também
+prova botão desabilitado e zero upload sem portal, 390 px, tema escuro e ausência
+de exceções. As imagens temporárias são apagadas no fim. Capturas em `fotos-*.png`.
+
+O portal de mentira implementa POST `/chamados/:id/anexos/upload` e GET
+`/chamados/:id/anexos/:aid/arquivo`: tipos/bytes, base64 estrito, 2 MiB, corpo 3 MB,
+20 por chamado, sha256, metadados sem conteúdo, evento sem bytes, vínculo do arquivo
+ao chamado e `Cache-Control: no-store`. `criarServidor({falhasUpload: 1})` ou
+`criarPortalChamados(...).falharUpload(1)` injeta uma recusa 500 antes de gravar.
+
+O stub acelera **somente o relógio da cota de transporte** (2100 ms por reserva),
+para executar os fluxos extensos sem esperar minutos; datas de negócio e caches
+continuam no relógio real. O teste da janela 30/60s usa relógio controlado e a
+bancada de fotos reinstala a cota real para provar bloqueio antes da rede e retry.
