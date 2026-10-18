@@ -74,3 +74,12 @@
 .gi-fotos > button.gi-foto { border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); padding: 8px; background: var(--gi-campo-bg); color: var(--gi-texto); font: inherit; text-align: left; cursor: pointer; min-height: 70px; }
 .gi-foto-ampliada { border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); padding: 8px; margin: 12px 0; }
 .gi-foto-ampliada img { display: block; max-width: 100%; max-height: 65vh; object-fit: contain; margin: 8px auto; }
+
+.gi-status-select { max-width: 100%; min-width: 125px; border: 1px solid var(--gi-borda); padding: 6px 22px 6px 8px; cursor: pointer; font: inherit; font-size: 12px; }
+.gi-status-select:disabled { cursor: wait; opacity: .7; }
+.gi-status-select option { background: var(--gi-surface); color: var(--gi-texto); }
+[data-status-controle] > label, [data-status-cancelamento] label { display: block; font-size: 12px; margin: 6px 0; }
+[data-status-cancelamento] { margin-top: 8px; padding: 8px; border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); background: var(--gi-campo-bg); }
+[data-status-cancelamento] input { display: block; width: 100%; box-sizing: border-box; }
+[data-status-cancelamento] .gi-barra { display: flex; flex-wrap: wrap; gap: 6px; }
+#c-cabecalho-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; }

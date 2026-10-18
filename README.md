@@ -77,10 +77,13 @@ Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. Nenhum dado
 manutenção é gravado em `omni.storage`. Sem portal, as telas avisam e bloqueiam ações.
 O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.
 
-**Chamados** tem um só **Salvar**: grava dados, o status escolhido e as fotos pendentes.
-A lista e o resumo atualizam sem recarregar a página. Se o portal recusar o status,
-o modal mantém os campos e informa que os demais dados foram salvos. Cancelamento
-pede o motivo; chamado encerrado reabre em Triagem pelo mesmo seletor.
+**Chamados**: escolher o status na lista ou no modal grava na hora, atualiza a linha,
+o prazo e o resumo. A recusa do portal devolve o seletor ao status anterior e explica
+o motivo. Só **Cancelado** pede confirmação inline, com motivo opcional e **Voltar**.
+Chamado encerrado reabre em Triagem pelo mesmo seletor. O **Salvar** cuida dos dados
+e fotos, sem alterar status; rascunhos permanecem intactos durante a troca.
+Fotos enviadas podem ser ampliadas inclusive em chamados encerrados; adicionar fotos
+continua bloqueado nesses chamados.
 
 No novo chamado, busque o cliente e escolha seu imóvel locado. **Escolher atendimento**
 lista as conversas abertas do cliente acessíveis ao usuário, incluindo todas as filas

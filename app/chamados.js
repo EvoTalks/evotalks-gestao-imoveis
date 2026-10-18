@@ -2,7 +2,8 @@
 (function () {
   'use strict';
   var e = GI.escapar, el = function (id) { return document.getElementById(id); };
-  var pagina = 1, geracao = 0, total = 0, itens = [];
+  var pagina = 1, geracao = 0, total = 0, itens = [], resumoAtual = {};
+  var filaStatus = Promise.resolve(), gravandoStatus = Object.create(null), atualizarModalStatus = null;
   function valorMapa(mapa, chave) { return Object.hasOwn(mapa, chave) ? mapa[chave] : undefined; }
   function numero(v) { var n = Number(v); return Number.isFinite(n) ? n : 0; }
   function idValido(v) { var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; }
@@ -22,9 +23,9 @@
   }
   function erro(err) {
     var d = err.dados || {}, codigos = { locacao_encerrada: 'Esta locação foi encerrada. Escolha outra locação ativa.', chamado_encerrado: 'O chamado foi encerrado. Reabra antes de alterar.',
-      sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.', sem_visita: 'Agende a visita antes de mudar para Agendado.', aprovacao_pendente: 'A aprovação do proprietário ainda está pendente.' };
+      sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.', sem_visita: 'Agende a visita antes de mudar para Agendado.', aprovacao_pendente: 'A aprovação do proprietário ainda está pendente.', aprovacao_recusada: 'O proprietário recusou o orçamento. Registre uma nova decisão.' };
     if (err.status === 429 || (err.code === 'rate_limit' || err.code === 'rate_limited')) return 'Limite de consultas atingido. Aguarde um minuto e tente novamente.';
-    return (err.status ? err.status + ' · ' : '') + (d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : codigos[d.erro] || d.detalhe || err.message || 'Não foi possível concluir.');
+    return (err.status ? err.status + ' · ' : '') + (d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : valorMapa(codigos, d.erro) || d.detalhe || err.message || 'Não foi possível concluir.');
   }
   function sdk(grupo, metodo, args) {
     return Promise.resolve().then(function () {
@@ -41,32 +42,143 @@
       pagina: pagina, por_pagina: el('f-porpagina').value }).then(function (r) {
       if (atual !== geracao) return;
       itens = r.rows || []; total = numero(r.total);
-      var resumo = r.resumo || {};
-      el('gi-resumo').textContent = numero(resumo.abertos) + ' ' + GI.plural(numero(resumo.abertos), 'chamado aberto', 'chamados abertos') + ' · ' + numero(resumo.prazo_estourado) + ' com prazo estourado · ' +
-        numero(resumo.aguardando_proprietario) + ' aguardando o proprietário · ' + numero(resumo.emergencia_sem_triagem) + ' ' + GI.plural(numero(resumo.emergencia_sem_triagem), 'emergência', 'emergências') + ' sem triagem';
+      resumoAtual = r.resumo || {}; desenharResumo();
       el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = itens.length + ' nesta página · ' + total + ' no total';
       el('b-anterior').disabled = pagina <= 1; el('b-proxima').disabled = pagina * numero(r.pageSize) >= total;
-      el('gi-corpo').innerHTML = itens.length ? itens.map(function (c, i) {
-        var a = c.atendimento, im = c.imovel || {}, solicitante = c.solicitante || {};
-        return '<tr><td class="gi-nowrap"><strong>' + e(GI.chamadoNumero(c.numero)) + '</strong><div class="gi-ajuda">' + e(data(c.criado_em)) + '</div></td>' +
-          '<td>' + e(c.titulo) + '<div class="gi-ajuda">' + e(valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || '—') + '</div></td>' +
-          '<td>' + e(im.titulo) + '<div class="gi-ajuda">' + e(solicitante.nome) + '</div></td>' +
-          '<td>' + (a ? '<strong>' + (idValido(a.chat_id) ? '#' + idValido(a.chat_id) : e(a.protocolo || 'Informado')) + '</strong><div class="gi-ajuda">' + e(a.canal || '') + '</div>' : '—') +
-          '<div class="gi-ajuda">' + e(c.atendente && c.atendente.nome || 'Sem atendente') + '</div></td>' +
-          '<td><span class="gi-prio ' + (valorMapa(GI.CHAMADO_PRIORIDADE_CLASSES, c.prioridade) || '') + '">' + e(valorMapa(GI.CHAMADO_PRIORIDADES, c.prioridade) || '—') + '</span></td>' +
-          '<td>' + e(GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + '</td><td>' + e(c.prestador && c.prestador.nome || '—') + '<div class="gi-ajuda">' +
-          (c.valor_estimado_centavos != null && Number.isFinite(Number(c.valor_estimado_centavos)) ? e(GI.dinheiro(Number(c.valor_estimado_centavos))) : '') + '</div></td>' +
-          '<td>' + status(c) + '</td><td><div class="gi-acoes"><button type="button" class="btn btn-slim btn-icone" data-editar="' + e(c.id) + '" aria-label="Editar ' + e(GI.chamadoNumero(c.numero)) + '" title="Editar chamado">' + icone('editar') + '</button>' +
-          (!terminal(c) ? '<button type="button" class="btn btn-slim btn-icone btn-perigo" data-cancelar-chamado="' + i + '" aria-label="Cancelar ' + e(GI.chamadoNumero(c.numero)) + '" title="Cancelar chamado">' + icone('cancelar') + '</button>' : '') + '</div></td></tr>';
-      }).join('') : '<tr><td colspan="9"><div class="gi-vazio">Nenhum chamado com esses filtros.</div></td></tr>';
-      el('gi-corpo').querySelectorAll('[data-editar]').forEach(function (b) { b.onclick = function () { abrirEdicao(b.dataset.editar).catch(GI.erroFatal); }; });
-      el('gi-corpo').querySelectorAll('[data-cancelar-chamado]').forEach(function (b) { b.onclick = function () { cancelar(itens[Number(b.dataset.cancelarChamado)]).catch(GI.erroFatal); }; });
+      el('gi-corpo').innerHTML = itens.length ? itens.map(linha).join('') : '<tr><td colspan="9"><div class="gi-vazio">Nenhum chamado com esses filtros.</div></td></tr>';
+      el('gi-corpo').querySelectorAll('tr').forEach(ligarLinha);
       GI.ajustarAltura();
     }).catch(function (err) {
       if (atual !== geracao) return;
       el('gi-corpo').innerHTML = '<tr><td colspan="9">Não foi possível carregar. Tente Buscar novamente.</td></tr>';
       GI.erroFatal(new Error(erro(err)));
     });
+  }
+  function desenharResumo() {
+    var resumo = resumoAtual;
+    el('gi-resumo').textContent = numero(resumo.abertos) + ' ' + GI.plural(numero(resumo.abertos), 'chamado aberto', 'chamados abertos') + ' · ' + numero(resumo.prazo_estourado) + ' com prazo estourado · ' +
+      numero(resumo.aguardando_proprietario) + ' aguardando o proprietário · ' + numero(resumo.emergencia_sem_triagem) + ' ' + GI.plural(numero(resumo.emergencia_sem_triagem), 'emergência', 'emergências') + ' sem triagem';
+  }
+  function linha(c, i) {
+    var a = c.atendimento, im = c.imovel || {}, solicitante = c.solicitante || {};
+    return '<tr><td class="gi-nowrap"><strong>' + e(GI.chamadoNumero(c.numero)) + '</strong><div class="gi-ajuda">' + e(data(c.criado_em)) + '</div></td>' +
+      '<td>' + e(c.titulo) + '<div class="gi-ajuda">' + e(valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || '—') + '</div></td>' +
+      '<td>' + e(im.titulo) + '<div class="gi-ajuda">' + e(solicitante.nome) + '</div></td>' +
+      '<td>' + (a ? '<strong>' + (idValido(a.chat_id) ? '#' + idValido(a.chat_id) : e(a.protocolo || 'Informado')) + '</strong><div class="gi-ajuda">' + e(a.canal || '') + '</div>' : '—') +
+      '<div class="gi-ajuda">' + e(c.atendente && c.atendente.nome || 'Sem atendente') + '</div></td>' +
+      '<td><span class="gi-prio ' + (valorMapa(GI.CHAMADO_PRIORIDADE_CLASSES, c.prioridade) || '') + '">' + e(valorMapa(GI.CHAMADO_PRIORIDADES, c.prioridade) || '—') + '</span></td>' +
+      '<td>' + e(GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + '</td><td>' + e(c.prestador && c.prestador.nome || '—') + '<div class="gi-ajuda">' +
+      (c.valor_estimado_centavos != null && Number.isFinite(Number(c.valor_estimado_centavos)) ? e(GI.dinheiro(Number(c.valor_estimado_centavos))) : '') + '</div></td>' +
+      '<td>' + controleStatus(c, false) + '</td><td><div class="gi-acoes"><button type="button" class="btn btn-slim btn-icone" data-editar="' + e(c.id) + '" aria-label="Editar ' + e(GI.chamadoNumero(c.numero)) + '" title="Editar chamado">' + icone('editar') + '</button>' +
+      (!terminal(c) ? '<button type="button" class="btn btn-slim btn-icone btn-perigo" data-cancelar-chamado="' + i + '" aria-label="Cancelar ' + e(GI.chamadoNumero(c.numero)) + '" title="Cancelar chamado">' + icone('cancelar') + '</button>' : '') + '</div></td></tr>';
+  }
+  function ligarLinha(tr) {
+    var editar = tr.querySelector('[data-editar]'), cancelarBotao = tr.querySelector('[data-cancelar-chamado]');
+    if (!editar) return;
+    editar.onclick = function () { abrirEdicao(editar.dataset.editar).catch(GI.erroFatal); };
+    var obter = function () { return itens.find(function (c) { return String(c.id) === editar.dataset.editar; }); };
+    if (cancelarBotao) cancelarBotao.onclick = function () { cancelar(obter()).catch(GI.erroFatal); };
+    ligarControleStatus(tr.querySelector('[data-status-controle]'), obter);
+  }
+  function controleStatus(c, modal) {
+    var conhecido = Object.hasOwn(GI.CHAMADO_STATUS, c.status), bloqueado = GI.modo !== 'portal';
+    return '<div data-status-controle="' + e(c.id) + '"' + (modal ? ' id="c-status-controle"' : '') + '>' +
+      (modal ? '<label for="c-status">Status</label>' : '') +
+      '<select data-status-id="' + e(c.id) + '"' + (modal ? ' id="c-status"' : '') + ' aria-label="Status de ' + e(GI.chamadoNumero(c.numero)) + '" class="gi-status-select gi-estado ' +
+      (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off') + '"' + (bloqueado || gravandoStatus[c.id] ? ' disabled' : '') + '>' +
+      (!conhecido ? '<option value="' + e(c.status) + '" selected>Não informado</option>' : '') + opcoes(GI.CHAMADO_STATUS, c.status) + '</select>' +
+      '<p class="gi-ajuda" data-status-mensagem role="status" aria-live="polite">' + (bloqueado ? 'Manutenção exige o portal conectado.' : '') + '</p>' +
+      (modal ? '<button type="button" class="btn btn-slim" data-status-decisao hidden>Registrar decisão</button>' : '') +
+      '<div data-status-cancelamento hidden><strong>Cancelar este chamado?</strong><label>Motivo (opcional)<input data-status-motivo maxlength="500"></label>' +
+      '<div class="gi-barra"><button type="button" class="btn btn-slim btn-perigo" data-status-confirmar>Cancelar chamado</button>' +
+      '<button type="button" class="btn btn-slim" data-status-voltar>Voltar</button></div></div></div>';
+  }
+  function contribuicaoResumo(c) {
+    var sla = c.sla || {}, aberto = !terminal(c), agora = Date.now();
+    // O resumo recebido respeita os filtros; a diferença usa o mesmo recorte.
+    if (el('f-status').value && c.status !== el('f-status').value) return {};
+    return { abertos: aberto ? 1 : 0,
+      prazo_estourado: aberto && ((!sla.pausado && Date.parse(sla.prazo_solucao_em) < agora) || (!sla.primeira_resposta_em && Date.parse(sla.prazo_resposta_em) < agora)) ? 1 : 0,
+      aguardando_proprietario: aberto && c.aprovacao && c.aprovacao.status === 'pendente' ? 1 : 0,
+      emergencia_sem_triagem: c.status === 'novo' && c.prioridade === 'emergencia' ? 1 : 0 };
+  }
+  function atualizarLinha(c) {
+    var i = itens.findIndex(function (item) { return String(item.id) === String(c.id); });
+    if (i < 0) return;
+    var antes = contribuicaoResumo(itens[i]), depois = contribuicaoResumo(c);
+    Object.keys(resumoAtual).forEach(function (k) { resumoAtual[k] = numero(resumoAtual[k]) + numero(depois[k]) - numero(antes[k]); });
+    itens[i] = c; desenharResumo();
+    var botao = el('gi-corpo').querySelector('[data-editar="' + idValido(c.id) + '"]');
+    if (botao) {
+      var tr = botao.closest('tr'), temporario = document.createElement('tbody');
+      temporario.innerHTML = linha(c, i); tr.innerHTML = temporario.firstElementChild.innerHTML; ligarLinha(tr);
+    }
+  }
+  function bloquearStatus(id, valor) {
+    document.querySelectorAll('[data-status-id="' + idValido(id) + '"]').forEach(function (s) { s.disabled = valor || GI.modo !== 'portal'; });
+    var editar = el('gi-corpo').querySelector('[data-editar="' + idValido(id) + '"]');
+    var cancelarBotao = editar && editar.closest('tr').querySelector('[data-cancelar-chamado]');
+    if (cancelarBotao) cancelarBotao.disabled = valor || GI.modo !== 'portal';
+  }
+  function mudarStatus(c, destino, motivo) {
+    if (GI.modo !== 'portal') return Promise.reject(new Error('Manutenção exige o portal conectado.'));
+    if (gravandoStatus[c.id]) return Promise.reject(new Error('Aguarde a gravação do status.'));
+    gravandoStatus[c.id] = true; bloquearStatus(c.id, true);
+    var tarefa = filaStatus.then(function () {
+      return GI.chamadosStatus(c.id, destino, motivo).then(function (r) {
+        // O portal já devolve a linha completa. Só reler se essa resposta vier incompleta.
+        return r && r.chamado && r.chamado.id ? r.chamado : GI.chamadosObter(c.id).then(function (d) { return d.chamado; }).catch(function () {
+          return carregar().then(function () {
+            var lido = itens.find(function (item) { return String(item.id) === String(c.id); });
+            if (!lido) throw new Error('Status gravado. Use Buscar para consultar o chamado atualizado.');
+            return lido;
+          });
+        });
+      }).then(function (atualizado) {
+        atualizarLinha(atualizado);
+        if (atualizarModalStatus) atualizarModalStatus(atualizado);
+        return atualizado;
+      });
+    }).finally(function () { delete gravandoStatus[c.id]; bloquearStatus(c.id, false); });
+    filaStatus = tarefa.catch(function () {});
+    return tarefa;
+  }
+  function ligarControleStatus(raiz, obter, impedido) {
+    var select = raiz.querySelector('select');
+    var cancelarInline = raiz.querySelector('[data-status-cancelamento]'), decisao = raiz.querySelector('[data-status-decisao]');
+    function recado(texto, aprovar) {
+      // Lista e modal recebem o mesmo aviso, mesmo após redesenhar a linha.
+      document.querySelectorAll('[data-status-controle="' + idValido(obter().id) + '"]').forEach(function (atual) {
+        atual.querySelector('[data-status-mensagem]').textContent = texto;
+        var botao = atual.querySelector('[data-status-decisao]');
+        if (botao) botao.hidden = !aprovar;
+      });
+    }
+    function gravar(destino, motivo) {
+      var c = obter();
+      if (gravandoStatus[c.id] || impedido && impedido()) { select.value = c.status; return; }
+      cancelarInline.hidden = true; recado('Gravando…');
+      mudarStatus(c, destino, motivo).then(function (atual) {
+        if (atual) recado(GI.chamadoNumero(c.numero) + ': ' + (valorMapa(GI.CHAMADO_STATUS, c.status) || 'Não informado') + ' → ' + (valorMapa(GI.CHAMADO_STATUS, atual.status) || 'Não informado'));
+      }).catch(function (err) {
+        select.value = c.status;
+        recado(erro(err).replace(/^\d+ · /, ''), ['aprovacao_pendente', 'aprovacao_recusada'].includes(err.dados && err.dados.erro));
+      });
+    }
+    select.onchange = function () {
+      var c = obter(), destino = select.value;
+      if (GI.modo !== 'portal') { select.value = c.status; bloquearStatus(c.id, false); recado('Manutenção exige o portal conectado.'); return; }
+      if (gravandoStatus[c.id] || impedido && impedido()) { select.value = c.status; return; }
+      if (decisao) decisao.hidden = true;
+      if (destino === c.status) { cancelarInline.hidden = true; return; }
+      if (destino === 'cancelado') { cancelarInline.hidden = false; recado(''); raiz.querySelector('[data-status-motivo]').focus(); return; }
+      gravar(destino);
+    };
+    raiz.querySelector('[data-status-voltar]').onclick = function () { select.value = obter().status; cancelarInline.hidden = true; };
+    raiz.querySelector('[data-status-confirmar]').onclick = function () { gravar('cancelado', raiz.querySelector('[data-status-motivo]').value.trim()); };
+    if (decisao) decisao.onclick = function () {
+      el('c-mais').open = true; el('c-aprovacao').scrollIntoView({ block: 'nearest' });
+    };
   }
   function terminal(c) { return c.status === 'concluido' || c.status === 'cancelado'; }
   function moeda(v) { return v != null && Number.isFinite(Number(v)) ? GI.dinheiro(Number(v)) : '—'; }
@@ -103,17 +215,16 @@
   function formulario(detalhe, restantes, avisoInicial, rascunhoNota) {
     var c = detalhe && detalhe.chamado || {}, editando = !!c.id, fechado = terminal(c), acesso = c.acesso || {};
     var contato = editando ? { id: c.solicitante.contato_id, name: c.solicitante.nome, phone: c.solicitante.telefone } : null;
-    var locacoes = [], usuarios = c.atendente ? [{ id: c.atendente.user_id, name: c.atendente.nome }] : [], atendimentos = [];
+    var usuariosCarregados = false, locacoes = [], usuarios = c.atendente ? [{ id: c.atendente.user_id, name: c.atendente.nome }] : [], atendimentos = [];
     var selecionado = c.atendimento || null, modoAtendimento = selecionado ? 'atual' : 'nenhum';
     var caixa, no, mudou = false, ocupado = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = rascunhoNota && rascunhoNota.enviado || null;
     var pendentes = restantes || [], retomada = null, fotosInteiras = {}, notaConfirmada = rascunhoNota && rascunhoNota.confirmada || null;
     var prestadores = [], configManutencao = null, envioProprietario = null, avisoAberto = false, versaoAviso = 0, timerPrestador, versaoPrestador = 0;
-    var estados = fechado ? { triagem: 'Triagem (reabrir)' } : GI.CHAMADO_STATUS;
-    if (fechado) estados[c.status] = GI.CHAMADO_STATUS[c.status];
     var corpo = '<div class="gi-form-chamado"><div id="c-mensagem" class="gi-chamado-msg" role="alert" aria-live="polite"></div>';
     if (editando) corpo += '<div class="gi-modal-imovel"><div class="gi-modal-imovel-titulo">' + e(c.titulo) + '</div><div class="gi-ajuda">' +
       e(GI.chamadoNumero(c.numero)) + ' · ' + e(c.imovel && c.imovel.titulo) + ' · ' + e(c.solicitante.nome) + ' · aberto em ' + e(data(c.criado_em)) + '</div></div>' +
-      '<div id="c-faixa-aprovacao"></div>' + seletor('status', 'Status', estados, c.status) + '<div id="c-cancelamento-campo" hidden>' + campo('motivo-cancelamento', 'Motivo do cancelamento (opcional)', c.motivo_cancelamento, 'text', 'maxlength="500"') + '</div>';
+      '<div id="c-cabecalho-status"><span id="c-selo">' + status(c) + '</span> <span id="c-prazo" class="gi-ajuda">' + e(GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + '</span></div>' +
+      '<div id="c-faixa-aprovacao"></div>' + controleStatus(c, true);
     corpo += '<fieldset id="c-dados"' + (fechado ? ' disabled' : '') + '><div class="gi-secao"><strong>Cliente e imóvel</strong></div><div class="gi-grade-modal">' +
       campo('cliente', editando ? 'Cliente' : 'Cliente · buscar contato', contato && contato.name, 'search', editando ? 'readonly' : 'autocomplete="off" placeholder="Digite ao menos 2 caracteres"') +
       (editando ? campo('imovel', 'Imóvel locado', c.imovel && c.imovel.titulo, 'text', 'readonly') : '<div class="gi-campo-caixa"><label for="c-locacao">Imóvel locado</label><select id="c-locacao" disabled><option value="">Escolha um cliente</option></select></div>') +
@@ -124,18 +235,18 @@
       '<div class="gi-barra"><button type="button" class="btn btn-slim" id="c-trocar">Escolher atendimento</button><button type="button" class="btn btn-slim" id="c-tirar-vinculo">Tirar vínculo</button>' +
       (editando ? '<button type="button" class="btn btn-slim" id="c-abrir-atendimento"' + (!idValido(c.atendimento && c.atendimento.chat_id) ? ' disabled' : '') + '>Abrir atendimento</button>' : '') + '</div>' +
       '<div id="c-escolha-atendimento"' + (editando ? ' hidden' : '') + '>' + seletorAtendimento() + '</div>' +
-      '<div class="gi-secao"><strong>Fotos</strong><button class="btn btn-slim" type="button" id="c-carregar-fotos">Buscar fotos do chat</button><button class="btn btn-slim" type="button" id="c-buscar-pasta"' + (GI.modo !== 'portal' ? ' disabled title="Manutenção exige o portal conectado."' : '') + '>Buscar na pasta</button></div>' +
+      '</fieldset><fieldset id="c-fotos-edicao"' + (fechado ? ' disabled' : '') + '><div class="gi-secao"><strong>Fotos</strong><button class="btn btn-slim" type="button" id="c-carregar-fotos">Buscar fotos do chat</button><button class="btn btn-slim" type="button" id="c-buscar-pasta"' + (GI.modo !== 'portal' ? ' disabled title="Manutenção exige o portal conectado."' : '') + '>Buscar na pasta</button></div>' +
       '<input id="c-pasta" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>' +
       '<p class="gi-ajuda">Do computador: até 10 fotos por seleção e 20 pendentes, até 25 MB cada. Reduzidas antes de enviar ao portal.</p>' +
-      '<div id="c-fotos" class="gi-fotos" aria-live="polite"></div><div id="c-pendentes" class="gi-fotos" aria-live="polite" aria-label="Fotos do computador pendentes"></div>' +
-      '<p id="c-fotos-erros" class="gi-chamado-msg" role="alert" aria-live="polite"></p></fieldset>';
+      '</fieldset><div id="c-fotos" class="gi-fotos" aria-live="polite"></div><div id="c-pendentes" class="gi-fotos" aria-live="polite" aria-label="Fotos do computador pendentes"></div>' +
+      '<p id="c-fotos-erros" class="gi-chamado-msg" role="alert" aria-live="polite"></p>';
     if (editando) corpo += '<div id="c-orcamentos"></div><div class="gi-secao"><strong>Nota para a equipe</strong></div>' +
       '<div class="gi-campo-caixa"><label for="c-nota">Nota para a equipe</label><textarea id="c-nota" rows="3">' + e(rascunhoNota && rascunhoNota.texto || '') + '</textarea></div>' +
       '<label class="gi-nota-check"><input id="c-avisar" type="checkbox" disabled>Avisar o cliente no WhatsApp</label><p id="c-aviso-dica" class="gi-ajuda">Escolha o atendimento acima para avisar o cliente.</p>' +
       '<button class="btn btn-slim" id="c-salvar-nota" type="button">Salvar nota</button>';
     corpo += '<div id="c-foto-ampliada" class="gi-foto-ampliada" hidden><button type="button" class="btn btn-slim" id="c-fechar-foto">Fechar foto</button><div id="c-foto-inteira"></div></div>' +
       '<div id="c-descarte" class="gi-confirmacao" hidden><strong id="c-descarte-texto"></strong><div class="gi-barra"><button type="button" class="btn" id="c-voltar-descarte">Voltar</button><button type="button" class="btn btn-perigo" id="c-descartar">Descartar</button></div></div>' +
-      '<details id="c-mais"><summary>Mais opções</summary><fieldset' + (fechado ? ' disabled' : '') + '><div class="gi-grade-modal">' +
+      '<details id="c-mais"><summary>Mais opções</summary><fieldset id="c-dados-mais"' + (fechado ? ' disabled' : '') + '><div class="gi-grade-modal">' +
       seletor('categoria', 'Categoria', GI.CHAMADO_CATEGORIAS, c.categoria || 'outros') +
       campo('disponibilidade', 'Quando dá para entrar', acesso.disponibilidade) + seletor('sem-cliente', 'Entrar sem o cliente', { nao: 'Não', sim: 'Sim' }, acesso.sem_cliente ? 'sim' : 'nao') + campo('chaves', 'Onde estão as chaves', acesso.chaves) +
       '<div class="gi-campo-caixa"><label for="c-atendente">Atendente responsável</label><select id="c-atendente" disabled><option value="">Sem atendente</option></select></div>' +
@@ -147,7 +258,7 @@
 
     function mensagem(t) { if (caixa && caixa.isConnected) no('mensagem').textContent = t || ''; }
     function guardado(fn, propagar) {
-      if (ocupado) return Promise.resolve();
+      if (ocupado || editando && gravandoStatus[c.id]) return Promise.resolve();
       ocupado = true;
       var botoes = Array.from(caixa.closest('.gi-modal').querySelectorAll('button')).filter(function (b) { return !b.disabled; });
       var campos = Array.from(caixa.querySelectorAll('input, select, textarea')).filter(function (b) { return !b.disabled; });
@@ -155,7 +266,7 @@
       campos.forEach(function (b) { b.disabled = true; });
       return Promise.resolve().then(fn).catch(function (err) { mensagem(erro(err)); if (propagar) throw err; }).finally(function () {
         ocupado = false; botoes.concat(campos).forEach(function (b) { b.disabled = false; });
-        if (editando) no('avisar').disabled = !avisoAberto;
+        if (editando) { no('avisar').disabled = !avisoAberto; bloquearStatus(c.id, !!gravandoStatus[c.id]); }
       });
     }
     function historico(eventos) {
@@ -176,13 +287,9 @@
       no('confirmacao').scrollIntoView({ block: 'nearest' }); no('confirmar-acao').focus();
     }
     function atualizarFatia4() {
-      var destino = no('status').value, statusAnterior = c.status;
       return GI.chamadosObter(c.id).then(function (r) {
         if (!caixa.isConnected) return;
-        detalhe = r; c = r.chamado; mudou = true;
-        // Preserva uma escolha pendente; transições da própria operação aparecem após a releitura.
-        no('status').value = destino !== statusAnterior ? destino : c.status;
-        no('status').onchange();
+        detalhe = r; mudou = true; atualizarEstadoStatus(r.chamado);
         no('valor').value = c.valor_estimado_centavos == null || !Number.isFinite(Number(c.valor_estimado_centavos)) ? '' : (Number(c.valor_estimado_centavos) / 100).toFixed(2);
         historico(r.eventos || []); no('ultima').textContent = 'Última alteração: ' + data(c.atualizado_em);
         desenharFatia4(); return carregar();
@@ -202,6 +309,29 @@
         return '<option value="' + idValido(p.id) + '"' + (Number(p.id) === Number(atual) ? ' selected' : '') + '>' + e(p.nome) + (p.ativo ? '' : ' (inativo)') + '</option>';
       }).join('');
     }
+    function desenharFaixaAprovacao() {
+      var ap = c.aprovacao || {};
+      no('faixa-aprovacao').innerHTML = ['pendente', 'recusada'].includes(ap.status) ? '<div class="gi-aviso">' +
+        (ap.status === 'pendente' ? 'Aguardando o proprietário aprovar o orçamento.' : 'O proprietário recusou o orçamento.') +
+        ' <button class="btn btn-slim" type="button" id="c-registrar-decisao">Registrar decisão</button></div>' : '';
+      if (no('registrar-decisao')) no('registrar-decisao').onclick = function () { no('mais').open = true; no('aprovacao').scrollIntoView({ block: 'nearest' }); };
+    }
+    function atualizarEstadoStatus(atual) {
+      if (!caixa.isConnected || String(c.id) !== String(atual.id)) return;
+      c = atual; detalhe.chamado = c; fechado = terminal(c);
+      no('status').value = no('status-controle').querySelector('[data-status-cancelamento]').hidden ? c.status : 'cancelado';
+      no('status').className = 'gi-status-select gi-estado ' + (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off');
+      no('selo').innerHTML = status(c); no('prazo').textContent = GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ');
+      no('ultima').textContent = 'Última alteração: ' + data(c.atualizado_em);
+      no('atendente').disabled = fechado || !usuariosCarregados;
+      no('fotos').querySelectorAll('[data-foto]').forEach(function (b) { b.disabled = fechado; });
+      ['dados', 'dados-mais', 'fotos-edicao'].forEach(function (id) { no(id).disabled = fechado; });
+      ['orcamentos', 'prestador', 'visita', 'aprovacao'].forEach(function (id) {
+        var grupo = no(id).querySelector('fieldset');
+        if (grupo) grupo.disabled = fechado || id === 'aprovacao' && (!c.aprovacao || c.aprovacao.status === 'nao_necessaria');
+      });
+      desenharFaixaAprovacao(); desenharPendentes();
+    }
     function desenharFatia4() {
       clearTimeout(timerPrestador); ++versaoPrestador;
       var orcamentos = detalhe.orcamentos || [], ap = c.aprovacao || { status: 'nao_necessaria' }, visita = c.visita || {};
@@ -216,10 +346,7 @@
         '<datalist id="c-prestador-sugestoes"></datalist>' + campo('orc-valor', 'Valor (R$) · opcional', '', 'text', 'inputmode="decimal"') +
         '<div class="gi-campo-caixa gi-campo-caixa--todo"><label for="c-orc-observacao">Descrição</label><textarea id="c-orc-observacao" rows="3" placeholder="O que inclui, prazo, condições…"></textarea></div></div>' +
         '<button class="btn btn-slim" type="button" id="c-salvar-orcamento">Adicionar orçamento</button></fieldset>';
-      no('faixa-aprovacao').innerHTML = ['pendente', 'recusada'].includes(ap.status) ? '<div class="gi-aviso">' +
-        (ap.status === 'pendente' ? 'Aguardando o proprietário aprovar o orçamento.' : 'O proprietário recusou o orçamento.') +
-        ' <button class="btn btn-slim" type="button" id="c-registrar-decisao">Registrar decisão</button></div>' : '';
-      if (no('registrar-decisao')) no('registrar-decisao').onclick = function () { no('mais').open = true; no('aprovacao').scrollIntoView({ block: 'nearest' }); };
+      desenharFaixaAprovacao();
       no('aprovacao').innerHTML = '<div class="gi-secao"><strong>Aprovação do proprietário</strong><span class="gi-chip">' + e(valorMapa({ nao_necessaria: 'Não necessária', pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada' }, ap.status) || 'Não informada') + '</span></div>' +
         '<div class="gi-aviso"><span>Limite para aprovação: ' + e(configManutencao ? moeda(configManutencao.alcada_centavos) : 'não foi possível consultar') + '. ' +
         (ap.status === 'pendente' ? 'Aprovação pendente bloqueia Agendado e Em execução.' : ap.status === 'recusada' ? 'Orçamento recusado. Defina outra cotação ou registre nova decisão antes de prosseguir.' : 'O limite se aplica ao orçamento escolhido pago pelo proprietário.') + '</span>' +
@@ -234,7 +361,6 @@
       no('visita').innerHTML = '<div class="gi-secao"><strong>Visita</strong><span class="gi-ajuda">obrigatória antes de mudar para Agendado</span></div><fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-grade-modal">' +
         campo('visita-inicio', 'Início da visita', dataLocal(visita.inicio), 'datetime-local') + campo('visita-fim', 'Fim da visita (opcional)', dataLocal(visita.fim), 'datetime-local') +
         '</div><p class="gi-ajuda">Para remover a visita, deixe o início vazio e salve.</p></fieldset>';
-      if (fechado) return;
       no('orc-nome').oninput = function () {
         clearTimeout(timerPrestador); var termo = no('orc-nome').value.trim(), v = ++versaoPrestador;
         no('prestador-sugestoes').textContent = '';
@@ -439,14 +565,14 @@
         var linha = document.createElement('div'), img = document.createElement('img'), texto = document.createElement('span'), remover = document.createElement('button');
         linha.className = 'gi-foto gi-foto-pendente'; img.src = foto.previa; img.alt = 'Prévia da foto reduzida';
         texto.textContent = (foto.nomeOriginal || foto.nome) + ' · ' + GI.fotos.tamanho(foto.tamanho) + ' · pendente';
-        remover.type = 'button'; remover.className = 'btn btn-slim'; remover.textContent = '×'; remover.disabled = ocupado;
+        remover.type = 'button'; remover.className = 'btn btn-slim'; remover.textContent = '×'; remover.disabled = ocupado || fechado;
         remover.setAttribute('aria-label', 'Remover ' + (foto.nomeOriginal || foto.nome));
         remover.onclick = function () { if (!ocupado) { pendentes.splice(i, 1); desenharPendentes(); } };
         linha.appendChild(img); linha.appendChild(texto); linha.appendChild(remover); no('pendentes').appendChild(linha);
       });
     }
     function portalParaFotos() {
-      if (GI.modo === 'portal') return true;
+      if (GI.modo === 'portal' && !fechado) return true;
       no('buscar-pasta').disabled = true;
       no('fotos-erros').textContent = 'Manutenção exige o portal conectado. Nenhuma foto será enviada.';
       return false;
@@ -534,6 +660,7 @@
         anexos.forEach(function (a, i) {
           var label = document.createElement('label'); label.className = 'gi-atend gi-foto';
           label.innerHTML = '<input type="checkbox" data-foto="' + i + '"><span>' + e(a.nome || a.file_ref) + '</span>';
+          label.querySelector('input').disabled = fechado;
           no('fotos').appendChild(label); resolverFoto(a, label);
         });
       }).catch(function (err) { if (v === versaoFotos) { fotosSalvas(); mensagem(erro(err)); } });
@@ -575,7 +702,7 @@
     }
     function aplicarPendentes() {
       if (GI.modo !== 'portal') throw new Error('Manutenção exige o portal conectado.');
-      var d = fechado ? null : dados(), gravado = null, destino = editando ? no('status').value : null;
+      var d = fechado ? null : dados(), gravado = null;
       var visita = null, prestadorId = null;
       if (editando && !fechado) {
         visita = { inicio: instanteLocal(no('visita-inicio').value), fim: instanteLocal(no('visita-fim').value) };
@@ -583,19 +710,13 @@
         if (visita.fim && visita.fim < visita.inicio) throw new Error('O fim da visita deve ser posterior ao início.');
         prestadorId = idValido(no('prestador-id').value);
       }
-      var motivo = editando && destino === 'cancelado' ? no('motivo-cancelamento').value.trim() : null;
-      if (fechado && destino !== 'triagem' && !pendentes.length) throw new Error('Escolha Triagem para reabrir o chamado.');
       var novos = editando ? anexosSelecionados() : [], fotosAlteradas = novos.length > 0 || pendentes.length > 0;
       return (fechado ? Promise.resolve({ chamado: c }) : editando ? GI.chamadosAtualizar(c.id, d) : GI.chamadosCriar(d)).then(function (r) {
         gravado = r.chamado; mudou = true;
         return (editando && !fechado ? Promise.resolve().then(function () {
           var antes = c.visita || {};
           return visita.inicio !== (antes.inicio || null) || visita.fim !== (antes.fim || null) ? GI.chamadosVisita(c.id, visita) : null;
-        }).then(function () { return prestadorId !== idValido(c.prestador && c.prestador.id) ? GI.chamadosPrestador(c.id, prestadorId) : null; }) : Promise.resolve()).then(function () {
-          return editando && destino !== c.status ? GI.chamadosStatus(c.id, destino, motivo).then(function (r) { gravado = r.chamado; return r; }).catch(function (err) {
-            throw new Error('Os outros dados foram salvos. O status não mudou: ' + erro(err));
-          }) : null;
-        }).then(function () { if (editando) { c = gravado; return gravarNota(); } }).then(function () { return carregar(); }).then(function () {
+        }).then(function () { return prestadorId !== idValido(c.prestador && c.prestador.id) ? GI.chamadosPrestador(c.id, prestadorId) : null; }) : Promise.resolve()).then(function () { if (editando) { c = gravado; return gravarNota(); } }).then(function () { return carregar(); }).then(function () {
           return novos.length ? GI.chamadosAnexos(gravado.id, novos) : null;
         }).then(function () {
           // Referências do chat confirmadas não voltam à seleção se uma foto local falhar.
@@ -608,7 +729,7 @@
       }).catch(function (err) {
         return (gravado ? carregar() : Promise.resolve()).then(function () {
           if (gravado && (!editando || terminal(gravado) && pendentes.length)) {
-            // Permite repetir as fotos mesmo quando o mesmo Salvar encerrou o chamado.
+            // Fotos já escolhidas podem ser repetidas mesmo após encerrar pelo select.
             return GI.chamadosObter(gravado.id).catch(function () {
               return { chamado: gravado, locacao: editando ? detalhe.locacao : locacoes[Number(no('locacao').value)], anexos: [], eventos: [] };
             }).then(function (lido) {
@@ -634,7 +755,7 @@
           var original = c.atendente, atual = original || GI.ctx() && GI.ctx().user;
           if (original && !usuarios.some(function (u) { return Number(u.id) === Number(original.user_id); })) usuarios.push({ id: original.user_id, name: original.nome });
           no('atendente').innerHTML = '<option value="">Sem atendente</option>' + usuarios.map(function (u, i) { return '<option value="' + i + '"' + (atual && Number(u.id) === Number(atual.user_id || atual.id) ? ' selected' : '') + '>' + e(u.name) + '</option>'; }).join('');
-          no('atendente').disabled = fechado;
+          usuariosCarregados = true; no('atendente').disabled = fechado;
         }
         redesenharAtendimentos();
         no('trocar').onclick = function () {
@@ -655,8 +776,8 @@
         no('voltar-descarte').onclick = function () { no('descarte').hidden = true; };
         no('descartar').onclick = function () { pendentes = []; caixa.closest('.gi-modal').querySelector('[data-cancelar]').click(); };
         if (editando) {
-          no('status').onchange = function () { no('cancelamento-campo').hidden = no('status').value !== 'cancelado'; };
-          no('status').onchange();
+          atualizarModalStatus = atualizarEstadoStatus;
+          ligarControleStatus(no('status-controle'), function () { return c; }, function () { return ocupado; });
         }
 
         no('voltar').onclick = function () { no('confirmacao').hidden = true; };
@@ -695,28 +816,29 @@
       },
       aoFechar: function () {
         if (retomada) return true;
-        if (ocupado) return false;
+        if (ocupado || editando && gravandoStatus[c.id]) return false;
         if (!pendentes.length) return true;
         no('descarte-texto').textContent = 'Descartar ' + pendentes.length + ' foto(s) escolhida(s)?';
         no('descarte').hidden = false; no('voltar-descarte').focus(); no('descarte').scrollIntoView({ block: 'nearest' });
         return false;
       },
       aoConfirmar: function () {
-        if (ocupado) throw new Error('Aguarde a operação em andamento.');
+        if (ocupado || editando && gravandoStatus[c.id]) throw new Error('Aguarde a operação em andamento.');
+        if (editando && !no('status-controle').querySelector('[data-status-cancelamento]').hidden) throw new Error('Confirme o cancelamento ou escolha Voltar antes de salvar os dados.');
         if (!confirmarNotaPendente(function () { caixa.closest('.gi-modal').querySelector('[data-ok]').click(); })) throw new Error('Confirme o envio da nota no próprio modal.');
         return guardado(aplicarPendentes, true).finally(function () {
           desenharPendentes();
           if (retomada) caixa.closest('.gi-modal').querySelector('[data-cancelar]').click();
         });
       }
-    }).then(function (r) { clearTimeout(timerBusca); clearTimeout(timerPrestador); ++versaoPrestador; ++versaoAviso; ++versaoContato; ++versaoFotos; if (retomada) return formulario(retomada.detalhe, retomada.pendentes, retomada.aviso, retomada.nota); return (r || mudou) ? carregar().then(function () { return r; }) : null; });
+    }).then(function (r) { if (atualizarModalStatus === atualizarEstadoStatus) atualizarModalStatus = null; clearTimeout(timerBusca); clearTimeout(timerPrestador); ++versaoPrestador; ++versaoAviso; ++versaoContato; ++versaoFotos; if (retomada) return formulario(retomada.detalhe, retomada.pendentes, retomada.aviso, retomada.nota); return (r || mudou) ? carregar().then(function () { return r; }) : null; });
   }
   function abrirEdicao(id) { return GI.chamadosObter(id).then(formulario); }
   function cancelar(c) {
     return GI.modal({ titulo: 'Cancelar ' + GI.chamadoNumero(c.numero), largura: 480,
       corpo: '<p>Confirme o cancelamento. O chamado e seu histórico serão mantidos.</p><div class="gi-campo-caixa"><label for="c-cancelamento">Motivo (opcional)</label><input id="c-cancelamento"></div>', rotuloOk: 'Confirmar cancelamento', perigo: true,
-      aoConfirmar: function (caixa) { return GI.chamadosStatus(c.id, 'cancelado', caixa.querySelector('input').value.trim()).then(function () { return GI.chamadosObter(c.id); }).catch(function (err) { throw new Error(erro(err)); }); }
-    }).then(function (r) { if (r) return carregar(); });
+      aoConfirmar: function (caixa) { return mudarStatus(c, 'cancelado', caixa.querySelector('input').value.trim()).catch(function (err) { throw new Error(erro(err)); }); }
+    });
   }
   GI.pronto(function (ctx) {
     el('gi-nav').innerHTML = GI.cabecalho('gi-chamados'); GI.ligarNavegacao(); GI.manutencaoMostrarModo();
