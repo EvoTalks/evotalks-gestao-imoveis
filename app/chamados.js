@@ -23,7 +23,7 @@
   function erro(err) {
     var d = err.dados || {}, codigos = { locacao_encerrada: 'Esta locação foi encerrada. Escolha outra locação ativa.', chamado_encerrado: 'O chamado foi encerrado. Reabra antes de alterar.',
       sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.', sem_visita: 'Agende a visita antes de mudar para Agendado.', aprovacao_pendente: 'A aprovação do proprietário ainda está pendente.' };
-    if (err.status === 429 || err.code === 'rate_limit') return 'Limite de consultas atingido. Aguarde um minuto e tente novamente.';
+    if (err.status === 429 || (err.code === 'rate_limit' || err.code === 'rate_limited')) return 'Limite de consultas atingido. Aguarde um minuto e tente novamente.';
     return (err.status ? err.status + ' · ' : '') + (d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : codigos[d.erro] || d.detalhe || err.message || 'Não foi possível concluir.');
   }
   function sdk(grupo, metodo, args) {
@@ -102,12 +102,13 @@
       campo('protocolo', 'Protocolo informado', '') + '<p class="gi-ajuda gi-campo-caixa--todo">Não verificado. Informe ao menos o protocolo ou o número do atendimento.</p></div>' +
       '<p id="c-atendimento-aviso" class="gi-ajuda" aria-live="polite"></p>';
   }
-  function formulario(detalhe) {
+  function formulario(detalhe, restantes, avisoInicial) {
     var c = detalhe && detalhe.chamado || {}, editando = !!c.id, fechado = terminal(c), acesso = c.acesso || {};
     var contato = editando ? { id: c.solicitante.contato_id, name: c.solicitante.nome, phone: c.solicitante.telefone } : null;
     var locacoes = [], usuarios = c.atendente ? [{ id: c.atendente.user_id, name: c.atendente.nome }] : [], atendimentos = [];
     var atendimentoOriginal = c.atendimento || null, selecionado = atendimentoOriginal, modoAtendimento = selecionado ? 'atual' : 'nenhum';
     var caixa, no, revisao = null, mudou = false, ocupado = false, dadosAlterados = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = null;
+    var pendentes = restantes || [], retomada = null;
     var prestadores = [], configManutencao = null, envioProprietario = null;
     var corpo = '<div class="gi-form-chamado"><div id="c-mensagem" class="gi-chamado-msg" role="alert" aria-live="polite"></div>';
     if (editando) corpo += '<div class="gi-modal-imovel"><div class="gi-modal-imovel-titulo">' + e(c.titulo) + '</div><div class="gi-ajuda">' +
@@ -132,7 +133,11 @@
         seletor('quem-paga', 'Quem paga', { '': 'Não informado', proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária' }, c.quem_paga || '') +
         campo('valor', 'Valor estimado (R$)', c.valor_estimado_centavos == null || !Number.isFinite(Number(c.valor_estimado_centavos)) ? '' : (Number(c.valor_estimado_centavos) / 100).toFixed(2), 'text', 'inputmode="decimal"') +
         seletor('repasse', 'Lançar no repasse do proprietário', { nao: 'Não', sim: 'Sim' }, c.repasse ? 'sim' : 'nao') + '</div><p class="gi-ajuda">A baixa financeira segue no sistema da imobiliária.</p>' : '') +
-      '<div class="gi-secao"><strong>Fotos do atendimento</strong><button class="btn btn-slim" type="button" id="c-carregar-fotos">Buscar fotos</button></div><div id="c-fotos" class="gi-fotos" aria-live="polite"></div></fieldset>';
+      '<div class="gi-secao"><strong>Fotos do atendimento</strong><button class="btn btn-slim" type="button" id="c-carregar-fotos">Buscar fotos</button><button class="btn btn-slim" type="button" id="c-buscar-pasta"' + (GI.modo !== 'portal' ? ' disabled title="Manutenção exige o portal conectado."' : '') + '>Buscar na pasta</button></div>' +
+      '<input id="c-pasta" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>' +
+      '<p class="gi-ajuda">Do computador: até 10 fotos por seleção e 20 pendentes, até 25 MB cada. Reduzidas antes de enviar ao portal.</p>' +
+      '<div id="c-fotos" class="gi-fotos" aria-live="polite"></div><div id="c-pendentes" class="gi-fotos" aria-live="polite" aria-label="Fotos do computador pendentes"></div>' +
+      '<p id="c-fotos-erros" class="gi-chamado-msg" role="alert" aria-live="polite"></p></fieldset>';
     if (editando) corpo += '<!-- FATIA 4: ações independentes, com releitura do portal e histórico. -->' +
       '<div id="c-orcamentos"></div><div id="c-aprovacao"></div><div id="c-prestador"></div><div id="c-visita"></div>' +
       '<div class="gi-secao"><strong>Histórico</strong><span class="gi-ajuda">do mais antigo ao mais novo</span></div><ul id="c-historico" class="gi-historico"></ul>' +
@@ -414,7 +419,69 @@
     function anexosSelecionados() {
       return Array.from(no('fotos').querySelectorAll('[data-foto]:checked')).map(function (b) { return anexos[Number(b.dataset.foto)]; });
     }
+    function desenharPendentes() {
+      no('pendentes').textContent = '';
+      pendentes.forEach(function (foto, i) {
+        var linha = document.createElement('div'), img = document.createElement('img'), texto = document.createElement('span'), remover = document.createElement('button');
+        linha.className = 'gi-foto gi-foto-pendente'; img.src = foto.previa; img.alt = 'Prévia da foto reduzida';
+        texto.textContent = (foto.nomeOriginal || foto.nome) + ' · ' + GI.fotos.tamanho(foto.tamanho) + ' · pendente';
+        remover.type = 'button'; remover.className = 'btn btn-slim'; remover.textContent = '×'; remover.disabled = ocupado;
+        remover.setAttribute('aria-label', 'Remover ' + (foto.nomeOriginal || foto.nome));
+        remover.onclick = function () { if (!ocupado) { pendentes.splice(i, 1); desenharPendentes(); } };
+        linha.appendChild(img); linha.appendChild(texto); linha.appendChild(remover); no('pendentes').appendChild(linha);
+      });
+    }
+    function portalParaFotos() {
+      if (GI.modo === 'portal') return true;
+      no('buscar-pasta').disabled = true;
+      no('fotos-erros').textContent = 'Manutenção exige o portal conectado. Nenhuma foto será enviada.';
+      return false;
+    }
+    function escolherFotos() {
+      var arquivos = Array.from(no('pasta').files || []), recusas = [];
+      no('pasta').value = '';
+      if (!portalParaFotos() || ocupado || !arquivos.length) return;
+      no('fotos-erros').textContent = '';
+      if (arquivos.length > 10) {
+        no('fotos-erros').textContent = arquivos.map(function (a) { return a.name + ': escolha até 10 por seleção; selecione novamente.'; }).join('\n'); return;
+      }
+      guardado(function () {
+        return arquivos.reduce(function (fila, arquivo) {
+          return fila.then(function () {
+            if (pendentes.length >= 20) { recusas.push(arquivo.name + ': limite de 20 fotos pendentes.'); return; }
+            mensagem('Preparando ' + arquivo.name + '…');
+            return GI.fotos.processar(arquivo).then(function (foto) { pendentes.push(foto); }).catch(function (err) { recusas.push(arquivo.name + ': ' + erro(err)); });
+          });
+        }, Promise.resolve()).then(function () { no('fotos-erros').textContent = recusas.join('\n'); mensagem(''); });
+      }).then(desenharPendentes);
+    }
+    function enviarPendentes(id) {
+      var lista = pendentes.slice(), enviadas = 0, recusas = [];
+      return lista.reduce(function (fila, foto, i) {
+        return fila.then(function () {
+          mensagem('Enviando foto ' + (i + 1) + ' de ' + lista.length + '…');
+          return GI.chamadosAnexoUpload(id, { nome: foto.nome, mimetype: foto.mimetype, dados_base64: foto.dados_base64 }).then(function (r) {
+            if (!r || !r.ok || !r.anexo) throw new Error('O portal não confirmou a foto. Tente novamente; uma repetição não duplica o arquivo.');
+            enviadas++; pendentes.splice(pendentes.indexOf(foto), 1); desenharPendentes();
+          }).catch(function (err) { recusas.push((foto.nomeOriginal || foto.nome) + ': ' + erro(err)); });
+        });
+      }, Promise.resolve()).then(function () {
+        if (recusas.length) throw new Error('Chamado salvo. ' + enviadas + ' de ' + lista.length + ' fotos enviadas; envie de novo as que ficaram.\n' + recusas.join('\n'));
+      });
+    }
     function resolverFoto(a, alvo) {
+      if (a.origem === 'upload') {
+        GI.chamadosAnexoArquivo(c.id, a.id).then(function (r) {
+          if (!alvo.isConnected) return;
+          if (!r || !/^image\/(jpeg|png|webp|gif)$/.test(r.mimetype) || typeof r.dados_base64 !== 'string' ||
+              !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(r.dados_base64) || !r.dados_base64.length) throw new Error('Imagem inválida no portal.');
+          var img = document.createElement('img'); img.alt = a.nome || 'Foto do computador'; img.src = 'data:' + r.mimetype + ';base64,' + r.dados_base64; alvo.prepend(img);
+        }).catch(function (err) {
+          if (!alvo.isConnected) return;
+          var aviso = document.createElement('span'); aviso.textContent = 'Prévia indisponível. ' + erro(err); alvo.appendChild(aviso);
+        });
+        return;
+      }
       sdk('chats', 'getFile', [a.file_ref]).then(function (r) {
         if (!alvo.isConnected || !r || !/^image\//.test(r.mimetype || a.mimetype || '')) return;
         var url = new URL(r.url, location.href);
@@ -492,6 +559,10 @@
         }
         redesenharAtendimentos();
         no('carregar-fotos').onclick = buscarFotos;
+        no('buscar-pasta').onclick = function () { if (portalParaFotos() && !ocupado) no('pasta').click(); };
+        no('pasta').onchange = escolherFotos;
+        desenharPendentes(); mensagem(avisoInicial);
+
         no('voltar').onclick = function () { revisao = null; no('confirmacao').hidden = true; if (!editando) { no('dados').disabled = false; ok.textContent = 'Revisar e abrir chamado'; } };
         if (!editando) {
           no('cliente').oninput = function () {
@@ -515,7 +586,7 @@
               no('confirmacao-texto').textContent = 'Abrir chamado para ' + contato.name + '\nImóvel: ' + locacoes[Number(no('locacao').value)].imovel_titulo + '\nAtendente: ' +
                 (revisao.atendente && revisao.atendente.nome || 'Sem atendente') + '\nAtendimento: ' + atendimentoTexto(revisao.atendimento) + (modoAtendimento === 'manual' ? ' · informado, não verificado' : '') +
                 '\n' + valorMapa(GI.CHAMADO_CATEGORIAS, revisao.categoria) + ' · ' + valorMapa(GI.CHAMADO_PRIORIDADES, revisao.prioridade) + '\n' + revisao.titulo + '\n' + revisao.descricao + '\nAcesso: ' +
-                revisao.acesso.disponibilidade + ' · ' + (revisao.acesso.sem_cliente ? 'Pode entrar sem o cliente' : 'Com o cliente') + '\nChaves: ' + revisao.acesso.chaves + '\nFotos: ' + revisao.anexos.length;
+                revisao.acesso.disponibilidade + ' · ' + (revisao.acesso.sem_cliente ? 'Pode entrar sem o cliente' : 'Com o cliente') + '\nChaves: ' + revisao.acesso.chaves + '\nFotos do chat: ' + revisao.anexos.length + ' · do computador: ' + pendentes.length;
               no('confirmacao').hidden = false; no('confirmar-acao').hidden = true; no('dados').disabled = true; ok.textContent = 'Abrir chamado'; no('confirmacao').scrollIntoView({ block: 'nearest' }); ok.focus();
             } catch (err) { mensagem(erro(err)); }
           }, true);
@@ -541,10 +612,12 @@
           };
           no('abrir-atendimento').onclick = function () { sdk('chats', 'select', [c.atendimento.chat_id]).catch(function (err) { mensagem(erro(err)); }); };
           function mudarStatus(destino) {
+            if (pendentes.length) { mensagem('Envie ou remova as fotos pendentes antes de alterar o status.'); return; }
             if (no('nota').value.trim()) { mensagem('Salve a nota antes de alterar o status.'); return; }
             if (dadosAlterados) { mensagem('Atualize os dados digitados antes de alterar o status.'); return; }
             var motivo = no('motivo') && no('motivo').value.trim();
             confirmarAcao('Alterar ' + GI.chamadoNumero(c.numero) + ' de ' + valorMapa(GI.CHAMADO_STATUS, c.status) + ' para ' + valorMapa(GI.CHAMADO_STATUS, destino) + '?' + (motivo ? '\nMotivo: ' + motivo : ''), function () {
+              if (pendentes.length) return Promise.reject(new Error('Envie ou remova as fotos pendentes antes de alterar o status.'));
               if (dadosAlterados || no('nota').value.trim()) return Promise.reject(new Error('Salve os dados e a nota antes de alterar o status.'));
               return GI.chamadosStatus(c.id, destino, motivo).then(function () { mudou = true; return GI.chamadosObter(c.id); }).then(function () {
                 // A releitura confirma o estado antes de remontar o formulário.
@@ -561,30 +634,44 @@
       },
       aoConfirmar: function () {
         if (ocupado) throw new Error('Aguarde a operação em andamento.');
+        if (GI.modo !== 'portal') throw new Error('Manutenção exige o portal conectado.');
         if (editando && no('nota').value.trim()) throw new Error('Salve a nota interna antes de atualizar o chamado.');
-        var d = editando ? dados() : revisao;
+        var d = editando ? dados() : revisao, gravado = null;
         if (!d) throw new Error('Revise o chamado antes de confirmar.');
+        var novos = editando ? anexosSelecionados() : [];
         ocupado = true;
-        no('dados').disabled = true;
-        if (editando) { no('nota').disabled = true; no('avisar').disabled = true; }
+        var controles = Array.from(caixa.closest('.gi-modal').querySelectorAll('button, input, select, textarea')).filter(function (b) { return !b.disabled; });
+        controles.forEach(function (b) { b.disabled = true; }); no('dados').disabled = true;
         return (editando ? GI.chamadosAtualizar(c.id, d) : GI.chamadosCriar(d)).then(function (r) {
-          mudou = true;
-          var novos = editando ? anexosSelecionados() : [];
-          return (novos.length ? GI.chamadosAnexos(c.id, novos) : Promise.resolve()).then(function () { return GI.chamadosObter(r.chamado.id); }).then(function (lido) { return lido.chamado; });
+          gravado = r.chamado; mudou = true;
+          return (novos.length ? GI.chamadosAnexos(gravado.id, novos) : Promise.resolve()).then(function () {
+            // Referências do chat confirmadas não voltam à seleção se uma foto local falhar.
+            no('fotos').querySelectorAll('[data-foto]').forEach(function (b) { b.checked = false; });
+            return enviarPendentes(gravado.id);
+          }).then(function () { return GI.chamadosObter(gravado.id); }).then(function (lido) { return lido.chamado; });
         }).catch(function (err) {
-          if (!editando && !mudou) { revisao = null; no('dados').disabled = false; no('confirmacao').hidden = true; caixa.closest('.gi-modal').querySelector('[data-ok]').textContent = 'Revisar e abrir chamado'; }
-          if (mudou) {
-            // Nunca repete uma criação aceita só porque a releitura falhou.
-            caixa.closest('.gi-modal').querySelector('[data-ok]').hidden = true;
-            mensagem('Dados gravados. Não repita a criação. Feche e consulte a lista para confirmar o resultado. ' + erro(err));
+          if (!editando && gravado) {
+            // Remonta em edição com o id aceito, mesmo se a releitura também for recusada.
+            return GI.chamadosObter(gravado.id).catch(function () {
+              return { chamado: gravado, locacao: locacoes[Number(no('locacao').value)], anexos: [], eventos: [] };
+            }).then(function (lido) {
+              retomada = { detalhe: lido, pendentes: pendentes, aviso: pendentes.length ? erro(err) : 'Chamado salvo. Não foi possível reler os dados. ' + erro(err) };
+              throw new Error(retomada.aviso);
+            });
           }
-          throw new Error(erro(err));
+          if (!editando) { revisao = null; no('confirmacao').hidden = true; caixa.closest('.gi-modal').querySelector('[data-ok]').textContent = 'Revisar e abrir chamado'; }
+          mensagem(erro(err)); throw new Error(erro(err));
         }).finally(function () {
           ocupado = false;
-          if (editando && !mudou) { no('dados').disabled = fechado; no('nota').disabled = false; no('avisar').disabled = false; }
+          controles.forEach(function (b) { b.disabled = false; }); no('dados').disabled = fechado;
+          // Uma criação confirmada muda o formulário para edição, com os pendentes intactos.
+          if (retomada) {
+            var fechar = caixa.closest('.gi-modal').querySelector('[data-cancelar]'); fechar.disabled = false;
+            fechar.click();
+          } else desenharPendentes();
         });
       }
-    }).then(function (r) { clearTimeout(timerBusca); ++versaoContato; ++versaoFotos; return (r || mudou) ? carregar().then(function () { return r; }) : null; });
+    }).then(function (r) { clearTimeout(timerBusca); ++versaoContato; ++versaoFotos; if (retomada) return formulario(retomada.detalhe, retomada.pendentes, retomada.aviso); return (r || mudou) ? carregar().then(function () { return r; }) : null; });
   }
   function abrirEdicao(id) { return GI.chamadosObter(id).then(formulario); }
   function cancelar(c) {

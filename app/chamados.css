@@ -59,3 +59,7 @@
   .gi-atend { flex-wrap: wrap; }
   #gi-manutencao .gi-barra .gi-campo { min-width: 0; max-width: 100%; }
 }
+.gi-foto-pendente { border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); padding: 8px; background: var(--gi-surface); }
+.gi-foto-pendente span { min-width: 0; flex: 1; font-size: 12px; }
+.gi-foto-pendente img, .gi-foto-pendente button { flex-shrink: 0; }
+.gi-form-chamado .gi-secao:has(#c-buscar-pasta) { flex-wrap: wrap; }

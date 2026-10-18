@@ -50,6 +50,8 @@
   GI.chamadosStatus = function (n, status, motivo) { return pedir('/chamados/' + id(n) + '/status', { status: status, motivo: motivo }); };
   GI.chamadosNota = function (n, d) { return pedir('/chamados/' + id(n) + '/notas', d); };
   GI.chamadosAnexos = function (n, anexos) { return pedir('/chamados/' + id(n) + '/anexos', { anexos: anexos }); };
+  GI.chamadosAnexoUpload = function (n, corpo) { return pedir('/chamados/' + id(n) + '/anexos/upload', corpo); };
+  GI.chamadosAnexoArquivo = function (n, aid) { return pedir('/chamados/' + id(n) + '/anexos/' + id(aid) + '/arquivo'); };
   GI.chamadosPorLocacao = function (n, f) { return pedir('/locacoes/' + id(n) + '/chamados' + query(f)); };
   GI.chamadosPorContato = function (n, f) { return pedir('/contatos/' + id(n) + '/chamados' + query(f)); };
   GI.chamadosAtendimentosVinculados = function (n) { return pedir('/atendimentos/vinculados' + query({ contato_id: n })); };

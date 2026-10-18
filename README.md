@@ -23,12 +23,13 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.20.0, config e contribuições
+manifest.json          identidade 0.21.0, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
 app/imoveis.html       lista + detalhe do imóvel
 app/locados.html       banco de locados + filtros + candidatos que saíram do anúncio
+app/fotos.js           validação, redução e prévias de fotos escolhidas no computador
 app/manutencao.js      contrato e transporte da manutenção, sem fallback para storage
 app/chamados.html/js/css lista e modais de chamados, orçamentos, aprovação, prestador e visita
 app/prestadores.html/js  lista, cadastro/edição e ativação/desativação de prestadores
@@ -188,3 +189,38 @@ Sempre restrito a você primeiro: a entrega é **imediata** para todo usuário q
 - Portal original: `base-conhecimento/clientes/william-imoveis/portal-taxas/` (cofre)
 - Decisão que criou o portal: `william-imoveis-decisoes.md`, ADR-14
 - Mecânica de extensões: vault DOCS, `Sistemas/Evotalks/Extensões/`
+
+## Fotos do computador (0.21.0)
+
+Nos modais Novo e Editar chamado, **Buscar na pasta** adiciona fotos do computador.
+**Buscar fotos** continua consultando as últimas 50 mensagens do atendimento escolhido.
+Os arquivos locais aparecem com prévia, nome, tamanho e remoção antes de salvar.
+
+Aceita JPEG, PNG, WEBP e GIF, conferindo também os bytes iniciais e a decodificação.
+São até **10 arquivos por seleção**, **20 pendentes** e **25 MB por arquivo original**.
+O navegador reduz o lado maior a 1600 px, sem ampliar, e recodifica em JPEG 0,82
+(transparência sobre branco). Acima de 1,5 MB, tenta qualidade 0,7 e depois 1280 px;
+se ainda exceder, informa a recusa por arquivo. GIF animado vira uma foto estática.
+A redução evita enviar originais grandes pelo proxy do SDK, que limita as requisições.
+
+Primeiro grava o chamado e as referências do chat; depois envia as fotos locais,
+uma por vez, com progresso e bloqueio de cliques. Se uma falhar, as demais continuam:
+o formulário permanece em edição do chamado salvo, preservando as que falharam.
+Repetir envia os pendentes; o portal reconhece os mesmos bytes e não duplica o anexo.
+A cota local compartilhada de 30 requisições/minuto bloqueia o transporte antes de
+exceder o limite, informa a espera e mantém as fotos para nova tentativa. A plataforma
+também aplica a cota da instalação/usuário, inclusive entre documentos diferentes.
+
+Requer as rotas do portal **POST /api/ext/chamados/:id/anexos/upload**
+(`nome`, `mimetype`, `dados_base64` sem prefixo) e
+**GET /api/ext/chamados/:id/anexos/:aid/arquivo**. O portal valida novamente os tipos,
+bytes iniciais, base64 estrito, até 2 MiB decodificados e 20 uploads por chamado;
+a rota de upload aceita corpo JSON até 3 MB. Só a leitura do arquivo carrega os bytes;
+detalhes e listas devolvem metadados. As fotos do computador ficam no portal, pois
+o SDK não oferece upload de arquivo. Sem portal conectado, nenhuma foto é enviada.
+
+Provas locais: `test/fotos.test.mjs`, `test/fotos-portal.test.mjs`, helpers em
+`test/manutencao.test.mjs` e cenários `test/bancada/fotos.cenarios.mjs`, executados
+pela bancada de chamados. As imagens são geradas por canvas no próprio teste,
+escolhidas pelo CDP e removidas no final. As capturas `fotos-*.png` ficam em
+`test/bancada/capturas/`. Nenhuma imagem real é usada.
