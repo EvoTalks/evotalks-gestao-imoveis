@@ -1,4 +1,4 @@
-/* Gerenciamento de Imóveis — camada comum às três telas.
+/* Gerenciamento de Imóveis — camada comum às telas.
    Roda dentro do contêiner da extensão: origem opaca, sem cookie, sem JWT.
    Tudo que fala com o EvoTalks passa por window.omni. */
 (function (global) {
@@ -222,6 +222,39 @@
     return mesmaOrigem() ? viaFetch(url, opcoes) : viaOmni(url, opcoes);
   }
   GI.chamarPortal = chamar;
+
+  /* Locações são compartilhadas com a assistente: nunca têm cópia no storage. */
+  function chamarLocacoes(caminho, corpo) {
+    if (GI.modo !== 'portal') return Promise.reject(new Error('Locados exigem o portal conectado'));
+    return GI.chamarPortal(caminho, corpo === undefined ? undefined : { corpo: corpo });
+  }
+  GI.locacoes = function (filtros) {
+    var qs = Object.keys(filtros || {}).filter(function (k) {
+      return filtros[k] !== '' && filtros[k] !== null && filtros[k] !== undefined;
+    }).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(filtros[k]); });
+    return chamarLocacoes('/locacoes' + (qs.length ? '?' + qs.join('&') : ''));
+  };
+  GI.locacoesMapa = function () {
+    return chamarLocacoes('/locacoes/mapa').then(function (r) { return r.locados || {}; });
+  };
+  GI.locacoesCandidatas = function (dias) { return chamarLocacoes('/locacoes/candidatas?dias=' + encodeURIComponent(dias || 60)); };
+  GI.locacoesObter = function (id) { return chamarLocacoes('/locacoes/' + encodeURIComponent(id)); };
+  GI.locacoesCriar = function (dados) { return chamarLocacoes('/locacoes', dados); };
+  GI.locacoesAtualizar = function (id, dados) { return chamarLocacoes('/locacoes/' + encodeURIComponent(id), dados); };
+  GI.locacoesEncerrar = function (id, motivo) { return chamarLocacoes('/locacoes/' + encodeURIComponent(id) + '/encerrar', { motivo: motivo }); };
+  GI.buscarContatos = function (termo) {
+    if (!global.omni || !omni.contacts || !omni.contacts.search) {
+      return Promise.reject(new Error('Busca de contatos indisponível neste perfil.'));
+    }
+    return Promise.resolve().then(function () {
+      return omni.contacts.search(String(termo || '').trim());
+    }).then(function (r) {
+      var lista = Array.isArray(r) ? r : (r && (r.contacts || r.rows)) || GI.lista(r);
+      return lista.filter(function (c) { return c && c.id !== undefined && c.name; }).map(function (c) {
+        return { id: c.id, name: c.name, phone: c.phone || '', email: c.email || '' };
+      });
+    });
+  };
 
   function ler(chave, padrao) {
     if (!global.omni || !omni.storage) return Promise.resolve(padrao);
@@ -869,6 +902,7 @@
   GI.cabecalho = function (ativo) {
     var telas = [
       { id: 'gi-imoveis',   nome: 'Imóveis' },
+      { id: 'gi-locados',   nome: 'Locados' },
       { id: 'gi-campos',    nome: 'Campos' },
       { id: 'gi-historico', nome: 'Histórico' },
       { id: 'gi-config', nome: 'Configurações' }
