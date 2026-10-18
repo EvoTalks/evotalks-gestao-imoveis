@@ -50,6 +50,8 @@
   GI.chamadosStatus = function (n, status, motivo) { return pedir('/chamados/' + id(n) + '/status', { status: status, motivo: motivo }); };
   GI.chamadosNota = function (n, d) { return pedir('/chamados/' + id(n) + '/notas', d); };
   GI.chamadosAnexos = function (n, anexos) { return pedir('/chamados/' + id(n) + '/anexos', { anexos: anexos }); };
+  GI.chamadosAnexoUpload = function (n, corpo) { return pedir('/chamados/' + id(n) + '/anexos/upload', corpo); };
+  GI.chamadosAnexoArquivo = function (n, aid) { return pedir('/chamados/' + id(n) + '/anexos/' + id(aid) + '/arquivo'); };
   GI.chamadosPorLocacao = function (n, f) { return pedir('/locacoes/' + id(n) + '/chamados' + query(f)); };
   GI.chamadosPorContato = function (n, f) { return pedir('/contatos/' + id(n) + '/chamados' + query(f)); };
   GI.chamadosAtendimentosVinculados = function (n) { return pedir('/atendimentos/vinculados' + query({ contato_id: n })); };
@@ -71,6 +73,27 @@
   GI.chamadoNumero = function (numero) {
     var n = Number(numero);
     return Number.isSafeInteger(n) && n > 0 ? 'OS-' + n : '—';
+  };
+  GI.normalizarPrestador = function (v) {
+    return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+  };
+  GI.chatAberto = function (chat, contatoId) {
+    return !!(chat && Number.isSafeInteger(Number(chat.id)) && Number(chat.id) > 0 && Number(contatoId) > 0 &&
+      Number(chat.contactId) === Number(contatoId) && ['active', 'waiting', 'open', 'pending', 'queued'].includes(chat.status));
+  };
+  GI.mesclarAtendimentos = function (listas, contatoId, filas) {
+    var rows = [];
+    listas.forEach(function (lista) { (Array.isArray(lista) ? lista : []).forEach(function (a) {
+      if (!GI.chatAberto(a, contatoId) || rows.some(function (r) { return r.chat_id === Number(a.id); })) return;
+      var fila = (filas || []).find(function (f) { return Number(f.id) === Number(a.queueId); });
+      rows.push({ chat_id: Number(a.id), protocolo: a.protocol || null, canal: a.channel || null,
+        fila: fila && fila.name || (a.queueId ? 'Fila ' + a.queueId : null), iniciado_em: a.startedAt || null, vivo: true, ultima: '' });
+    }); });
+    return rows;
+  };
+  GI.atendimentoTexto = function (a) {
+    return a ? (Number.isSafeInteger(Number(a.chat_id)) && Number(a.chat_id) > 0 ? '#' + Number(a.chat_id) + ' · ' : '') + (a.canal || 'Canal não informado') +
+      ' · ' + (a.protocolo || 'Sem protocolo') + ' · ' + (typeof a.iniciado_em === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(a.iniciado_em) && Number.isFinite(Date.parse(a.iniciado_em)) ? GI.dataHora(a.iniciado_em) : 'Início não informado') : 'Nenhum atendimento vinculado';
   };
   GI.chamadoTrilha = function (status) {
     var ordem = ['novo', 'triagem', 'orcamento', 'aprovacao', 'agendado', 'execucao', 'concluido'];

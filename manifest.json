@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "name": "Gerenciamento de Imóveis",
   "description": "Gestão de Imóveis, Locados, Chamados e Prestadores, com campos internos, histórico de autoria e cockpit de manutenção no atendimento.",
   "author": {
@@ -148,7 +148,7 @@
       "url": "app/painel.html",
       "icon": "app/icone-casa.svg",
       "visibility": {
-        "userTypes": [0]
+        "userTypes": [0, 1, 2]
       }
     }
   ],

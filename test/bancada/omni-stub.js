@@ -39,6 +39,9 @@
     status: 'active', sessionLocked: false, channel: 'WhatsApp', protocol: 'DEMO-P' + n,
     startedAt: '2026-10-17T12:00:00.000Z', contact: contatos[i], unread: 0
   }; });
+  if (params.get('perfil') === 'admin') ctx.user.type = 0;
+  if (params.get('perfil') === 'supervisor') ctx.user.type = 1;
+  chats.push({ id: 8805, contactId: 9901, userId: 9998, queueId: 93, status: 'active', channel: 'WhatsApp', protocol: 'DEMO-SUPERVISOR', startedAt: '2026-10-18T12:00:00.000Z' });
   var selecionado = params.has('chat') ? Number(params.get('chat')) : 8801;
   function copia(v) { return JSON.parse(JSON.stringify(v)); }
   function normalizar(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
@@ -52,11 +55,12 @@
   window.omni = {
     on: function (nome, fn) { (assinantes[nome] || (assinantes[nome] = [])).push(fn); return function () { window.omni.off(nome, fn); }; },
     off: function (nome, fn) { assinantes[nome] = fn ? (assinantes[nome] || []).filter(function (f) { return f !== fn; }) : []; },
+    queues: { list: function () { return window.bancada.falharLista ? falhar('rate_limit', 'Limite de consultas.') : Promise.resolve([{ id: 91, name: 'Fila Um' }, { id: 92, name: 'Fila Dois' }, { id: 93, name: 'Fila Supervisor' }]); } },
     users: { list: function () { return Promise.resolve(copia(usuarios)); } },
     chats: {
       getSelected: function () { return Promise.resolve(copia(chat(selecionado) || null)); },
       get: function (n) { return chat(n) ? Promise.resolve(copia(chat(n))) : falhar('not_found', 'Atendimento não encontrado.'); },
-      listMine: function () { return Promise.resolve(copia(chats.filter(function (c) { return c.userId === ctx.user.id; }))); },
+      listMine: function () { if (window.bancada.falharLista) return falhar('rate_limit', 'Limite de consultas.'); return Promise.resolve(copia(chats.filter(function (c) { return c.userId === ctx.user.id; }))); },
       listByQueue: function (queueId) {
         if (ctx.user.type === 2) return falhar('forbidden', 'A listagem por fila exige supervisor.');
         return Promise.resolve(copia(chats.filter(function (c) { return c.queueId === Number(queueId); })));
@@ -81,14 +85,22 @@
         if (!chat(n)) return falhar('not_found', 'Atendimento não encontrado.');
         if (window.bancada.recusarEnvio) return falhar('forbidden', 'Janela de 24 horas encerrada.');
         if (!payload || !payload.text && !payload.fileUrl) return falhar('bad_args', 'Mensagem vazia.');
+        if (window.bancada.semConfirmarEnvio) return Promise.resolve({ sent: false });
         window.bancada.mensagens.push({ chatId: Number(n), payload: copia(payload) });
         return Promise.resolve({ sent: true, id: 'DEMO-ENVIO-' + window.bancada.mensagens.length });
       }
     },
-    ready: function (fn) { Promise.resolve().then(function () { fn(ctx); }); },
+    ready: function (fn) { Promise.resolve().then(function () {
+      // Só a cota usa relógio acelerado; datas de negócio e cache continuam reais.
+      if (window.GI && GI.criarCotaPortal) {
+        var instanteCota = 0;
+        GI.cotaPortal = GI.criarCotaPortal(function () { instanteCota += 2100; return instanteCota; });
+      }
+      fn(ctx);
+    }); },
     session: { get: function () { return Promise.resolve(ctx); },
       getUser: function () { return Promise.resolve(ctx.user); },
-      getPermissions: function () { return Promise.resolve({ isAdmin: false, isSupervisor: false }); },
+      getPermissions: function () { return Promise.resolve({ isAdmin: ctx.user.type === 0, isSupervisor: ctx.user.type === 1 }); },
       getTheme: function () { return Promise.resolve(ctx.theme); } },
     http: { request: function (op) {
       if (ctx.config.modoDemonstracao) return Promise.reject(new Error('Demonstração: HTTP bloqueado.'));

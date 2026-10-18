@@ -63,3 +63,10 @@ body { padding: 0; font-size: 13px; background: var(--gi-bg); }
 /* Em 260 px, preserve palavras nos controles e empilhe ações quando necessário. */
 .gi-cp-tabs button { overflow-wrap: normal; padding-inline: 2px; }
 .gi-cp-acoes .btn { flex-basis: 110px; overflow-wrap: normal; }
+
+.gi-cp-fotos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.gi-cp-fotos .btn { display: grid; }
+.gi-cp-fotos img { max-height: 90px; object-fit: contain; }
+[data-imagem] img { width: 100%; height: auto; }
+[data-observacoes] p { white-space: pre-wrap; margin-bottom: 8px; }
+.gi-cp-detalhe h2 { margin-top: 12px; }

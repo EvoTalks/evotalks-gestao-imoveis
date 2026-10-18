@@ -88,6 +88,12 @@ export async function abrirChromium() {
       },
       clicar: seletor => avaliar(s => { const el = document.querySelector(s); if (!el || el.disabled) throw new Error('Botão ausente ou desabilitado: ' + s); el.click(); }, seletor),
       preencher: (seletor, valor) => avaliar((s, v) => { const el = document.querySelector(s); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }, seletor, valor),
+      arquivos: async (seletor, files) => {
+        const { root } = await enviar('DOM.getDocument');
+        const { nodeId } = await enviar('DOM.querySelector', { nodeId: root.nodeId, selector: seletor });
+        if (!nodeId) throw new Error('Input de arquivo ausente: ' + seletor);
+        await enviar('DOM.setFileInputFiles', { nodeId, files });
+      },
       captura: async nome => {
         mkdirSync(path.join(raiz, 'capturas'), { recursive: true });
         const { data } = await enviar('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

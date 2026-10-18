@@ -145,3 +145,60 @@ alçada, aprovação, visita, prestadores, configuração e SLA com relógio con
 Também abre Chromium para verificar os esqueletos, o SDK, escrita desligada,
 demonstração sem rede e larguras 260/300/334 px. O teste completo de Locados continua
 em `node test/bancada/testar.mjs`.
+
+## Fotos da pasta (0.21.0)
+
+`node test/bancada/chamados.testar.mjs` inclui os cenários de `fotos.cenarios.mjs`:
+PNG/JPEG gerados no canvas e selecionados por `DOM.setFileInputFiles`, redução real,
+fundo branco, prévia, nome hostil como texto, remover, limites 10/20/25 MB, SVG
+com extensão PNG recusado, chat e pasta juntos, falha parcial 500 e repetição sem
+novo chamado, edição, deduplicação e espera de cota preservando pendentes. Também
+prova botão desabilitado e zero upload sem portal, 390 px, tema escuro e ausência
+de exceções. As imagens temporárias são apagadas no fim. Capturas em `fotos-*.png`.
+
+O portal de mentira implementa POST `/chamados/:id/anexos/upload` e GET
+`/chamados/:id/anexos/:aid/arquivo`: tipos/bytes, base64 estrito, 2 MiB, corpo 3 MB,
+20 por chamado, sha256, metadados sem conteúdo, evento sem bytes, vínculo do arquivo
+ao chamado e `Cache-Control: no-store`. `criarServidor({falhasUpload: 1})` ou
+`criarPortalChamados(...).falharUpload(1)` injeta uma recusa 500 antes de gravar.
+
+O stub acelera **somente o relógio da cota de transporte** (2100 ms por reserva),
+para executar os fluxos extensos sem esperar minutos; datas de negócio e caches
+continuam no relógio real. O teste da janela 30/60s usa relógio controlado e a
+bancada de fotos reinstala a cota real para provar bloqueio antes da rede e retry.
+
+## Simplificação dos chamados (0.21.0)
+
+A bancada de chamados executa `simplificar.cenarios.mjs` e preserva `fotos.cenarios.mjs`.
+Prova Salvar para dados/fotos, status imediato na lista e modal sem perder rascunhos,
+recusa restaurando o select, cancelamento inline, orçamento livre sem valor e prestador automático reutilizado em sugestões,
+lista de chats por contato e filas sem duplicatas, protocolo manual e fallback,
+nota interna direta e aviso só com chat aberto e `sent:true`, Mais opções e faixa da decisão.
+As capturas `simplificar-{novo,editar}-390-{claro,escuro}.png` mostram a tela nova;
+o teste também mede 260/300/334 px e verifica dados hostis como texto.
+
+`?perfil=supervisor` e `?perfil=admin` habilitam as permissões correspondentes.
+O chat 8805 do contato 9901 está só na fila 93, fora de `listMine`; o contato 9904 não
+tem chat aberto. `bancada.falharLista` recusa listagem e `bancada.semConfirmarEnvio`
+devolve `sent:false`. `queues.list` e `session.getPermissions` respeitam o perfil.
+O portal simulado salva prestador pelo nome normalizado (caixa/acentos/espaços),
+reaproveita inclusive inativos e aceita valor ausente/null, sem zerar a estimativa.
+
+
+`status.cenarios.mjs` roda em um simulador separado dentro de `chamados.testar.mjs`.
+Prova uma requisição por troca, fila sem concorrência/duplicação, resumo/prazo sem
+recarregar a lista, aprovação pendente/recusada, cancelamento com Voltar e motivo,
+reabertura, falha de releitura, status hostil e bloqueio sem portal/demonstração.
+Também amplia foto sintética em concluído/cancelado com uma requisição, mantendo
+adição bloqueada. Capturas: `status-{lista,modal}-390-{claro,escuro}.png`.
+`test/dialogos.test.mjs` reprova diálogos nativos em JS, scripts inline e eventos HTML.
+
+## Integração com portal real
+
+Com `PORTAL_REAL_URL=http://127.0.0.1:PORTA`, a API `/api/ext/` é encaminhada ao
+router real; estáticos e SDK seguem locais. Sem a variável, o simulador permanece.
+`node test/integracao/real.mjs` prepara e encerra sozinho o PGlite e ambos os
+servidores. Veja [a bancada de integração](../integracao/LEIA-ME.md).
+O cockpit agora é visível aos três perfis; só o administrador vê o atalho da gestão.
+`atendente.cenarios.mjs` prova notas/avisos, confirmação, janela encerrada, retry
+sem duplicação e descarte de detalhe atrasado após troca de chat.

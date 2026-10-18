@@ -8,7 +8,9 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor() {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL } = {}) {
+  const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
+  if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
   const produtos = [
     { id: 9101, internalcode: 'DEMO-001', name: 'Apartamento Demonstração Alfa', category: 'Apartamento > Cidade Fictícia > Bairro Exemplo', value: 123456, brand: 'DEMONSTRACAO' },
     { id: 9102, internalcode: 'DEMO-002', name: 'Casa Demonstração Beta', category: 'Casa > Cidade Fictícia > Bairro Exemplo', value: 234500, brand: 'DEMONSTRACAO' },
@@ -30,6 +32,7 @@ export function criarServidor() {
     dia_vencimento: 10, observacao: null, origem: 'manual', criada_por: 'Agente Demonstração', criada_em: new Date().toISOString(),
     atualizada_em: new Date().toISOString(), encerrada_em: null, ...l }));
   const manutencao = criarPortalChamados({ locacoes });
+  manutencao.falharUpload(falhasUpload);
   const candidatas = [{ codigo: 'DEMO-SAIDA', titulo: 'Imóvel que Saiu do Anúncio Demonstração', bairro: 'Bairro Fictício', saiu_em: new Date().toISOString() }];
   const ativa = l => !l.encerrada_em;
   const objeto = l => ({ ...copia(l), fora_do_catalogo: !l.imovel_codigo, chamados_abertos: manutencao.contarAbertos(l.id),
@@ -70,17 +73,31 @@ export function criarServidor() {
         return json(404, { erro: 'recurso_nao_simulado' });
       }
       if (url.pathname.startsWith('/api/ext/')) {
+        if (destinoReal) {
+          const destino = new URL(url.pathname + url.search, destinoReal);
+          const headers = {};
+          for (const nome of ['authorization', 'x-gi-autor', 'x-gi-user-id', 'content-type']) if (req.headers[nome]) headers[nome] = req.headers[nome];
+          const resposta = await fetch(destino, { method: req.method, headers, redirect: 'manual',
+            ...(req.method === 'GET' || req.method === 'HEAD' ? {} : { body: req, duplex: 'half' }) });
+          const volta = {};
+          for (const nome of ['content-type', 'cache-control', 'retry-after', 'etag', 'content-disposition']) if (resposta.headers.has(nome)) volta[nome] = resposta.headers.get(nome);
+          res.writeHead(resposta.status, volta);
+          res.end(Buffer.from(await resposta.arrayBuffer()));
+          return;
+        }
         if (req.headers.authorization !== 'Bearer bancada-sintetica') return json(401, { erro: 'nao_autorizado' });
         const rota = url.pathname.slice('/api/ext'.length), q = url.searchParams;
         let dados = {};
         if (req.method === 'POST') {
-          let texto = '';
-          for await (const parte of req) { texto += parte; if (texto.length > 200000) return json(413, { erro: 'corpo_grande' }); }
+          let texto = '', tamanho = 0;
+          const upload = /^\/chamados\/\d+\/anexos\/upload$/.test(rota), limite = upload ? 3 * 1024 * 1024 : 256 * 1024;
+          for await (const parte of req) { tamanho += parte.length; if (tamanho <= limite) texto += parte; }
+          if (tamanho > limite) return json(413, { erro: upload ? 'arquivo_grande' : 'corpo_grande' });
           dados = JSON.parse(texto || '{}');
         }
         const autor = req.headers['x-gi-autor'] || 'Agente Demonstração';
         const respostaManutencao = manutencao.responder(req.method, rota, q, dados, autor);
-        if (respostaManutencao) return json(respostaManutencao.status, respostaManutencao.corpo);
+        if (respostaManutencao) { for (const [k, v] of Object.entries(respostaManutencao.headers || {})) res.setHeader(k, v); return json(respostaManutencao.status, respostaManutencao.corpo); }
         if (rota === '/info') return json(200, { ok: true, bancada: true });
         if (rota === '/campos') return json(200, { campos: [] });
         if (rota === '/preenchidos') return json(200, { preenchidos: {} });

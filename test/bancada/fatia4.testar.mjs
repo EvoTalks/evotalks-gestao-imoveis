@@ -3,7 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.20.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.21.0');
 
 const servidor = criarServidor();
 // O contrato legado de configuração é independente do simulador de manutenção.
@@ -25,13 +25,14 @@ try {
   await b.navegar(origem + '/app/chamados.html');
   await b.esperar(() => !!document.querySelector('[data-editar="4"]'));
   await b.clicar('[data-editar="4"]');
-  await b.esperar(() => !!document.querySelector('#c-novo-orcamento'));
+  await b.esperar(() => !!document.querySelector('#c-orc-nome'));
   assert.match(await b.avaliar(() => document.querySelector('#c-orcamentos').textContent), /Orçamentos/);
   prova('Editar contém a seção de orçamentos');
   const texto = s => b.avaliar(s => document.querySelector(s)?.textContent || '', s);
   const valor = s => b.avaliar(s => document.querySelector(s)?.value, s);
   async function capturar(nome, seletor) {
     await b.avaliar(s => {
+      const mais = document.querySelector('#c-mais'); if (mais) mais.open = true;
       const corpo = document.querySelector('.gi-modal-corpo'), alvo = document.querySelector(s), modal = document.querySelector('.gi-modal');
       corpo.scrollTop += alvo.getBoundingClientRect().top - corpo.getBoundingClientRect().top;
       window.scrollTo(0, Math.max(0, modal.offsetTop - 40));
@@ -42,7 +43,12 @@ try {
   async function abrir(id) {
     await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), id);
     await b.clicar('[data-editar="' + id + '"]');
-    await b.esperar(() => !!document.querySelector('#c-novo-orcamento'));
+    await b.esperar(() => !!document.querySelector('#c-orc-nome'));
+  }
+  async function salvarReabrir() {
+    await b.clicar('.gi-modal [data-ok]');
+    await b.esperar(() => !document.querySelector('.gi-modal') || !!document.querySelector('.gi-modal-recado').textContent);
+    if (!await b.avaliar(() => !!document.querySelector('.gi-modal'))) await abrir(id);
   }
   async function confirmar() { await b.clicar('#c-confirmar-acao'); await b.esperar(() => !document.querySelector('#c-confirmar-acao').disabled); }
   await fechar();
@@ -56,17 +62,16 @@ try {
   await abrir(id);
   assert.equal(await valor('#c-quem-paga'), 'proprietario'); assert.equal(await valor('#c-repasse'), 'sim');
   async function adicionar(nome, valor, prazo) {
-    await b.clicar('#c-novo-orcamento'); await b.preencher('#c-orc-nome', nome); await b.preencher('#c-orc-valor', valor);
-    await b.preencher('#c-orc-prazo', prazo); await b.preencher('#c-orc-visita', '2026-11-02T14:00');
-    await b.preencher('#c-orc-observacao', 'Cotação sintética sem correspondência real.');
-    await b.clicar('#c-salvar-orcamento'); await b.esperar(() => !!document.querySelector('#c-form-orcamento') && document.querySelector('#c-form-orcamento').hidden);
+    await b.preencher('#c-orc-nome', nome); await b.preencher('#c-orc-valor', valor);
+    await b.preencher('#c-orc-observacao', 'Cotação sintética: prazo ' + prazo + ' dias; visita proposta 02/11/2026.');
+    await b.clicar('#c-salvar-orcamento'); await b.esperar(() => document.querySelector('#c-orc-nome').value === '' && !document.querySelector('#c-salvar-orcamento').disabled);
   }
   await adicionar('Prestador Avulso Demonstração A', '500,25', '2');
   await adicionar('Prestador Avulso Demonstração B', '650,10', '3');
-  assert.match(await texto('#c-novo-orcamento'), /terceira cotação/);
-  await b.clicar('[data-escolher-orcamento="0"]'); await confirmar();
+  assert.equal(await b.avaliar(() => document.querySelectorAll('[data-escolher-orcamento]').length), 2);
+  await b.clicar('[data-escolher-orcamento="0"]'); await b.esperar(() => !document.querySelector('#c-salvar-orcamento').disabled);
   await b.esperar(() => document.querySelector('#c-aprovacao').textContent.includes('Pendente'));
-  await b.clicar('[data-escolher-orcamento="1"]'); await confirmar();
+  await b.clicar('[data-escolher-orcamento="1"]'); await b.esperar(() => !document.querySelector('#c-salvar-orcamento').disabled);
   let detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.orcamentos.filter(o => o.escolhido).length, 1);
   assert.equal(detalhe.orcamentos.find(o => o.escolhido).prestador_nome, 'Prestador Avulso Demonstração B');
@@ -76,9 +81,9 @@ try {
   await capturar('fatia4-01-orcamentos-aprovacao', '#c-orcamentos');
   prova('dois orçamentos pela tela; escolha única substitui anterior; centavos, repasse e alçada visíveis; aprovação pendente');
   for (const destino of ['agendado', 'execucao']) {
-    await b.preencher('#c-status', destino); await b.clicar('#c-mudar-status'); await confirmar();
-    assert.match(await texto('#c-mensagem'), /409.*aprovação.*pendente/);
-    await b.clicar('#c-voltar');
+    await b.preencher('#c-status', destino); await b.esperar(() => !document.querySelector('#c-status').disabled);
+    assert.match(await texto('#c-status-controle'), /aprovação.*pendente/);
+    assert.equal(await valor('#c-status'), 'novo');
   }
   await b.captura('fatia4-02-trava-pendente');
   prova('alçada excedida bloqueia Agendado e Em execução com 409 do portal');
@@ -86,7 +91,10 @@ try {
   // Perfil sintético tem atendimento aberto do proprietário visível em sua fila.
   await b.avaliar(() => { omni.session.getPermissions = async () => ({ isSupervisor: true });
     omni.chats.listByQueue = async () => [{ id: 8803, contactId: 9903, queueId: 91, status: 'active', channel: 'WhatsApp' }]; });
+  // O select voltou ao estado real e o envio segue sem status pendente.
+  assert.equal(await valor('#c-status'), 'novo');
   await b.clicar('#c-enviar-proprietario');
+  await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled);
   assert.match(await texto('#c-confirmacao-texto'), /650,10/);
   assert.equal(await b.avaliar(() => bancada.mensagens.length), 0);
   await confirmar();
@@ -100,39 +108,37 @@ try {
 
   await b.preencher('#c-aprovacao-por', 'Proprietário Demonstração'); await b.preencher('#c-aprovacao-canal', 'telefone');
   await b.preencher('#c-aprovacao-observacao', 'Aprovado em conversa sintética');
-  await b.clicar('#c-aprovar'); await confirmar();
+  await b.clicar('#c-aprovar'); await b.esperar(() => !document.querySelector('#c-aprovar').disabled);
   assert.match(await texto('#c-aprovacao'), /Aprovada/);
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.aprovacao.por, 'Proprietário Demonstração');
   assert.equal(detalhe.chamado.aprovacao.canal, 'telefone');
-  await b.preencher('#c-status', 'agendado'); await b.clicar('#c-mudar-status'); await confirmar();
-  assert.match(await texto('#c-mensagem'), /422.*visita/); await b.clicar('#c-voltar');
+  await b.preencher('#c-status', 'agendado'); await b.esperar(() => !document.querySelector('#c-status').disabled);
+  assert.match(await texto('#c-status-controle'), /visita/);
   await b.captura('fatia4-04-trava-sem-visita');
-  await b.preencher('#c-prestador-id', '2'); await b.clicar('#c-salvar-prestador');
-  await b.esperar(() => !document.querySelector('#c-salvar-prestador').disabled && document.querySelector('#c-prestador-id').value === '2');
+  await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.preencher('#c-prestador-id', '2'); await salvarReabrir();
   await b.preencher('#c-visita-inicio', '2026-11-02T14:00'); await b.preencher('#c-visita-fim', '2026-11-02T13:00');
-  await b.clicar('#c-salvar-visita'); await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('posterior'));
-  await b.preencher('#c-visita-fim', '2026-11-02T16:00'); await b.clicar('#c-salvar-visita');
-  await b.esperar(() => !document.querySelector('#c-salvar-visita').disabled);
+  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('posterior'));
+  await b.preencher('#c-visita-fim', '2026-11-02T16:00'); await salvarReabrir();
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.prestador.id, 2);
   assert.equal(Date.parse(detalhe.chamado.visita.fim) - Date.parse(detalhe.chamado.visita.inicio), 7200000);
   await capturar('fatia4-05-prestador-visita', '#c-prestador');
-  await b.preencher('#c-status', 'agendado'); await b.clicar('#c-mudar-status'); await confirmar();
-  await b.esperar(() => !!document.querySelector('#c-novo-orcamento') && document.querySelector('#c-status').value === 'agendado');
+  await b.preencher('#c-status', 'agendado'); await b.esperar(() => !document.querySelector('#c-status').disabled);
+  await b.esperar(() => !!document.querySelector('#c-orc-nome') && document.querySelector('#c-status').value === 'agendado');
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id); assert.equal(detalhe.chamado.status, 'agendado');
   prova('aprovação com autor/canal, trava sem visita, validação de intervalo, prestador e visita gravados; Agendado liberado');
   await b.preencher('#c-aprovacao-por', 'Proprietário Demonstração');
-  await b.preencher('#c-aprovacao-observacao', 'Recusa sintética exige decisão'); await b.clicar('#c-recusar'); await confirmar();
+  await b.preencher('#c-aprovacao-observacao', 'Recusa sintética exige decisão'); await b.clicar('#c-recusar'); await b.esperar(() => !document.querySelector('#c-recusar').disabled);
   assert.match(await texto('#c-aprovacao'), /Recusada/);
   assert.equal(await valor('#c-status'), 'aprovacao');
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.aprovacao.status, 'recusada'); assert.equal(detalhe.chamado.status, 'aprovacao'); assert.equal(detalhe.chamado.sla.pausado, true);
   await capturar('fatia4-06-recusa-sla', '#c-aprovacao'); await fechar();
-  await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('SLA pausado'));
+  await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Prazo pausado'));
   assert.match(await texto('#gi-corpo'), /Responder já/);
   await b.captura('fatia4-07-lista-sla');
-  prova('recusa registrada mantém Aprovação e pausa SLA; lista mostra SLA pausado e prazo estourado');
+  prova('recusa registrada mantém Aprovação e pausa SLA; lista mostra prazo pausado e prazo estourado');
 
   // Sem vínculo ou sem atendimento: somente nota interna, nunca carimbo de envio.
   for (const locacao of [2, 3]) {
@@ -146,7 +152,7 @@ try {
       return chamado.id;
     }, locacao);
     await b.clicar('#b-limpar'); await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), n); await abrir(n);
-    await b.clicar('#c-enviar-proprietario'); await confirmar();
+    await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
     assert.match(await texto('#c-mensagem'), /Mensagem não enviada/);
     detalhe = await b.avaliar(async id => GI.chamadosObter(id), n);
     assert.equal(detalhe.chamado.aprovacao.enviada_em, null);
@@ -158,7 +164,7 @@ try {
 
   await abrir(id);
   await b.avaliar(() => { bancada.recusarEnvio = true; });
-  await b.clicar('#c-enviar-proprietario'); await confirmar();
+  await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
   assert.match(await texto('#c-mensagem'), /janela de 24 horas/);
   await b.clicar('#c-voltar'); await b.avaliar(() => { bancada.recusarEnvio = false; });
   await b.avaliar(() => {
@@ -171,16 +177,16 @@ try {
       return original(op);
     };
   });
-  await b.clicar('#c-enviar-proprietario'); await confirmar();
+  await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
   assert.match(await texto('#c-mensagem'), /Mensagem enviada, mas o registro no portal falhou/);
   const enviados = await b.avaliar(() => bancada.mensagens.length);
   await confirmar();
   assert.equal(await b.avaliar(() => bancada.mensagens.length), enviados);
   assert.match(await texto('#c-mensagem'), /enviada ao proprietário e registrada/);
   await b.captura('fatia4-18-envio-sem-duplicacao');
-  await b.clicar('[data-escolher-orcamento="0"]'); await confirmar();
+  await b.clicar('[data-escolher-orcamento="0"]'); await b.esperar(() => !document.querySelector('#c-salvar-orcamento').disabled);
   await b.avaliar(() => { const original = omni.chats.get; omni.chats.get = async id => ({ ...(await original(id)), status: 'closed' }); });
-  await b.clicar('#c-enviar-proprietario'); await confirmar();
+  await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
   assert.match(await texto('#c-mensagem'), /não está mais aberto/);
   assert.equal(await b.avaliar(() => bancada.mensagens.length), enviados);
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
@@ -190,7 +196,7 @@ try {
   prova('forbidden explícito; revalidação impede envio a chat encerrado; falha no registro após envio permite repetir sem duplicação');
 
   await b.navegar(origem + '/app/prestadores.html');
-  await b.esperar(() => document.querySelectorAll('[data-editar]').length === 4);
+  await b.esperar(() => document.querySelectorAll('[data-editar]').length >= 6);
   await b.clicar('#b-novo'); await b.esperar(() => !!document.querySelector('#p-nome'));
   await b.preencher('#p-nome', 'Prestador sintético Fatia 4'); await b.preencher('#p-telefone', '00000000000');
   await b.preencher('#p-email', 'fatia4@example.invalid'); await b.preencher('#p-observacao', 'Somente demonstração');

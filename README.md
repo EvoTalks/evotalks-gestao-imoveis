@@ -23,12 +23,13 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.20.0, config e contribuições
+manifest.json          identidade 0.21.0, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
 app/imoveis.html       lista + detalhe do imóvel
 app/locados.html       banco de locados + filtros + candidatos que saíram do anúncio
+app/fotos.js           validação, redução e prévias de fotos escolhidas no computador
 app/manutencao.js      contrato e transporte da manutenção, sem fallback para storage
 app/chamados.html/js/css lista e modais de chamados, orçamentos, aprovação, prestador e visita
 app/prestadores.html/js  lista, cadastro/edição e ativação/desativação de prestadores
@@ -65,7 +66,7 @@ das buscas da assistente enquanto a locação está ativa e o devolve ao encerra
 da locação sobrevive à saída do anúncio do feed. As locações encerradas ficam disponíveis
 para consulta pelo filtro de contrato, sem edição ou exclusão.
 
-## Chamados e manutenção (0.20.0)
+## Chamados e manutenção (0.21.0)
 
 As contribuições **Locados**, **Chamados**, **Prestadores** e **Manutenção** no atendimento são
 visíveis somente para administradores (`userTypes: [0]`). Imóveis, Campos, Histórico e
@@ -76,35 +77,38 @@ Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. Nenhum dado
 manutenção é gravado em `omni.storage`. Sem portal, as telas avisam e bloqueiam ações.
 O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.
 
-**Chamados** segue a lista de Imóveis, com atendimento, atendente, prioridade, prazo,
-prestador e **Status**. Novo chamado seleciona o cliente, um dos imóveis locados dele,
-atendente e atendimento; revisão e confirmação precedem a gravação. O seletor traz
-atendimentos em andamento e os já vinculados. O SDK não consulta encerrados por contato:
-o vínculo informado por número e/ou protocolo fica explicitamente não verificado. Só o protocolo é suficiente; o número permanece vazio quando desconhecido.
+**Chamados**: escolher o status na lista ou no modal grava na hora, atualiza a linha,
+o prazo e o resumo. A recusa do portal devolve o seletor ao status anterior e explica
+o motivo. Só **Cancelado** pede confirmação inline, com motivo opcional e **Voltar**.
+Chamado encerrado reabre em Triagem pelo mesmo seletor. O **Salvar** cuida dos dados
+e fotos, sem alterar status; rascunhos permanecem intactos durante a troca.
+Fotos enviadas podem ser ampliadas inclusive em chamados encerrados; adicionar fotos
+continua bloqueado nesses chamados.
 
-Em **Editar**, salve custos (quem paga, valor estimado e repasse) antes de escolher um
-orçamento. As cotações aceitam prestador cadastrado ou nome avulso, valor em reais,
-prazo em dias, visita proposta e observação. Escolher substitui a escolha anterior;
-o portal copia valor/prestador e exige aprovação se o proprietário paga e o valor
-excede a alçada. “Pedir a terceira cotação” abre o registro da cotação recebida;
-não envia solicitação ao prestador. A visita proposta do orçamento e a visita efetiva
-do chamado são registros separados.
+No novo chamado, busque o cliente e escolha seu imóvel locado. **Escolher atendimento**
+lista as conversas abertas do cliente acessíveis ao usuário, incluindo todas as filas
+para supervisor ou administrador. Um único atendimento já vem escolhido. Em edição,
+um clique grava o vínculo; **Tirar vínculo** o remove. A plataforma não lista encerrados:
+nesses casos, use **Informar protocolo ou número do atendimento**.
 
-**Aprovação do proprietário** mostra alçada e decisão, com autor, canal e observação.
-“Enviar ao proprietário” permite revisar a mensagem. Só chama `omni.chats.sendMessage`
-se houver `contato_id` e atendimento aberto acessível daquele proprietário, revalidado
-imediatamente antes do envio. A mensagem contém imóvel, chamado, prestador, valor,
-prazo e visita proposta; fotos não são enviadas automaticamente. Sem vínculo ou chat
-aberto acessível, registra apenas nota interna e orienta o operador, sem marcar envio.
-Falha de permissão/janela de 24 horas aparece explicitamente. Após envio confirmado pelo
-SDK, se o registro no portal falhar, repetir a confirmação na mesma edição só tenta
-registrar, sem reenviar a mensagem. Esse controle não persiste ao fechar o modal.
+**Orçamentos** aceita nome livre do prestador, valor opcional e descrição livre
+(serviço, prazo e condições). O portal guarda o nome automaticamente e o reutiliza nas
+sugestões. **Escolher** aplica direto; **Remover** pede um segundo clique na própria linha.
 
-“Registrar aprovação” e “Registrar recusa” exigem quem respondeu e canal, e pedem
-confirmação. A recusa mantém o status Aprovação para decisão do operador. A aprovação
-pendente bloqueia Agendado e Em execução; Agendado também exige visita efetiva. O
-prestador pode ser atribuído/removido; início e fim da visita são informados no horário
-local e enviados em ISO, com validação do intervalo.
+**Nota para a equipe** salva internamente sem confirmação. **Avisar o cliente no WhatsApp**
+só fica disponível com atendimento vinculado e aberto daquele cliente. **Enviar ao cliente**
+mostra o texto exato para um clique em **Enviar**. Só `sent:true` registra a nota enviada;
+a falha mantém o texto. Se a mensagem sair e o registro falhar, repetir na mesma edição
+tenta registrar sem reenviar.
+
+**Mais opções**, fechado por padrão, reúne categoria, acesso, atendente, custos,
+prestador responsável, visita, aprovação do proprietário e histórico. A faixa de aprovação
+pendente ou recusada abre a decisão nesse bloco. As regras do portal continuam valendo:
+aprovação pendente bloqueia Agendado/Em execução e Agendado exige visita.
+Registrar decisão é interno; **Enviar ao proprietário** pede revisão da mensagem,
+revalida o chat aberto dele e só registra envio após `sent:true`. Sem contato ou chat
+acessível, registra nota interna explicando que a mensagem não saiu. A repetição após
+falha de registro não reenvia dentro da mesma edição. Fotos não são enviadas ao proprietário.
 
 **SLA** usa tempo corrido. A lista mostra primeira resposta vencida, prazo de solução
 ou pausa; Editar também mostra os instantes dos prazos. Ao entrar em Aprovação,
@@ -188,3 +192,57 @@ Sempre restrito a você primeiro: a entrega é **imediata** para todo usuário q
 - Portal original: `base-conhecimento/clientes/william-imoveis/portal-taxas/` (cofre)
 - Decisão que criou o portal: `william-imoveis-decisoes.md`, ADR-14
 - Mecânica de extensões: vault DOCS, `Sistemas/Evotalks/Extensões/`
+
+## Fotos do computador (0.21.0)
+
+Nos modais Novo e Editar chamado, **Buscar na pasta** adiciona fotos do computador.
+**Buscar fotos** continua consultando as últimas 50 mensagens do atendimento escolhido.
+Os arquivos locais aparecem com prévia, nome, tamanho e remoção antes de salvar.
+
+Aceita JPEG, PNG, WEBP e GIF, conferindo também os bytes iniciais e a decodificação.
+São até **10 arquivos por seleção**, **20 pendentes** e **25 MB por arquivo original**.
+O navegador reduz o lado maior a 1600 px, sem ampliar, e recodifica em JPEG 0,82
+(transparência sobre branco). Acima de 1,5 MB, tenta qualidade 0,7 e depois 1280 px;
+se ainda exceder, informa a recusa por arquivo. GIF animado vira uma foto estática.
+A redução evita enviar originais grandes pelo proxy do SDK, que limita as requisições.
+
+Primeiro grava o chamado e as referências do chat; depois envia as fotos locais,
+uma por vez, com progresso e bloqueio de cliques. Se uma falhar, as demais continuam:
+o formulário permanece em edição do chamado salvo, preservando as que falharam.
+Repetir envia os pendentes; o portal reconhece os mesmos bytes e não duplica o anexo.
+A cota local compartilhada de 30 requisições/minuto bloqueia o transporte antes de
+exceder o limite, informa a espera e mantém as fotos para nova tentativa. A plataforma
+também aplica a cota da instalação/usuário, inclusive entre documentos diferentes.
+
+Requer as rotas do portal **POST /api/ext/chamados/:id/anexos/upload**
+(`nome`, `mimetype`, `dados_base64` sem prefixo e `miniatura_base64` opcional) e
+**GET /api/ext/chamados/:id/anexos/:aid/arquivo**. O portal valida novamente os tipos,
+bytes iniciais, base64 estrito, até 2 MiB decodificados e 20 uploads por chamado;
+a rota de upload aceita corpo JSON até 3 MB. Só a leitura do arquivo carrega a foto inteira;
+o detalhe devolve metadados e miniaturas; listas continuam sem bytes. As fotos do computador ficam no portal, pois
+o SDK não oferece upload de arquivo. Sem portal conectado, nenhuma foto é enviada.
+
+As fotos locais enviam também uma miniatura JPEG de até 160 px e 30 KB, incluída no detalhe do chamado.
+Abrir Editar usa essas miniaturas; fotos antigas sem miniatura mostram o nome em um quadro neutro.
+Clique para ampliar dentro do modal: só então a foto inteira é consultada, com proteção contra cliques repetidos.
+
+Provas locais: `test/fotos.test.mjs`, `test/fotos-portal.test.mjs`, helpers em
+`test/manutencao.test.mjs` e cenários `test/bancada/fotos.cenarios.mjs`, executados
+pela bancada de chamados. As imagens são geradas por canvas no próprio teste,
+escolhidas pelo CDP e removidas no final. As capturas `fotos-*.png` ficam em
+`test/bancada/capturas/`. Nenhuma imagem real é usada.
+
+## Integração real
+
+`PORTAL_DIR=/caminho/gestao-imoveis-portal-fotos node test/integracao/real.mjs`
+executa os cenários de ouro no Chromium contra o router e schema originais do
+portal, com PGlite em memória e SDK simulado. Não altera o portal nem acessa
+instâncias; usa somente dados e imagens sintéticos. Sem portal disponível,
+imprime aviso e pula. A bancada aceita `PORTAL_REAL_URL` para encaminhar a API
+sem reescrever respostas. Instruções, limites da prova e fricções observadas em
+[test/integracao/LEIA-ME.md](test/integracao/LEIA-ME.md).
+
+O cockpit atende tipos 0, 1 e 2. Locados, Chamados e Prestadores continuam apenas
+para administrador. O atendente consulta dados, fotos e observações no cockpit,
+abre chamado vinculado ao chat e registra notas/avisos quando a escrita está
+habilitada; não recebe atalhos da gestão. A escrita continua desligada por padrão.

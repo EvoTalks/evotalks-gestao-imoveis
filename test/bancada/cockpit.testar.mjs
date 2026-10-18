@@ -1,6 +1,7 @@
 /* Bancada do cockpit: SDK simulado, portal real da bancada e Chromium sem dependências. */
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
+import { testarAtendente, testarRecusasAtendente } from './atendente.cenarios.mjs';
 import { abrirChromium } from './chromium.mjs';
 
 // Sem cockpit implementado, a primeira prova falha: não há contato nem chamados na tela.
@@ -78,13 +79,23 @@ try {
     await b.viewport(...tamanho);
     await b.captura('cockpit-' + nome);
   };
+  await testarAtendente(b, base.replace('/app/painel.html', ''), 1, async (id, texto) => {
+    const d = await b.avaliar(async id => GI.chamadosObter(id), id);
+    assert.equal(d.eventos.at(-1).texto, texto);
+    assert.equal(d.eventos.at(-1).notificou_cliente, texto.indexOf('<img') === 0);
+  });
+  await testarRecusasAtendente(b, base.replace('/app/painel.html', ''));
+  prova('recusas: janela encerrada preserva nota; retry não duplica aviso; texto alterado exige revisão; detalhe atrasado descartado');
+  prova('perfis agente/supervisor/admin; detalhes e notas com aviso confirmado no chat aberto');
   for (const tema of ['claro', 'escuro']) {
     for (const largura of [260, 300, 334]) {
       await b.viewport(largura, 1100);
-      const q = '?tema=' + tema;
+      const q = '?tema=' + tema + '&perfil=agente';
       await b.navegar(base + q); await pronto();
       assert.match(await texto('#cp-conteudo'), /Proprietário Demonstração/);
       assert.match(await texto('#cp-conteudo'), /Atendimento/);
+      assert.doesNotMatch(await texto('#cp-conteudo'), /\bSLA\b/, 'prazo em linguagem simples');
+      assert.equal(await b.avaliar(() => document.querySelector('[data-gestao]')), null, 'atendente não recebe atalho para gestão');
       assert.equal(await b.avaliar(() => document.querySelector('details').open), true);
       assert.equal(await b.avaliar(() => document.querySelector('details summary strong').textContent), 'OS-1001', 'emergência com SLA vencido vem antes da aprovação pausada');
       assert.ok(await b.avaliar(() => [...document.querySelectorAll('.gi-cp-trilha')].every(el => el.children.length === 7)));
@@ -116,6 +127,7 @@ try {
       assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Relato de teste sintético.');
       await b.clicar('#cp-revisar'); await b.clicar('#cp-conferi'); await b.clicar('#cp-confirmar');
       await b.esperar(() => document.querySelector('#cp-sucesso')?.textContent.includes('aberta'));
+      assert.equal(await b.avaliar(() => document.querySelector('#cp-ver-gestao')), null);
       const criacao = await b.avaliar(() => JSON.parse(bancada.chamadas.find(c => c.method === 'POST').body));
       assert.equal(criacao.atendimento.chat_id, 8801); assert.equal(criacao.atendimento.protocolo, 'DEMO-P8801');
       assert.equal(criacao.solicitante.contato_id, 9901); assert.equal(criacao.atendente.user_id, 9999);

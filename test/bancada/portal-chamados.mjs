@@ -1,4 +1,5 @@
 /* Portal de mentira: estado por servidor, relógio injetável e somente dados sintéticos. */
+import { createHash } from 'node:crypto';
 export const STATUS = ['novo', 'triagem', 'orcamento', 'aprovacao', 'agendado', 'execucao', 'concluido', 'cancelado'];
 export const CATEGORIAS = ['hidraulica', 'eletrica', 'gas', 'estrutura', 'esquadrias', 'pintura', 'chaveiro', 'outros'];
 export const PADROES = { alcada_centavos: 25000, sla: { emergencia: { resposta_min: 15, solucao_h: 24 },
@@ -15,6 +16,9 @@ function validar(campos) { if (Object.keys(campos).length) erro(422, 'dados_inva
 export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFixtures = false }) {
   let chamados = [], prestadores = [], config = copia(PADROES), eventos = {}, anexos = {}, orcamentos = {}, pausas = {};
   let numero = 1001, proximo = 1, proximoPrestador = 1, proximoOrcamento = 1, proximoEvento = 1, proximoAnexo = 1;
+  const arquivos = new Map();
+  let falhasUpload = 0;
+  const requisicoes = new Map();
   const instante = () => new Date(agora()).toISOString();
   const locacao = n => locacoes.find(l => l.id === Number(n));
   const porContato = n => locacoes.filter(l => !l.encerrada_em && l.contatos.some(c => c.contato_id === Number(n))).map(l => l.id);
@@ -54,7 +58,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     const arr = anexos[c.id] ||= [];
     for (const a of lista) if (!arr.some(x => x.file_ref === a.file_ref)) {
       const salvo = { id: proximoAnexo++, chamado_id: c.id, file_ref: a.file_ref, nome: a.nome ?? null, mimetype: a.mimetype ?? null,
-        origem: a.origem || 'atendimento', criado_por: autor, criado_em: instante() };
+        origem: a.origem || 'atendimento', miniatura_base64: null, criado_por: autor, criado_em: instante() };
       arr.push(salvo); evento(c, 'anexo', autor, { file_ref: a.file_ref });
     }
     return arr;
@@ -77,6 +81,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if (!aberto(c) && status !== 'triagem') erro(409, 'chamado_encerrado');
     if (status === 'aprovacao' && !orcamentos[c.id]?.some(o => o.escolhido)) erro(422, 'sem_orcamento_escolhido');
     if (['agendado', 'execucao'].includes(status) && c.aprovacao.status === 'pendente') erro(409, 'aprovacao_pendente');
+    if (['agendado', 'execucao'].includes(status) && c.aprovacao.status === 'recusada') erro(409, 'aprovacao_recusada');
     if (status === 'agendado' && !c.visita.inicio) erro(422, 'sem_visita');
     const de = c.status, em = instante();
     if (de !== status && de === 'aprovacao' && c.sla.pausado) {
@@ -107,6 +112,46 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
   function executar(method, rota, q, d, autor) {
     const get = method === 'GET', post = method === 'POST';
     const resposta = (corpo, status = 200) => ({ status, corpo: copia(corpo) });
+    const upload = rota.match(/^\/chamados\/(\d+)\/anexos\/upload$/);
+    const arquivo = rota.match(/^\/chamados\/(\d+)\/anexos\/([^/]+)\/arquivo$/);
+    if (upload && post) {
+      const campos = {}, tipos = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (d.nome !== undefined && typeof d.nome !== 'string') campos.nome = 'Informe um nome em texto.';
+      if (!tipos.includes(d.mimetype)) campos.mimetype = 'Escolha uma imagem JPEG, PNG, WEBP ou GIF.';
+      const base64 = typeof d.dados_base64 === 'string' && d.dados_base64;
+      const bytes = base64 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64) ? Buffer.from(base64, 'base64') : null;
+      if (!bytes || bytes.toString('base64') !== base64 || bytes.length < 1 || bytes.length > 2 * 1024 * 1024) campos.dados_base64 = 'Informe base64 válido de 1 byte a 2 MiB, sem prefixo.';
+      if (bytes && !campos.dados_base64) {
+        const tipo = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255 ? 'image/jpeg' :
+          bytes.subarray(0, 4).equals(Buffer.from([137,80,78,71])) ? 'image/png' :
+          /^GIF8[79]a/.test(bytes.subarray(0, 6).toString('latin1')) ? 'image/gif' :
+          bytes.subarray(0, 4).toString() === 'RIFF' && bytes.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : null;
+        if (!tipo || tipo !== d.mimetype) campos.dados_base64 = 'Os bytes iniciais não correspondem ao tipo da imagem.';
+      }
+      if (d.miniatura_base64 != null) {
+        const mini = d.miniatura_base64;
+        const b = typeof mini === 'string' && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(mini) ? Buffer.from(mini, 'base64') : null;
+        if (!b || !b.length || b.length > 40 * 1024 || b.toString('base64') !== mini || b[0] !== 255 || b[1] !== 216 || b[2] !== 255) campos.miniatura_base64 = 'Informe uma miniatura JPEG em base64 válido de até 40 KB, sem prefixo.';
+      }
+      validar(campos);
+      const c = chamados.find(c => c.id === Number(upload[1]));
+      if (!c) erro(404, 'nao_encontrado');
+      if (falhasUpload > 0) { falhasUpload--; erro(500, 'upload_indisponivel'); }
+      const file_ref = 'upload:' + createHash('sha256').update(bytes).digest('hex'), lista = anexos[c.id] ||= [];
+      const existente = lista.find(a => a.file_ref === file_ref);
+      if (existente) return resposta({ ok: true, repetido: true, anexo: existente });
+      if (lista.filter(a => a.origem === 'upload').length >= 20) erro(409, 'limite_anexos');
+      const nome = (d.nome || '').trim().replace(/[\\/"'<>\x00-\x1f\x7f-\x9f]/g, '_').slice(0, 120) || 'foto';
+      const a = { id: proximoAnexo++, chamado_id: c.id, file_ref, nome, mimetype: d.mimetype,
+        origem: 'upload', miniatura_base64: d.miniatura_base64 ?? null, tamanho: bytes.length, criado_por: autor, criado_em: instante() };
+      lista.push(a); arquivos.set(a.id, bytes.toString('base64')); evento(c, 'anexo', autor, { arquivos: [file_ref] });
+      return resposta({ ok: true, repetido: false, anexo: a });
+    }
+    if (arquivo && get) {
+      const a = anexos[Number(arquivo[1])]?.find(a => a.id === Number(arquivo[2]) && a.origem === 'upload' && arquivos.has(a.id));
+      if (!a) erro(404, 'anexo_nao_encontrado');
+      return { ...resposta({ mimetype: a.mimetype, nome: a.nome, tamanho: a.tamanho, dados_base64: arquivos.get(a.id) }), headers: { 'Cache-Control': 'no-store' } };
+    }
     if (rota === '/config/manutencao') {
       if (get) return resposta(config);
       if (!post) return null;
@@ -125,8 +170,9 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     }
     if (rota === '/prestadores' && get) {
       const rows = prestadores.filter(p => (!q.get('categoria') || p.categorias.includes(q.get('categoria'))) &&
-        (q.get('ativos') !== '1' || p.ativo) && normalizar(p.nome + ' ' + p.telefone + ' ' + p.email).includes(normalizar(q.get('busca'))));
-      return resposta({ rows, total: rows.length });
+        (q.get('ativos') !== '1' && q.get('ativo') !== '1' || p.ativo) && normalizar(p.nome + ' ' + p.telefone + ' ' + p.email).includes(normalizar(q.get('busca'))));
+      rows.sort((a, b) => a.nome.localeCompare(b.nome));
+      return resposta({ rows: rows.slice(0, Number(q.get('por_pagina')) || rows.length), total: rows.length });
     }
     const pm = rota.match(/^\/prestadores(?:\/(\d+)(?:\/(ativar|desativar))?)?$/);
     if (pm && post) {
@@ -209,20 +255,26 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
           if (o.escolhido && !['novo', 'triagem', 'orcamento'].includes(c.status)) erro(409, 'orcamento_escolhido');
           arr.splice(arr.indexOf(o), 1);
         } else {
+          if (o.escolhido) return resposta({ ok: true, chamado: copia(c) });
           arr.forEach(x => { x.escolhido = x.id === o.id; });
-          c.valor_estimado_centavos = o.valor_centavos;
+          if (o.valor_centavos != null) c.valor_estimado_centavos = o.valor_centavos;
           c.prestador = o.prestador_id ? { id: o.prestador_id, nome: o.prestador_nome } : null;
-          c.aprovacao = { status: o.valor_centavos > config.alcada_centavos && c.quem_paga === 'proprietario' ? 'pendente' : 'nao_necessaria',
+          c.aprovacao = { status: (o.valor_centavos ?? c.valor_estimado_centavos) > config.alcada_centavos && c.quem_paga === 'proprietario' ? 'pendente' : 'nao_necessaria',
             enviada_em: null, resposta_em: null, por: null, canal: null, observacao: null };
           evento(c, 'aprovacao', autor, { status: c.aprovacao.status });
         }
         evento(c, 'orcamento', autor, { orcamento_id: o.id, acao: cm[4] });
       } else {
-        const p = prestadores.find(p => p.id === d.prestador_id);
-        if (!dinheiro(d.valor_centavos) || d.prazo_dias != null && !dinheiro(d.prazo_dias) ||
+        let p = prestadores.find(p => p.id === d.prestador_id);
+        if (d.valor_centavos != null && !dinheiro(d.valor_centavos) || d.prazo_dias != null && !dinheiro(d.prazo_dias) ||
           d.prestador_id != null && !p || !p && !texto(d.prestador_nome) || d.visita_em != null && !iso(d.visita_em)) erro(422, 'dados_invalidos', { orcamento: 'Orçamento inválido.' });
+        if (!p) {
+          const chave = v => normalizar(v).trim().replace(/\s+/g, ' ');
+          p = prestadores.find(p => chave(p.nome) === chave(d.prestador_nome));
+          if (!p) { p = { id: proximoPrestador++, nome: d.prestador_nome.trim(), ativo: true, categorias: [], criado_por: autor, criado_em: instante() }; prestadores.push(p); }
+        }
         const o = { id: proximoOrcamento++, chamado_id: c.id, prestador_id: p?.id ?? null, prestador_nome: p?.nome || d.prestador_nome,
-          valor_centavos: d.valor_centavos, prazo_dias: d.prazo_dias ?? null, visita_em: d.visita_em ?? null, observacao: d.observacao ?? null,
+          valor_centavos: d.valor_centavos ?? null, prazo_dias: d.prazo_dias ?? null, visita_em: d.visita_em ?? null, observacao: d.observacao ?? null,
           escolhido: false, criado_por: autor, criado_em: instante() };
         arr.push(o); evento(c, 'orcamento', autor, { orcamento_id: o.id }); return resposta({ ok: true, orcamento: o }, 201);
       }
@@ -240,6 +292,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
   }
   function contarAbertos(id) { return chamados.filter(c => c.locacao_id === Number(id) && aberto(c)).length; }
   function responder(method, rota, q = new URLSearchParams(), d = {}, autor = 'Agente Demonstração') {
+    const chave = method + ' ' + rota; requisicoes.set(chave, (requisicoes.get(chave) || 0) + 1);
     // Uma recusa não pode deixar meia gravação, nem mesmo no simulador.
     const anterior = copia({ chamados, prestadores, config, eventos, anexos, orcamentos, pausas, numero, proximo, proximoPrestador, proximoOrcamento, proximoEvento, proximoAnexo });
     try {
@@ -269,5 +322,5 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
       if (status !== 'novo') mudarStatus(c, status, 'Exemplo sintético', 'Agente Demonstração');
     });
   }
-  return { responder, contarAbertos };
+  return { responder, contarAbertos, requisicoes, falharUpload: n => { falhasUpload = n; } };
 }

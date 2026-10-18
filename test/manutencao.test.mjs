@@ -14,15 +14,15 @@ function carregar() {
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
-test('manifest 0.20.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
+test('manifest 0.21.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.20.0');
+  assert.equal(m.version, '0.21.0');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
   assert.equal(cockpit.type, 'chatPanel'); assert.equal(cockpit.url, 'app/painel.html');
   assert.equal(cockpit.title, 'Manutenção'); assert.equal(cockpit.presentation, undefined);
-  assert.deepEqual(cockpit.visibility.userTypes, [0]);
+  assert.deepEqual(cockpit.visibility.userTypes, [0, 1, 2]);
   for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
     assert.deepEqual(m.contributions[0].items.find(i => i.id === id).visibility.userTypes, [0]);
   }
@@ -33,7 +33,8 @@ test('manifest 0.20.0 declara navegação ordenada, cockpit e escrita opt-in', (
     const c = m.config.find(c => c.key === k);
     assert.equal(c.type, 'boolean'); assert.equal(c.default, false); assert.ok(c.help);
   }
-  const cabecalho = carregar().cabecalho('gi-chamados');
+  const GI = carregar(); GI.ctx = () => ({ user: { type: 0 } });
+  const cabecalho = GI.cabecalho('gi-chamados');
   const titulos = m.contributions[0].items.map(i => i.title);
   for (let i = 1; i < titulos.length; i++) assert.ok(cabecalho.indexOf(titulos[i - 1]) < cabecalho.indexOf(titulos[i]));
 });
@@ -82,6 +83,8 @@ test('helpers cobrem o contrato, preservam payloads e recusam manutenção sem p
     [() => GI.chamadosStatus(1, 'triagem', 'DEMO'), '/chamados/1/status', { status: 'triagem', motivo: 'DEMO' }],
     [() => GI.chamadosNota(1, { texto: 'DEMO' }), '/chamados/1/notas', { texto: 'DEMO' }],
     [() => GI.chamadosAnexos(1, []), '/chamados/1/anexos', { anexos: [] }],
+    [() => GI.chamadosAnexoUpload(1, { nome: 'sintetica.jpg' }), '/chamados/1/anexos/upload', { nome: 'sintetica.jpg' }],
+    [() => GI.chamadosAnexoArquivo(1, 2), '/chamados/1/anexos/2/arquivo'],
     [() => GI.chamadosPorLocacao(1, { abertos: 1 }), '/locacoes/1/chamados?abertos=1'],
     [() => GI.chamadosPorContato(9901), '/contatos/9901/chamados'],
     [() => GI.chamadosAtendimentosVinculados(9901), '/atendimentos/vinculados?contato_id=9901'],
@@ -313,4 +316,43 @@ test('22: estados pendentes e azuis derivam cores dos tokens do tema', () => {
   assert.match(pendente, /var\(--gi-pendente\)/);
   assert.doesNotMatch(pendente + chamados, /#[\da-f]{3,8}\b|rgba?\(/i);
   assert.match(chamados, /var\(--ext-color-info/);
+});
+
+test('F6: mescla apenas atendimentos abertos do contato, sem duplicar nem aceitar estado desconhecido', () => {
+  const GI = carregar();
+  const a = { id: 10, contactId: 20, status: 'active', protocol: '<img>', channel: 'WhatsApp', queueId: 91, startedAt: '2026-10-18T12:00:00Z' };
+  const rows = GI.mesclarAtendimentos([[a, { ...a, id: 11, status: 'closed' }], [a, { ...a, id: 12, contactId: 21 }, { ...a, id: 13, status: 'desconhecido' }]], 20, [{ id: 91, name: 'Fila teste' }]);
+  assert.equal(rows.length, 1); assert.equal(rows[0].chat_id, 10); assert.equal(rows[0].fila, 'Fila teste');
+  assert.match(GI.atendimentoTexto(rows[0]), /#10 · WhatsApp · <img> ·/);
+  assert.equal(GI.atendimentoTexto(null), 'Nenhum atendimento vinculado');
+  assert.equal(GI.normalizarPrestador('  João   SILVA '), 'joao silva');
+});
+
+test('F6: orçamento só com nome e descrição guarda prestador, reaproveita e não zera valor estimado', () => {
+  const { api, entrada } = bancada(), base = '/chamados/' + api('/chamados', entrada).corpo.chamado.id;
+  api(base, { valor_estimado_centavos: 50000, quem_paga: 'proprietario' });
+  const primeiro = api(base + '/orcamentos', { prestador_nome: 'João  Teste', observacao: '<img> descrição livre' });
+  assert.equal(primeiro.status, 201);
+  const o = primeiro.corpo.orcamento;
+  assert.ok(o.prestador_id); assert.equal(o.valor_centavos, null);
+  const segundo = api(base + '/orcamentos', { prestador_nome: ' joao teste ', valor_centavos: null }).corpo.orcamento;
+  assert.equal(segundo.prestador_id, o.prestador_id);
+  assert.equal(api('/prestadores?busca=joao&ativo=1&por_pagina=8').corpo.rows.length, 1);
+  const c = api(base + '/orcamentos/' + o.id + '/escolher', {}).corpo.chamado;
+  assert.equal(c.valor_estimado_centavos, 50000); assert.equal(c.aprovacao.status, 'pendente');
+  assert.equal(api(base).corpo.orcamentos[0].observacao, '<img> descrição livre');
+  assert.equal(api(base + '/orcamentos', { prestador_nome: 'Teste', valor_centavos: -1 }).status, 422);
+});
+
+test('F6: prestador inativo é reaproveitado sem reativação; null listado e valores inválidos continuam recusados', () => {
+  const { api, entrada } = bancada(), base = '/chamados/' + api('/chamados', entrada).corpo.chamado.id;
+  const p = api('/prestadores', { nome: 'João   Teste' }).corpo.prestador;
+  api('/prestadores/' + p.id + '/desativar', {});
+  const r = api(base + '/orcamentos', { prestador_nome: ' joao teste ', valor_centavos: null });
+  assert.equal(r.status, 201); assert.equal(r.corpo.orcamento.prestador_id, p.id);
+  assert.equal(api('/prestadores?ativo=1&busca=joao').corpo.total, 0);
+  assert.equal(api('/prestadores?busca=joao').corpo.rows[0].ativo, false);
+  assert.equal(api(base).corpo.orcamentos[0].valor_centavos, null);
+  for (const v of [-1, 'abc', 1.2]) assert.equal(api(base + '/orcamentos', { prestador_nome: 'Teste', valor_centavos: v }).status, 422);
+  assert.equal(api('/prestadores').corpo.total, 1);
 });

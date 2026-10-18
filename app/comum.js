@@ -197,10 +197,27 @@
     });
   }
 
+  /* Janela móvel compartilhada por todas as chamadas deste documento ao proxy. */
+  GI.criarCotaPortal = function (agora) {
+    var usadas = [];
+    agora = agora || function () { return Date.now(); };
+    return { reservar: function () {
+      var t = agora();
+      usadas = usadas.filter(function (em) { return t - em < 60000; });
+      if (usadas.length >= 30) {
+        var err = new Error('Limite de consultas atingido. Aguarde um minuto e tente novamente.');
+        err.status = 429; err.code = 'rate_limited'; throw err;
+      }
+      usadas.push(t);
+    } };
+  };
+  GI.cotaPortal = GI.criarCotaPortal();
+
   function viaOmni(url, opcoes) {
     if (!global.omni || !omni.http || !omni.http.request) {
       return Promise.reject(new Error("sem omni.http.request nesta instância"));
     }
+    try { GI.cotaPortal.reservar(); } catch (err) { return Promise.reject(err); }
     return Promise.resolve(omni.http.request({
       url: url,
       method: opcoes.corpo !== undefined ? "POST" : "GET",
@@ -791,9 +808,11 @@
       var recado = fundo.querySelector('.gi-modal-recado');
       var botaoOk = fundo.querySelector('[data-ok]');
 
-      var observador = null;
+      var observador = null, confirmando = false;
 
       function fechar(valor) {
+        if (confirmando && valor === null && fundo.querySelector('[data-cancelar]').disabled) return;
+        if (valor === null && op.aoFechar && op.aoFechar(caixa) === false) return;
         document.removeEventListener('keydown', naTecla);
         if (observador) observador.disconnect();
         if (fundo.parentNode) fundo.parentNode.removeChild(fundo);
@@ -806,12 +825,15 @@
 
       function confirmar() {
         if (!op.aoConfirmar) { fechar(true); return; }
+        if (confirmando) return;
+        confirmando = true;
         botaoOk.disabled = true;
         recado.textContent = '';
         Promise.resolve()
           .then(function () { return op.aoConfirmar(caixa); })
-          .then(function (r) { fechar(r === undefined ? true : r); })
+          .then(function (r) { confirmando = false; fechar(r === undefined ? true : r); })
           .catch(function (e) {
+            confirmando = false;
             botaoOk.disabled = false;
             recado.className = 'gi-modal-recado gi-pequeno gi-modal-recado-erro';
             recado.textContent = e && e.message ? e.message : String(e);
@@ -872,7 +894,10 @@
 
   /* -------------------------------------------------------------- navegação */
 
+  function telaDeGestao(id) { return ['gi-locados', 'gi-chamados', 'gi-prestadores'].indexOf(id) >= 0; }
+  function administrador() { var c = GI.ctx(); return !!(c && c.user && c.user.type === 0); }
   GI.abrirTela = function (contributionId) {
+    if (telaDeGestao(contributionId) && !administrador()) { GI.aviso('Esta tela é exclusiva do administrador.', 'info'); return; }
     try {
       var r = omni.ui.openContribution(contributionId);
       if (r && r.catch) r.catch(function () { GI.aviso('Abra pelo menu Gerenciamento de Imóveis.', 'info'); });
@@ -908,7 +933,7 @@
       { id: 'gi-historico', nome: 'Histórico' },
       { id: 'gi-config', nome: 'Configurações' }
     ];
-    return '<nav class="gi-nav">' + telas.map(function (t) {
+    return '<nav class="gi-nav">' + telas.filter(function (t) { return !telaDeGestao(t.id) || administrador(); }).map(function (t) {
       return t.id === ativo
         ? '<span class="gi-nav-item gi-nav-ativo">' + t.nome + '</span>'
         : '<button type="button" class="gi-nav-item" data-tela="' + t.id + '">' + t.nome + '</button>';
