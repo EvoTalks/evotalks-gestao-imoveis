@@ -63,3 +63,10 @@
 .gi-foto-pendente span { min-width: 0; flex: 1; font-size: 12px; }
 .gi-foto-pendente img, .gi-foto-pendente button { flex-shrink: 0; }
 .gi-form-chamado .gi-secao:has(#c-buscar-pasta) { flex-wrap: wrap; }
+.gi-form-chamado details { margin: 18px 0 8px; border-top: 1px solid var(--gi-borda); padding-top: 12px; }
+.gi-form-chamado summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.gi-orcamento { margin: 8px 0; padding: 12px; border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); }
+.gi-orcamento p { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.gi-ultima-mensagem { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; font-size: 12px; color: var(--gi-mudo); }
+.gi-lista-atend > button { text-align: left; color: var(--gi-texto); font: inherit; cursor: pointer; width: 100%; }
+.gi-lista-atend .gi-ajuda { display: block; }
