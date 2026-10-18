@@ -1,8 +1,8 @@
 # Gerenciamento de Imóveis — extensão do EvoTalks
 
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
-um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Locados**, **Campos**,
-**Histórico** e **Configurações**.
+um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Locados**, **Chamados**,
+**Prestadores**, **Campos**, **Histórico** e **Configurações**, e cockpit de manutenção no atendimento.
 
 Registra, por imóvel, informações que **não aparecem no site** (taxas, IPTU, encargos, observações
 da administração) e que precisam chegar a quem atende.
@@ -11,6 +11,9 @@ da administração) e que precisam chegar a quem atende.
 |---|---|
 | `/imoveis` + `/imovel/:codigo` | tela **Imóveis** — lista, filtros, 🟢/🟡 e o formulário de lançamento |
 | `/api/ext/locacoes` | tela **Locados** — banco de locações, contatos, contratos, vigência e encerramento |
+| `/api/ext/chamados` | tela **Chamados** — O.S. por imóvel locado, atendimento vinculado, orçamentos, aprovação e visita |
+| `/api/ext/prestadores` | tela **Prestadores** — cadastro, categorias e ativação/desativação |
+| `/api/ext/config/manutencao` | **Configurações → Manutenção** — alçada e SLA por prioridade |
 | `/campos` | tela **Campos** — os cinco tipos, recorrência padrão, ativar/desativar/apagar |
 | `/historico` | tela **Histórico** — quem, quando, de → para, com filtros |
 | `/consultas` | **removida na 0.3.0** — o que a IA consulta se vê no MCP do portal, não aqui |
@@ -20,12 +23,17 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.18.0, config e contribuições
+manifest.json          identidade 0.20.0, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
 app/imoveis.html       lista + detalhe do imóvel
 app/locados.html       banco de locados + filtros + candidatos que saíram do anúncio
+app/manutencao.js      contrato e transporte da manutenção, sem fallback para storage
+app/chamados.html/js/css lista e modais de chamados, orçamentos, aprovação, prestador e visita
+app/prestadores.html/js  lista, cadastro/edição e ativação/desativação de prestadores
+app/painel.html/js/css   cockpit por contato e imóvel, abertura após revisão
+app/config.html       catálogo e configuração de manutenção
 app/campos.html        definição dos campos
 app/historico.html     eventos de edição
 ```
@@ -57,6 +65,59 @@ das buscas da assistente enquanto a locação está ativa e o devolve ao encerra
 da locação sobrevive à saída do anúncio do feed. As locações encerradas ficam disponíveis
 para consulta pelo filtro de contrato, sem edição ou exclusão.
 
+## Chamados e manutenção (0.20.0)
+
+Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. Nenhum dado de
+manutenção é gravado em `omni.storage`. Sem portal, as telas avisam e bloqueiam ações.
+O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.
+
+**Chamados** segue a lista de Imóveis, com atendimento, atendente, prioridade, prazo,
+prestador e **Status**. Novo chamado seleciona o cliente, um dos imóveis locados dele,
+atendente e atendimento; revisão e confirmação precedem a gravação. O seletor traz
+atendimentos em andamento e os já vinculados. O SDK não consulta encerrados por contato:
+o vínculo por número/protocolo informado fica explicitamente não verificado.
+
+Em **Editar**, salve custos (quem paga, valor estimado e repasse) antes de escolher um
+orçamento. As cotações aceitam prestador cadastrado ou nome avulso, valor em reais,
+prazo em dias, visita proposta e observação. Escolher substitui a escolha anterior;
+o portal copia valor/prestador e exige aprovação se o proprietário paga e o valor
+excede a alçada. “Pedir a terceira cotação” abre o registro da cotação recebida;
+não envia solicitação ao prestador. A visita proposta do orçamento e a visita efetiva
+do chamado são registros separados.
+
+**Aprovação do proprietário** mostra alçada e decisão, com autor, canal e observação.
+“Enviar ao proprietário” permite revisar a mensagem. Só chama `omni.chats.sendMessage`
+se houver `contato_id` e atendimento aberto acessível daquele proprietário, revalidado
+imediatamente antes do envio. A mensagem contém imóvel, chamado, prestador, valor,
+prazo e visita proposta; fotos não são enviadas automaticamente. Sem vínculo ou chat
+aberto acessível, registra apenas nota interna e orienta o operador, sem marcar envio.
+Falha de permissão/janela de 24 horas aparece explicitamente. Após envio confirmado pelo
+SDK, se o registro no portal falhar, repetir a confirmação na mesma edição só tenta
+registrar, sem reenviar a mensagem. Esse controle não persiste ao fechar o modal.
+
+“Registrar aprovação” e “Registrar recusa” exigem quem respondeu e canal, e pedem
+confirmação. A recusa mantém o status Aprovação para decisão do operador. A aprovação
+pendente bloqueia Agendado e Em execução; Agendado também exige visita efetiva. O
+prestador pode ser atribuído/removido; início e fim da visita são informados no horário
+local e enviados em ISO, com validação do intervalo.
+
+**SLA** usa tempo corrido. A lista mostra primeira resposta vencida, prazo de solução
+ou pausa; Editar também mostra os instantes dos prazos. Ao entrar em Aprovação,
+o portal pausa a solução; ao sair, ajusta o prazo. Primeira resposta continua cobrada.
+Os padrões são: emergência 15 min/24 h, alta 120 min/72 h, normal 240 min/120 h;
+alçada R$ 250,00. **Configurações → Manutenção** lê e salva alçada e SLA, valida
+inteiros positivos e confere o resultado por releitura no portal.
+
+**Prestadores** tem busca, categorias, filtro de ativos e paginação local dos resultados
+do portal. Cadastrar e editar preservam os dados em erros de validação; ativar/desativar
+pede confirmação. Não há exclusão; prestadores inativos já vinculados permanecem visíveis
+no chamado, e novos vínculos usam os ativos.
+
+O **cockpit** consulta os chamados da locação do contato, inclusive os abertos por outra
+pessoa, e pode abrir a gestão. A escrita começa desligada (`cockpitAbreChamado: false`);
+quando habilitada, abre chamado após revisão, vinculando o atendimento atual. O modo
+`modoDemonstracao` usa somente dados sintéticos e bloqueia rede e gravação.
+
 ## Onde os campos adicionais moram
 
 Com portal configurado, campos e valores também usam o backend compartilhado. O modo
@@ -84,10 +145,20 @@ O recorte do catálogo vem da configuração da instalação:
 
 ## Testar localmente
 
-Sem npm install: `node test/checar.mjs`, `node --test test/*.test.mjs` e
-`node test/bancada/testar.mjs`. Uso manual e cenários em
+Sem npm install: `node test/checar.mjs`, `node --test test/*.test.mjs`,
+`node test/bancada/testar.mjs`, `node test/bancada/chamados.testar.mjs`,
+`node test/bancada/cockpit.testar.mjs` e `node test/bancada/fatia4.testar.mjs`. Uso manual e cenários em
 [test/bancada/LEIA-ME.md](test/bancada/LEIA-ME.md). A bancada tem portal em memória e
 SDK sintético, isolados de qualquer instância real; os PNGs gerados não são versionados.
+O roteiro `fatia4.testar.mjs` prova escolha única, alçada, aprovação/recusa e envio real
+simulado ou nota sem envio, travas de status/visita, SLA, prestadores e configuração.
+Inclui dados hostis que não viram elementos, portal ausente/indisponível, demonstração
+sem rede e capturas `test/bancada/capturas/fatia4-*.png` em claro, escuro e 390 px.
+O teste legado de versão em `test/manutencao.test.mjs` ainda exige `0.19.0` e precisa
+ser atualizado para `0.20.0` pelo nó responsável pelos testes compartilhados; o roteiro
+da Fatia 4 já confere a versão nova.
+O roteiro legado `chamados.testar.mjs` também ainda exige os quatro pontos de extensão
+da Fatia 4 vazios; essa asserção deve passar a esperar as seções preenchidas.
 
 ## Instalar
 

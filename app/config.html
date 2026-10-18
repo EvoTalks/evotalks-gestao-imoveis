@@ -13,6 +13,21 @@
 
 <section id="gi-painel" style="display:none">
 
+  <div class="gi-cartao" id="c-manutencao">
+    <strong style="font-size:14px">Manutenção</strong>
+    <p class="gi-ajuda">Alçada para orçamento pago pelo proprietário. Acima deste valor, o orçamento escolhido exige aprovação. SLA em tempo corrido; a solução pausa enquanto o status é Aprovação.</p>
+    <fieldset id="m-campos" style="border:0;padding:0;margin:0;min-width:0" disabled>
+      <div class="gi-campo"><label for="m-alcada">Alçada (R$)</label><input id="m-alcada" inputmode="decimal" placeholder="250,00"></div>
+      <div class="gi-tabela-rolagem" style="margin-top:12px"><table><thead><tr><th>Prioridade</th><th>Primeira resposta (minutos)</th><th>Solução (horas)</th></tr></thead><tbody>
+        <tr><td>Emergência</td><td><input id="m-emergencia-resposta" type="number" min="1" step="1" aria-label="Resposta Emergência em minutos"></td><td><input id="m-emergencia-solucao" type="number" min="1" step="1" aria-label="Solução Emergência em horas"></td></tr>
+        <tr><td>Alta</td><td><input id="m-alta-resposta" type="number" min="1" step="1" aria-label="Resposta Alta em minutos"></td><td><input id="m-alta-solucao" type="number" min="1" step="1" aria-label="Solução Alta em horas"></td></tr>
+        <tr><td>Normal</td><td><input id="m-normal-resposta" type="number" min="1" step="1" aria-label="Resposta Normal em minutos"></td><td><input id="m-normal-solucao" type="number" min="1" step="1" aria-label="Solução Normal em horas"></td></tr>
+      </tbody></table></div>
+      <div class="gi-rodape"><button class="btn btn-sucesso" type="button" id="b-manutencao-salvar">Salvar manutenção</button></div>
+    </fieldset>
+    <div class="gi-rodape"><span id="m-resultado" class="gi-pequeno" role="status" aria-live="polite">consultando manutenção…</span><button class="btn btn-slim" type="button" id="b-manutencao-reler">Recarregar manutenção</button></div>
+  </div>
+
   <!-- ------------------------------------------------------------- estado -->
   <div class="gi-cartao">
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
@@ -85,12 +100,46 @@
 </p>
 
 <script src="comum.js?v=0.18.0"></script>
+<script src="manutencao.js?v=0.20.0"></script>
 <script>
 (function () {
   'use strict';
 
   var el = function (id) { return document.getElementById(id); };
   var urlTestada = '';
+  var prioridades = ['emergencia', 'alta', 'normal'];
+  function erroManutencao(err) {
+    var d = err.dados || {};
+    return d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : d.detalhe || err.message || 'Falha ao consultar manutenção.';
+  }
+  function positivo(v) { return Number.isSafeInteger(Number(v)) && Number(v) > 0; }
+  function carregarManutencao() {
+    el('m-campos').disabled = true; el('b-manutencao-reler').disabled = true;
+    el('m-resultado').textContent = 'consultando manutenção…';
+    return GI.manutencaoConfig().then(function (r) {
+      if (!r || !positivo(r.alcada_centavos) || prioridades.some(function (p) { return !r.sla || !r.sla[p] || !positivo(r.sla[p].resposta_min) || !positivo(r.sla[p].solucao_h); })) throw new Error('Configuração de manutenção inválida no portal.');
+      el('m-alcada').value = (Number(r.alcada_centavos) / 100).toFixed(2).replace('.', ',');
+      prioridades.forEach(function (p) { el('m-' + p + '-resposta').value = Number(r.sla[p].resposta_min); el('m-' + p + '-solucao').value = Number(r.sla[p].solucao_h); });
+      el('m-campos').disabled = false; el('m-resultado').textContent = 'Configuração de manutenção carregada.';
+    }).catch(function (err) { el('m-resultado').textContent = erroManutencao(err); }).finally(function () { el('b-manutencao-reler').disabled = false; GI.ajustarAltura(); });
+  }
+  function salvarManutencao() {
+    var valor = el('m-alcada').value.trim(), sla = {};
+    if (!/^\d+(?:[.,]\d{1,2})?$/.test(valor)) { el('m-resultado').textContent = 'Informe uma alçada positiva em reais, com até duas casas decimais.'; return; }
+    var alcada = Math.round(Number(valor.replace(',', '.')) * 100);
+    if (!positivo(alcada) || prioridades.some(function (p) {
+      var resposta = el('m-' + p + '-resposta').value, solucao = el('m-' + p + '-solucao').value;
+      sla[p] = { resposta_min: Number(resposta), solucao_h: Number(solucao) };
+      return !/^\d+$/.test(resposta) || !/^\d+$/.test(solucao) || !positivo(resposta) || !positivo(solucao);
+    })) { el('m-resultado').textContent = 'Alçada e prazos precisam ser positivos; os prazos devem ser inteiros.'; return; }
+    el('m-campos').disabled = true; el('b-manutencao-reler').disabled = true; el('m-resultado').textContent = 'salvando manutenção…';
+    return GI.manutencaoConfigSalvar({ alcada_centavos: alcada, sla: sla }).then(function () {
+      return GI.manutencaoConfig();
+    }).then(function (r) {
+      if (Number(r.alcada_centavos) !== alcada || prioridades.some(function (p) { return !r.sla || !r.sla[p] || Number(r.sla[p].resposta_min) !== sla[p].resposta_min || Number(r.sla[p].solucao_h) !== sla[p].solucao_h; })) throw new Error('A releitura não confirmou a configuração; consulte o portal antes de repetir.');
+      el('m-resultado').textContent = 'Manutenção salva e conferida no portal.';
+    }).catch(function (err) { el('m-resultado').textContent = erroManutencao(err); }).finally(function () { el('m-campos').disabled = false; el('b-manutencao-reler').disabled = false; });
+  }
 
   function quando(iso) {
     if (!iso) return '';
@@ -388,12 +437,14 @@
     el('b-agora').addEventListener('click', atualizarAgora);
     el('b-campos-padrao').addEventListener('click', aplicarCamposPadrao);
     el('b-salvar').addEventListener('click', salvar);
+    el('b-manutencao-salvar').addEventListener('click', salvarManutencao);
+    el('b-manutencao-reler').addEventListener('click', carregarManutencao);
     // Mexeu no campo depois de testar: o salvar volta a travar.
     el('c-url').addEventListener('input', function () {
       if (el('c-url').value.trim() !== urlTestada) el('b-salvar').disabled = true;
     });
 
-    return carregar();
+    return Promise.all([carregar(), carregarManutencao()]);
   });
 })();
 </script>
