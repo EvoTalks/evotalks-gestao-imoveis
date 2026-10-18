@@ -70,3 +70,7 @@
 .gi-ultima-mensagem { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; font-size: 12px; color: var(--gi-mudo); }
 .gi-lista-atend > button { text-align: left; color: var(--gi-texto); font: inherit; cursor: pointer; width: 100%; }
 .gi-lista-atend .gi-ajuda { display: block; }
+
+.gi-fotos > button.gi-foto { border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); padding: 8px; background: var(--gi-campo-bg); color: var(--gi-texto); font: inherit; text-align: left; cursor: pointer; min-height: 70px; }
+.gi-foto-ampliada { border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); padding: 8px; margin: 12px 0; }
+.gi-foto-ampliada img { display: block; max-width: 100%; max-height: 65vh; object-fit: contain; margin: 8px auto; }

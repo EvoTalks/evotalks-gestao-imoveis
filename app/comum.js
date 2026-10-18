@@ -812,6 +812,7 @@
 
       function fechar(valor) {
         if (confirmando && valor === null && fundo.querySelector('[data-cancelar]').disabled) return;
+        if (valor === null && op.aoFechar && op.aoFechar(caixa) === false) return;
         document.removeEventListener('keydown', naTecla);
         if (observador) observador.disconnect();
         if (fundo.parentNode) fundo.parentNode.removeChild(fundo);

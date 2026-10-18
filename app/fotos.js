@@ -7,7 +7,7 @@
     var escala = Math.min(1, (maximo || 1600) / Math.max(largura, altura));
     return { largura: Math.max(1, Math.round(largura * escala)), altura: Math.max(1, Math.round(altura * escala)) };
   };
-  fotos.nomeSeguro = function (nome) { return String(nome || '').replace(/[\\/"'<>\x00-\x1f\x7f]/g, '_').slice(0, 120).trim() || 'foto'; };
+  fotos.nomeSeguro = function (nome) { return String(nome || '').replace(/[\\/"'<>\x00-\x1f\x7f-\x9f]/g, '_').slice(0, 120).trim() || 'foto'; };
   fotos.tamanho = function (bytes) {
     return bytes >= 1024 * 1024 ? (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB' :
       bytes >= 1024 ? (bytes / 1024).toFixed(1).replace('.', ',') + ' KB' : bytes + ' bytes';
@@ -58,6 +58,16 @@
           canvas.toBlob(function (blob) { if (blob) resolve(blob); else reject(new Error('Não foi possível reduzir a imagem.')); }, 'image/jpeg', qualidade);
         });
       }
+      function miniatura() {
+        return codificar(160, 0.7).then(function (blob) {
+          return blob.size > 30 * 1024 ? codificar(160, 0.5) : blob;
+        }).then(function (blob) {
+          return blob.size > 30 * 1024 ? codificar(80, 0.5) : blob;
+        }).then(function (blob) {
+          if (!blob.size || blob.size > 30 * 1024) return null;
+          return ler(blob, 'readAsDataURL').then(function (url) { return url.slice(url.indexOf(',') + 1); });
+        }).catch(function () { return null; });
+      }
       return Promise.resolve().then(function () { return codificar(1600, 0.82); }).then(function (blob) {
         return blob.size > limite ? codificar(1600, 0.7) : blob;
       }).then(function (blob) {
@@ -65,8 +75,8 @@
       }).then(function (blob) {
         if (!blob.size || blob.size > limite) throw new Error('A foto reduzida ainda ultrapassa 1,5 MB. Escolha uma imagem menor.');
         return ler(blob, 'readAsDataURL').then(function (url) {
-          return { nome: fotos.nomeSeguro(arquivo.name), nomeOriginal: arquivo.name || 'foto', mimetype: 'image/jpeg',
-            tamanho: blob.size, dados_base64: url.slice(url.indexOf(',') + 1), previa: url };
+          return miniatura().then(function (mini) { return { nome: fotos.nomeSeguro(arquivo.name), nomeOriginal: arquivo.name || 'foto', mimetype: 'image/jpeg',
+            tamanho: blob.size, dados_base64: url.slice(url.indexOf(',') + 1), previa: url, miniatura_base64: mini }; });
         });
       }).finally(function () { if (imagem.close) imagem.close(); });
     });

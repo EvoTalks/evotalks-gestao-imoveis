@@ -212,12 +212,16 @@ exceder o limite, informa a espera e mantém as fotos para nova tentativa. A pla
 também aplica a cota da instalação/usuário, inclusive entre documentos diferentes.
 
 Requer as rotas do portal **POST /api/ext/chamados/:id/anexos/upload**
-(`nome`, `mimetype`, `dados_base64` sem prefixo) e
+(`nome`, `mimetype`, `dados_base64` sem prefixo e `miniatura_base64` opcional) e
 **GET /api/ext/chamados/:id/anexos/:aid/arquivo**. O portal valida novamente os tipos,
 bytes iniciais, base64 estrito, até 2 MiB decodificados e 20 uploads por chamado;
-a rota de upload aceita corpo JSON até 3 MB. Só a leitura do arquivo carrega os bytes;
-detalhes e listas devolvem metadados. As fotos do computador ficam no portal, pois
+a rota de upload aceita corpo JSON até 3 MB. Só a leitura do arquivo carrega a foto inteira;
+o detalhe devolve metadados e miniaturas; listas continuam sem bytes. As fotos do computador ficam no portal, pois
 o SDK não oferece upload de arquivo. Sem portal conectado, nenhuma foto é enviada.
+
+As fotos locais enviam também uma miniatura JPEG de até 160 px e 30 KB, incluída no detalhe do chamado.
+Abrir Editar usa essas miniaturas; fotos antigas sem miniatura mostram o nome em um quadro neutro.
+Clique para ampliar dentro do modal: só então a foto inteira é consultada, com proteção contra cliques repetidos.
 
 Provas locais: `test/fotos.test.mjs`, `test/fotos-portal.test.mjs`, helpers em
 `test/manutencao.test.mjs` e cenários `test/bancada/fotos.cenarios.mjs`, executados
