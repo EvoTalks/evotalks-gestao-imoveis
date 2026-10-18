@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prestadores</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<main class="gi-conteudo" id="gi-manutencao">
+<div class="gi-topo"><div><h1>Prestadores</h1><p class="gi-sub">Tela em preparação.</p></div><div id="gi-nav"></div></div>
+<div id="gi-erro" role="alert" hidden></div>
+<p class="gi-aviso" id="gi-modo" aria-live="polite"></p>
+</main>
+<script src="comum.js"></script>
+<script src="manutencao.js"></script>
+<script src="prestadores.js"></script>
+<script>
+GI.pronto(function () {
+  document.getElementById('gi-nav').innerHTML = GI.cabecalho('gi-prestadores'); GI.ligarNavegacao();
+  GI.manutencaoMostrarModo();
+});
+</script>
+</body>
+</html>

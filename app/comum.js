@@ -903,6 +903,8 @@
     var telas = [
       { id: 'gi-imoveis',   nome: 'Imóveis' },
       { id: 'gi-locados',   nome: 'Locados' },
+      { id: 'gi-chamados',  nome: 'Chamados' },
+      { id: 'gi-prestadores', nome: 'Prestadores' },
       { id: 'gi-campos',    nome: 'Campos' },
       { id: 'gi-historico', nome: 'Histórico' },
       { id: 'gi-config', nome: 'Configurações' }

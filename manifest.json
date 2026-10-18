@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "name": "Gerenciamento de Imóveis",
   "description": "Campos internos por imóvel (taxas, encargos, observações) que não aparecem no site, com histórico de autoria. Porte do portal de taxas do William Imóveis para dentro do EvoTalks.",
   "author": {
@@ -40,6 +40,20 @@
       "type": "string",
       "default": "imóvel",
       "help": "Usado nos textos das telas."
+    },
+    {
+      "key": "cockpitAbreChamado",
+      "label": "Permitir abrir chamado no atendimento",
+      "type": "boolean",
+      "default": false,
+      "help": "Habilita a abertura de chamados pelo cockpit, sempre após confirmação. Desligado permite apenas consultar."
+    },
+    {
+      "key": "modoDemonstracao",
+      "label": "Demonstração de manutenção",
+      "type": "boolean",
+      "default": false,
+      "help": "Exibe dados sintéticos de manutenção sem rede nem gravação no portal. Desative para consultar dados reais."
     }
   ],
   "contributions": [
@@ -78,6 +92,24 @@
           }
         },
         {
+          "id": "gi-chamados",
+          "title": "Chamados",
+          "icon": "icon-far-list",
+          "url": "app/chamados.html",
+          "presentation": {
+            "mode": "fullscreen"
+          }
+        },
+        {
+          "id": "gi-prestadores",
+          "title": "Prestadores",
+          "icon": "icon-far-user",
+          "url": "app/prestadores.html",
+          "presentation": {
+            "mode": "fullscreen"
+          }
+        },
+        {
           "id": "gi-campos",
           "title": "Campos",
           "icon": "icon-far-list",
@@ -105,6 +137,20 @@
           }
         }
       ]
+    },
+    {
+      "id": "gi-cockpit",
+      "type": "chatPanel",
+      "title": "Manutenção",
+      "url": "app/painel.html",
+      "icon": "app/icone-casa.svg",
+      "visibility": {
+        "userTypes": [
+          0,
+          1,
+          2
+        ]
+      }
     }
   ],
   "icon": "app/icone-casa.svg"
