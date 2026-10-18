@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { criarPortalChamados } from './portal-chamados.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,9 +29,10 @@ export function criarServidor() {
   ].map(l => ({ contrato_numero: 'DEMO-C' + l.id, garantia: 'fiador', inicio: dia(-300), valor_aluguel_centavos: 120000,
     dia_vencimento: 10, observacao: null, origem: 'manual', criada_por: 'Agente Demonstração', criada_em: new Date().toISOString(),
     atualizada_em: new Date().toISOString(), encerrada_em: null, ...l }));
+  const manutencao = criarPortalChamados({ locacoes });
   const candidatas = [{ codigo: 'DEMO-SAIDA', titulo: 'Imóvel que Saiu do Anúncio Demonstração', bairro: 'Bairro Fictício', saiu_em: new Date().toISOString() }];
   const ativa = l => !l.encerrada_em;
-  const objeto = l => ({ ...copia(l), fora_do_catalogo: !l.imovel_codigo, chamados_abertos: 0,
+  const objeto = l => ({ ...copia(l), fora_do_catalogo: !l.imovel_codigo, chamados_abertos: manutencao.contarAbertos(l.id),
     vence_em_dias: l.fim ? Math.round((Date.parse(l.fim) - Date.parse(dia(0))) / 86400000) : null });
   function registrar(l, acao, autor) {
     (historico[l.id] ||= []).push({ id: (historico[l.id]?.length || 0) + 1, autor, acao, detalhe: {}, em: new Date().toISOString() });
@@ -77,6 +79,8 @@ export function criarServidor() {
           dados = JSON.parse(texto || '{}');
         }
         const autor = req.headers['x-gi-autor'] || 'Agente Demonstração';
+        const respostaManutencao = manutencao.responder(req.method, rota, q, dados, autor);
+        if (respostaManutencao) return json(respostaManutencao.status, respostaManutencao.corpo);
         if (rota === '/info') return json(200, { ok: true, bancada: true });
         if (rota === '/campos') return json(200, { campos: [] });
         if (rota === '/preenchidos') return json(200, { preenchidos: {} });

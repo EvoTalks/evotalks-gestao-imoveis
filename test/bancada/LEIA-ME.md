@@ -79,3 +79,70 @@ Capturas ficam em `test/bancada/capturas/` e são ignoradas pelo Git:
 - `06-sem-portal.png`
 - `07-locados-escuro.png`
 - `08-modal-estreito.png`
+
+
+## Manutenção (base compartilhada M0)
+
+O manifest 0.19.0 declara `/app/chamados.html`, `/app/prestadores.html` e
+`/app/painel.html` (contribuição `gi-cockpit`). São esqueletos para os nós de telas:
+apenas cabeçalho, navegação quando aplicável e aviso do modo. Os arquivos específicos
+JS/CSS estão vazios intencionalmente. O layout completo será implementado nesses nós.
+
+`portal-chamados.mjs` implementa todas as rotas das Fatias 2 e 4 em memória e compartilha
+as locações do servidor. Há oito chamados (um de cada status, números 1001–1008),
+quatro prestadores, uma aprovação pendente e um SLA vencido. O primeiro chamado é de
+outro contato do mesmo imóvel. `chamados_abertos` nas locações tem contagem real.
+Reiniciar o servidor restaura os dados; cada servidor tem seu próprio estado.
+As recusas restauram o estado anterior da operação. Isso é uma simulação, não prova
+as transações SQL do portal verdadeiro.
+
+Convenções de URL (combináveis com `modo` e `tema`):
+
+- `?chat=8801`: contato 9901 (duas locações); `8802`: contato 9902;
+  `8803`: proprietário 9903; `8804`: atendimento sem contato; `0`: nenhum atendimento.
+  Sem parâmetro, seleciona 8801.
+- `?escrita=1`: liga `cockpitAbreChamado`. Sem ele, `false`.
+- `?demonstracao=1`: liga `modoDemonstracao`. Sem ele, `false`. Nas páginas de
+  manutenção, `GI.definirModo` não consulta `/info` e `GI.chamarPortal` recusa rede.
+  O stub também bloqueia `fetch` e `omni.http.request`. O nó do cockpit deve prover
+  os dados sintéticos da tela sem chamar o transporte. O aviso é fixo no documento.
+- `?tema=escuro`: mantém os tokens escuros existentes.
+
+SDK simulado: `chats.getSelected/get/listMine/listByQueue/getMessages/getFile/select/sendMessage`,
+`users.list` (três agentes), `session.getUser`, `contacts.get/search` e
+`on/off('omniChatSelected')`. `select` troca o atendimento e emite o evento.
+O perfil padrão é agente; `listByQueue` rejeita com `forbidden` para ele, como o SDK.
+`getMessages(chatId, {limit,before})` devolve texto e mídia com `fileRef`;
+`getFile` resolve uma imagem sintética em data URL, sem rede.
+Envios são apenas registrados em `bancada.mensagens` como `{chatId,payload}`.
+`bancada.recusarEnvio = true` simula `forbidden` da janela de 24 horas.
+`bancada.eventos`, `bancada.chamadas` e `bancada.rede` permitem verificar efeitos.
+Nenhum envio alcança instância real.
+
+Helpers públicos em `app/manutencao.js`:
+
+- `GI.chamados(filtros)`, `chamadosObter`, `chamadosCriar`, `chamadosAtualizar`,
+  `chamadosStatus(id,status,motivo)`, `chamadosNota(id,dados)`, `chamadosAnexos(id,anexos)`,
+  `chamadosPorLocacao(id,filtros)`, `chamadosPorContato(id,filtros)`,
+  `chamadosAtendimentosVinculados(contatoId)`.
+- `GI.chamadosPrestador(id,prestadorId)`, `chamadosVisita(id,dados)`,
+  `chamadosOrcamentoCriar(id,dados)`, `chamadosOrcamentoEscolher(id,orcamentoId)`,
+  `chamadosOrcamentoApagar(id,orcamentoId)`, `chamadosAprovacao(id,dados)`.
+- `GI.prestadores(filtros)`, `prestadoresCriar`, `prestadoresAtualizar`,
+  `prestadoresAtivar`, `prestadoresDesativar`, `manutencaoConfig`, `manutencaoConfigSalvar`.
+- `GI.CHAMADO_STATUS`, `CHAMADO_STATUS_CLASSES`, `CHAMADO_PRIORIDADES`,
+  `CHAMADO_PRIORIDADE_CLASSES`, `CHAMADO_CATEGORIAS`, `CHAMADO_CATEGORIA_CLASSES`.
+  Classes sem estilo na Fatia 1 (azul, cancelado, prioridade, categoria) devem ser
+  definidas pelo nó visual nos seus CSS, derivadas de tokens `--ext-*`.
+- Funções puras: `GI.chamadoNumero(numero)`, `chamadoPrazo(chamado,agora)`
+  (agora em ISO, Date ou milissegundos), `chamadoTrilha(status)` (sete objetos
+  `{status,rotulo,feito,atual,cancelado}`; cancelamento não infere status anteriores),
+  `mascaraDocumento` e `mascaraTelefone`. Retornam dados/texto, nunca HTML.
+  Todo consumidor que usa `innerHTML` continua obrigado a passar texto por `GI.escapar`.
+
+`test/manutencao.test.mjs` valida helpers, sequência, recusas com rollback,
+filtros, contatos do imóvel, vínculos, status, reabertura, orçamento escolhido,
+alçada, aprovação, visita, prestadores, configuração e SLA com relógio controlado.
+Também abre Chromium para verificar os esqueletos, o SDK, escrita desligada,
+demonstração sem rede e larguras 260/300/334 px. O teste completo de Locados continua
+em `node test/bancada/testar.mjs`.

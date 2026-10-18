@@ -9,7 +9,8 @@
   document.body.insertBefore(banner, document.body.firstChild);
   var ctx = { user: { id: 9999, name: 'Agente Demonstração', type: 2 }, config: {
     portalUrl: modo === 'local' ? '' : 'http://portal.bancada.invalid',
-    portalToken: modo === 'local' ? '' : 'bancada-sintetica', marca: 'DEMONSTRACAO', prefixoCodigo: 'DEMO-'
+    portalToken: modo === 'local' ? '' : 'bancada-sintetica', marca: 'DEMONSTRACAO', prefixoCodigo: 'DEMO-',
+    cockpitAbreChamado: params.get('escrita') === '1', modoDemonstracao: params.get('demonstracao') === '1'
   }, theme: { tokens: {} } };
   if (params.get('tema') === 'escuro') ctx.theme.tokens = {
     '--ext-color-bg': '#17191d', '--ext-color-surface': '#24272e', '--ext-color-surface-alt': '#30343d',
@@ -18,20 +19,79 @@
     '--ext-color-success': '#62ce9b', '--ext-color-error': '#ff8b8b'
   };
   function localFetch(caminho, op) {
+    if (ctx.config.modoDemonstracao) return Promise.reject(new Error('Demonstração: rede bloqueada.'));
     var url = new URL(caminho, origem);
     if (url.origin !== origem) return Promise.reject(new Error('Rede externa bloqueada na bancada.'));
+    window.bancada.rede.push(url.pathname + url.search);
     return originalFetch(url.href, op);
   }
   window.fetch = localFetch;
-  var armazenamento = {};
-  window.bancada = { chamadas: [], gravacoesStorage: 0 };
+  var armazenamento = {}, assinantes = {};
+  var contatos = [
+    { id: 9901, name: 'Locatário Demonstração Um', phone: '00000000001', document: '00000000000', email: 'um@example.invalid' },
+    { id: 9902, name: 'Locatário Demonstração Dois', phone: '00000000002', document: '00000000000', email: 'dois@example.invalid' },
+    { id: 9903, name: 'Proprietário Demonstração', phone: '00000000000', document: '00000000000' },
+    { id: 9904, name: 'Fiador Demonstração', phone: '00000000000', document: '00000000000' }
+  ];
+  var usuarios = [ctx.user, { id: 9998, name: 'Agente Demonstração Dois', type: 2 }, { id: 9997, name: 'Agente Demonstração Três', type: 2 }];
+  var chats = [8801, 8802, 8803, 8804].map(function (n, i) { return {
+    id: n, contactId: i === 3 ? null : 9901 + i, userId: i === 2 ? 9998 : 9999, queueId: i === 2 ? 92 : 91,
+    status: 'active', sessionLocked: false, channel: 'WhatsApp', protocol: 'DEMO-P' + n,
+    startedAt: '2026-10-17T12:00:00.000Z', contact: contatos[i], unread: 0
+  }; });
+  var selecionado = params.has('chat') ? Number(params.get('chat')) : 8801;
+  function copia(v) { return JSON.parse(JSON.stringify(v)); }
+  function normalizar(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function falhar(code, mensagem) { var e = new Error(mensagem); e.code = code; return Promise.reject(e); }
+  function chat(n) { return chats.filter(function (c) { return c.id === Number(n); })[0]; }
+  function emitir(nome, dados) {
+    window.bancada.eventos.push({ nome: nome, dados: copia(dados) });
+    (assinantes[nome] || []).slice().forEach(function (fn) { fn(copia(dados)); });
+  }
+  window.bancada = { chamadas: [], gravacoesStorage: 0, mensagens: [], eventos: [], rede: [] };
   window.omni = {
+    on: function (nome, fn) { (assinantes[nome] || (assinantes[nome] = [])).push(fn); return function () { window.omni.off(nome, fn); }; },
+    off: function (nome, fn) { assinantes[nome] = fn ? (assinantes[nome] || []).filter(function (f) { return f !== fn; }) : []; },
+    users: { list: function () { return Promise.resolve(copia(usuarios)); } },
+    chats: {
+      getSelected: function () { return Promise.resolve(copia(chat(selecionado) || null)); },
+      get: function (n) { return chat(n) ? Promise.resolve(copia(chat(n))) : falhar('not_found', 'Atendimento não encontrado.'); },
+      listMine: function () { return Promise.resolve(copia(chats.filter(function (c) { return c.userId === ctx.user.id; }))); },
+      listByQueue: function (queueId) {
+        if (ctx.user.type === 2) return falhar('forbidden', 'A listagem por fila exige supervisor.');
+        return Promise.resolve(copia(chats.filter(function (c) { return c.queueId === Number(queueId); })));
+      },
+      select: function (n) {
+        if (!chat(n)) return falhar('not_found', 'Atendimento não encontrado.');
+        selecionado = Number(n); emitir('omniChatSelected', chat(n)); return Promise.resolve({ selected: true });
+      },
+      getMessages: function (n, opts) {
+        if (!chat(n)) return falhar('not_found', 'Atendimento não encontrado.');
+        var msgs = [ { id: 'DEMO-M2', chatId: Number(n), direction: 'in', text: '', at: '2026-10-17T12:02:00.000Z',
+          fileRef: 'DEMO-FOTO-' + n, fileName: 'foto-demonstracao.svg', mimetype: 'image/svg+xml', fileSize: 100 },
+          { id: 'DEMO-M1', chatId: Number(n), direction: 'in', text: 'Relato sintético de manutenção.', at: '2026-10-17T12:01:00.000Z', fileRef: null } ];
+        if (opts && opts.before) msgs = msgs.slice(msgs.findIndex(function (m) { return m.id === opts.before; }) + 1);
+        return Promise.resolve(msgs.slice(0, opts && opts.limit || 50));
+      },
+      getFile: function (ref) {
+        if (!/^DEMO-FOTO-880[1-4]$/.test(String(ref))) return falhar('not_found', 'Arquivo não encontrado.');
+        return Promise.resolve({ url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="60"><text x="4" y="30">DEMO</text></svg>'), mimetype: 'image/svg+xml', name: 'foto-demonstracao.svg', size: 100 });
+      },
+      sendMessage: function (n, payload) {
+        if (!chat(n)) return falhar('not_found', 'Atendimento não encontrado.');
+        if (window.bancada.recusarEnvio) return falhar('forbidden', 'Janela de 24 horas encerrada.');
+        if (!payload || !payload.text && !payload.fileUrl) return falhar('bad_args', 'Mensagem vazia.');
+        window.bancada.mensagens.push({ chatId: Number(n), payload: copia(payload) });
+        return Promise.resolve({ sent: true, id: 'DEMO-ENVIO-' + window.bancada.mensagens.length });
+      }
+    },
     ready: function (fn) { Promise.resolve().then(function () { fn(ctx); }); },
     session: { get: function () { return Promise.resolve(ctx); },
       getUser: function () { return Promise.resolve(ctx.user); },
       getPermissions: function () { return Promise.resolve({ isAdmin: false, isSupervisor: false }); },
       getTheme: function () { return Promise.resolve(ctx.theme); } },
     http: { request: function (op) {
+      if (ctx.config.modoDemonstracao) return Promise.reject(new Error('Demonstração: HTTP bloqueado.'));
       var url = new URL(op.url);
       if (url.origin !== 'http://portal.bancada.invalid') return Promise.reject(new Error('Portal externo bloqueado na bancada.'));
       window.bancada.chamadas.push({ caminho: url.pathname + url.search, method: op.method, body: op.body });
@@ -40,8 +100,12 @@
         return r.text().then(function (body) { return { status: r.status, body: body }; });
       });
     } },
-    contacts: { search: function (termo) { return localFetch('/bancada/sdk/contacts?termo=' + encodeURIComponent(termo)).then(function (r) { return r.json(); }); } },
+    contacts: {
+      get: function (n) { var c = contatos.filter(function (c) { return c.id === Number(n); })[0]; return c ? Promise.resolve(copia(c)) : falhar('not_found', 'Contato não encontrado.'); },
+      search: function (termo) { return Promise.resolve(copia(contatos.filter(function (c) { return normalizar(c.name + ' ' + c.phone + ' ' + (c.email || '')).indexOf(normalizar(termo)) !== -1; }))); }
+    },
     data: { request: function (recurso) {
+      if (recurso.indexOf('users') === 0) return Promise.resolve(copia(usuarios));
       if (!/^(products|users)(\?|$)/.test(recurso)) return Promise.reject(new Error('Recurso não simulado.'));
       return localFetch('/bancada/sdk/' + recurso).then(function (r) { return r.json(); });
     } },
@@ -51,7 +115,7 @@
     ui: { resize: function () { return Promise.resolve(); }, toast: function (msg) {
       banner.textContent = 'BANCADA LOCAL · ' + msg;
     }, openContribution: function (id) {
-      var telas = { 'gi-imoveis': 'imoveis', 'gi-locados': 'locados', 'gi-campos': 'campos', 'gi-historico': 'historico', 'gi-config': 'config' };
+      var telas = { 'gi-imoveis': 'imoveis', 'gi-locados': 'locados', 'gi-campos': 'campos', 'gi-historico': 'historico', 'gi-config': 'config', 'gi-chamados': 'chamados', 'gi-prestadores': 'prestadores', 'gi-cockpit': 'painel' };
       if (!telas[id]) return Promise.reject(new Error('Tela não simulada.'));
       location.href = '/app/' + telas[id] + '.html' + location.search;
       return Promise.resolve();
