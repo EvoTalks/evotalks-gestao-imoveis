@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prestadores</title>
+<link rel="stylesheet" href="estilo.css?v=0.20.0">
+<link rel="stylesheet" href="chamados.css?v=0.20.0">
+</head>
+<body>
+<main class="gi-conteudo" id="gi-prestadores">
+<div class="gi-topo"><div><h1>Prestadores</h1><p class="gi-sub" id="gi-resumo">carregando prestadores…</p></div><div id="gi-nav"></div></div>
+<div class="gi-erro" id="gi-erro" role="alert"></div>
+<div class="gi-aviso" id="gi-sem-portal" hidden>Manutenção exige o portal conectado. Configure a conexão para consultar ou cadastrar prestadores.</div>
+<section id="gi-lista">
+  <div class="gi-barra">
+    <div class="gi-campo gi-flex"><label for="f-busca">Buscar por nome, telefone ou e-mail</label><input type="search" id="f-busca" placeholder="nome ou contato"></div>
+    <div class="gi-campo"><label for="f-categoria">Categoria</label><select id="f-categoria"><option value="">todas</option></select></div>
+    <div class="gi-campo"><label for="f-ativos">Status</label><select id="f-ativos"><option value="1">Ativos</option><option value="">todos</option></select></div>
+    <div class="gi-campo"><label for="f-porpagina">Por página</label><select id="f-porpagina"><option>25</option><option>50</option><option>100</option></select></div>
+    <button class="btn btn-primario" type="button" id="b-buscar">Buscar</button><button class="btn" type="button" id="b-limpar">Limpar</button>
+  </div>
+  <div class="gi-barra gi-barra-acoes"><span class="gi-pequeno gi-mudo">Cadastro da imobiliária. Desativar preserva os vínculos e o histórico.</span><button class="btn btn-primario" type="button" id="b-novo">Novo prestador</button></div>
+  <div class="gi-tabela-rolagem"><table><thead><tr><th>Prestador</th><th>Categorias</th><th>Telefone</th><th>E-mail</th><th>Status</th><th>Funções</th></tr></thead><tbody id="gi-corpo"><tr><td colspan="6">carregando…</td></tr></tbody></table></div>
+  <div class="gi-rodape"><button class="btn btn-slim" type="button" id="b-anterior">&larr; anterior</button><span class="gi-pagina-atual" id="gi-pagina">1</span><button class="btn btn-slim" type="button" id="b-proxima">próxima &rarr;</button><span class="gi-pequeno gi-mudo" id="gi-total"></span></div>
+</section>
+<p class="gi-nota" id="gi-modo" aria-live="polite"></p>
+</main>
+<script src="comum.js?v=0.20.0"></script>
+<script src="manutencao.js?v=0.20.0"></script>
+<script src="prestadores.js?v=0.20.0"></script>
+</body>
+</html>

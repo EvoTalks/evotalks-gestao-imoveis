@@ -128,8 +128,8 @@ tbody tr:hover { background: var(--gi-acao-suave); }
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   font-size: 12.5px; padding: 6px 12px; border-radius: 20px;
 }
-.gi-estado-pendente { background: rgba(240, 180, 41, .16); color: #8a6100; }
-.gi-estado-ok       { background: rgba(34, 181, 115, .16); color: #10714a; }
+.gi-estado-pendente { background: color-mix(in srgb, var(--gi-pendente) 16%, var(--gi-surface)); color: color-mix(in srgb, var(--gi-texto) 85%, var(--gi-pendente)); }
+.gi-estado-ok       { background: color-mix(in srgb, var(--gi-ok) 16%, var(--gi-surface)); color: color-mix(in srgb, var(--gi-texto) 85%, var(--gi-ok)); }
 .gi-estado-off      { background: var(--gi-acao-suave); color: var(--gi-mudo); }
 .gi-ponto-off       { background: var(--gi-mudo); opacity: .5; }
 
@@ -244,6 +244,30 @@ body.gi-com-modal > *:not(.gi-modal-fundo) {
   background: var(--gi-campo-bg); border-radius: var(--gi-raio-p); padding: 12px 14px;
 }
 .gi-modal-imovel-titulo { font-size: 14px; font-weight: 500; line-height: 1.4; }
+
+/* Locações reutilizam as superfícies e os tokens recebidos da instância. */
+[hidden] { display: none !important; }
+.gi-flex { flex: 1 1 240px; }
+.gi-estado-escuro { background: var(--gi-acao); color: var(--gi-acao-texto); }
+.gi-ponto-escuro { background: var(--gi-acao-texto); }
+.gi-disponivel { background: color-mix(in srgb, var(--gi-ok) 16%, var(--gi-surface)); color: var(--gi-texto); }
+.gi-aviso {
+  margin: 10px 0 14px; padding: 10px 14px; border-radius: var(--gi-raio-p);
+  background: color-mix(in srgb, var(--gi-pendente) 16%, var(--gi-surface));
+  color: var(--gi-texto); font-size: 12.5px; line-height: 1.5;
+}
+.gi-secao { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 18px 0 8px; }
+.gi-secao strong { font-size: 13.5px; }
+.gi-campo-caixa--todo { grid-column: 1 / -1; }
+.gi-prazo--warn { color: var(--ext-color-warning, var(--gi-pendente)); font-weight: 600; }
+.gi-prazo--erro { color: var(--gi-erro); font-weight: 600; }
+.gi-faixa { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gi-form-locacao { border: 0; margin: 0; padding: 0; min-width: 0; }
+.gi-segmentos { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 12px; }
+.gi-segmentos [aria-pressed="true"] { background: var(--gi-acao); color: var(--gi-acao-texto); }
+.gi-resultados { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; margin: 6px 0; }
+.gi-resultados .btn { text-align: left; }
+.gi-candidato { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gi-borda); }
 
 /* ----------------------------------------------------------- form de campos */
 

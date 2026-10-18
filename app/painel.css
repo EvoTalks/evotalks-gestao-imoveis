@@ -1,0 +1,65 @@
+/* Card do chat: usa os tokens da gestão e a disposição do painel TopLojas. */
+html, body { min-height: 0; height: auto; overflow-x: visible; }
+body { padding: 0; font-size: 13px; background: var(--gi-bg); }
+[hidden] { display: none !important; }
+.gi-cockpit { display: grid; gap: 10px; padding: 6px; width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.gi-cockpit * { min-width: 0; max-width: 100%; }
+.gi-cockpit p { margin: 0; }
+.gi-cockpit .gi-cartao { margin: 0; padding: 12px; border: 1px solid var(--gi-borda); box-shadow: none; }
+.panel__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.panel__header > * { grid-column: 1 / -1; }
+.panel__header .panel__name { grid-column: 1; font-size: 17px; font-weight: 700; line-height: 1.3; }
+.panel__header .button--icon { grid-column: 2; grid-row: 1; }
+.panel__context { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--gi-mudo); font-size: 11px; }
+.panel__summary { font-size: 12px; font-weight: 600; }
+.panel__updated, .panel__note { color: var(--gi-mudo); font-size: 11px; font-weight: 400; font-style: italic; }
+.panel__demo { position: sticky; top: 0; z-index: 1; font-size: 11px; font-weight: 700; background: var(--gi-campo-bg); border: 1px solid var(--gi-pendente); }
+.gi-cp-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.gi-cp-tabs button, .gi-cp-chips button { border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); background: var(--gi-campo-bg); color: var(--gi-texto); padding: 7px 5px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.gi-cp-tabs [aria-selected="true"], .gi-cp-chips [aria-pressed="true"] { background: var(--gi-acao); color: var(--gi-acao-texto); border-color: var(--gi-acao); }
+.panel__content { display: grid; gap: 10px; }
+.gi-cockpit .btn { display: inline-flex; justify-content: center; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; padding: 8px; white-space: normal; }
+.gi-cockpit .button--icon { width: 28px; height: 28px; padding: 2px; font-size: 18px; background: transparent; color: var(--gi-mudo); }
+.gi-cockpit button:focus-visible, .gi-cockpit summary:focus-visible, .gi-cockpit input:focus-visible, .gi-cockpit textarea:focus-visible, .gi-cockpit select:focus-visible { outline: 2px solid var(--gi-acao); outline-offset: 2px; }
+.gi-cp-pill { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 3px 5px; border-radius: 4px; background: var(--gi-campo-bg); color: var(--gi-texto); }
+.gi-cp-status--orcamento, .gi-cp-status--aprovacao { color: var(--gi-texto); border-inline-start: 3px solid var(--gi-pendente); }
+.gi-cp-status--agendado, .gi-cp-status--execucao { border-inline-start: 3px solid var(--ext-color-info, var(--gi-acao)); }
+.gi-cp-status--concluido { border-inline-start: 3px solid var(--gi-ok); }
+.gi-cp-acc { border-radius: var(--gi-raio); border: 1px solid var(--gi-borda); border-left: 3px solid var(--gi-borda); background: var(--gi-surface); }
+.gi-cp-acc[open] { border-left-color: var(--gi-acao); }
+.gi-cp-acc.gi-cp-urgente { border-left-color: var(--gi-pendente); }
+.gi-cp-acc summary { cursor: pointer; padding: 10px; list-style: none; }
+.gi-cp-acc summary::-webkit-details-marker { display: none; }
+.gi-cp-acc summary::after { content: '⌄'; display: block; text-align: right; line-height: 10px; color: var(--gi-mudo); }
+.gi-cp-acc[open] summary::after { content: '⌃'; }
+.gi-cp-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px; }
+.gi-cp-titulo { display: block; margin-top: 7px; font-size: 13px; font-weight: 600; }
+.gi-cp-meta { display: block; color: var(--gi-mudo); font-size: 11px; margin-top: 4px; }
+.gi-cp-detalhe { padding: 0 10px 10px; }
+.gi-cp-kv { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 8px; border-bottom: 1px solid var(--gi-borda); padding: 7px 0; font-size: 12px; }
+.gi-cp-kv > span:first-child { color: var(--gi-mudo); }
+.gi-cp-kv > span:last-child { text-align: right; font-weight: 600; white-space: pre-wrap; }
+.gi-cp-trilha { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin: 4px 0; }
+.gi-cp-trilha i { height: 4px; background: var(--gi-borda); border-radius: 2px; }
+.gi-cp-trilha .feito { background: var(--gi-mudo); }
+.gi-cp-trilha .atual { background: var(--gi-acao); }
+.gi-cp-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.gi-cp-acoes .btn { flex: 1 1 80px; }
+.gi-cp-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.gi-cp-chips button { font-weight: 500; }
+.gi-cp-form { display: grid; gap: 12px; }
+.gi-cp-form label, #cp-selecao label, .gi-cp-rotulo { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.gi-cp-form input:not([type="checkbox"]), .gi-cp-form textarea, #cp-imovel { width: 100%; padding: 8px; font-size: 13px; border: 1px solid var(--gi-borda); }
+.gi-cp-form textarea { min-height: 80px; }
+.gi-cp-form fieldset { border: 0; padding: 0; margin: 0; }
+.gi-cp-form legend { font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+.gi-cp-check { display: flex !important; gap: 6px; align-items: flex-start; margin-top: 6px; }
+.gi-cp-check input { flex-shrink: 0; margin-top: 2px; }
+.gi-cockpit h2 { font-size: 15px; margin: 0 0 8px; }
+.gi-cp-sucesso { border-left: 3px solid var(--gi-ok) !important; }
+#cp-recado { color: var(--gi-mudo); font-size: 12px; }
+#cp-recado:empty { display: none; }
+.state { text-align: center; color: var(--gi-mudo); line-height: 1.5; padding: 20px 12px !important; }
+/* Em 260 px, preserve palavras nos controles e empilhe ações quando necessário. */
+.gi-cp-tabs button { overflow-wrap: normal; padding-inline: 2px; }
+.gi-cp-acoes .btn { flex-basis: 110px; overflow-wrap: normal; }

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manutenção</title>
+<link rel="stylesheet" href="estilo.css?v=0.20.0">
+<link rel="stylesheet" href="painel.css?v=0.20.0">
+</head>
+<body>
+<main class="gi-cockpit panel" id="gi-cockpit" aria-label="Manutenção do imóvel">
+  <p class="gi-aviso panel__demo" id="cp-demo" role="status" hidden>DEMONSTRAÇÃO · dados sintéticos · sem rede</p>
+  <header class="gi-cartao panel__header">
+    <h1 class="panel__name" id="cp-nome">Contato do atendimento</h1>
+    <button type="button" class="btn button--icon" id="cp-atualizar" aria-label="Atualizar consulta" title="Atualizar consulta">⟳</button>
+    <p class="panel__context" id="cp-contexto"></p>
+    <p class="panel__summary" id="cp-resumo"></p>
+    <div id="cp-selecao" hidden><label for="cp-imovel">Imóvel locado</label><select id="cp-imovel"></select></div>
+  </header>
+  <nav class="gi-cp-tabs tabs" role="tablist" aria-label="Dados de manutenção" hidden id="cp-abas">
+    <button type="button" role="tab" id="cp-tab-chamados" aria-controls="cp-conteudo" aria-selected="true" data-aba="chamados">Chamados (0)</button>
+    <button type="button" role="tab" id="cp-tab-imovel" aria-controls="cp-conteudo" aria-selected="false" data-aba="imovel" tabindex="-1">Imóvel</button>
+    <button type="button" role="tab" id="cp-tab-novo" aria-controls="cp-conteudo" aria-selected="false" data-aba="novo" tabindex="-1">Novo</button>
+  </nav>
+  <section id="cp-conteudo" class="panel__content" role="tabpanel" aria-labelledby="cp-tab-chamados" aria-live="polite" aria-busy="true"><p class="gi-cartao state">Carregando…</p></section>
+  <p id="cp-recado" role="status" aria-live="polite"></p>
+  <footer class="panel__note" id="gi-modo"></footer>
+  <div id="gi-erro" role="alert" hidden></div>
+</main>
+<script src="comum.js?v=0.20.0"></script>
+<script src="manutencao.js?v=0.20.0"></script>
+<script src="painel.js?v=0.20.0"></script>
+</body>
+</html>

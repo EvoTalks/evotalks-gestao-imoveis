@@ -1,0 +1,61 @@
+/* Complementos da gestão: a mesma base do cadastro e as cores do host. */
+#gi-manutencao table { min-width: 1120px; }
+#gi-manutencao th:first-child { width: 100px; }
+#gi-manutencao td { max-width: 260px; overflow-wrap: anywhere; }
+.gi-estado-azul { color: color-mix(in srgb, var(--gi-texto) 85%, var(--ext-color-info, var(--gi-texto))); background: color-mix(in srgb, var(--ext-color-info, var(--gi-texto)) 16%, var(--gi-surface)); }
+.gi-estado-cancelado { color: var(--gi-mudo); background: var(--gi-campo-bg); }
+.gi-estado .gi-ponto { background: currentColor; width: 8px; height: 8px; }
+.gi-estado-azul .gi-ponto { background: var(--ext-color-info, var(--gi-texto)); }
+.gi-prio { display: inline-block; border-radius: var(--gi-raio-p); padding: 5px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.gi-prio--emerg { color: var(--gi-erro); background: color-mix(in srgb, var(--gi-erro) 10%, var(--gi-surface)); }
+.gi-prio--alta { color: var(--gi-texto); background: color-mix(in srgb, var(--gi-pendente) 18%, var(--gi-surface)); }
+.gi-prio--normal { color: var(--gi-mudo); background: var(--gi-campo-bg); }
+.gi-form-chamado { border: 0; margin: 0; padding: 0; min-width: 0; }
+.gi-form-chamado .gi-secao:first-child { margin-top: 0; }
+.gi-form-chamado input, .gi-form-chamado select, .gi-form-chamado textarea { max-width: 100%; min-width: 0; }
+.gi-form-chamado .gi-grade-modal { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.gi-form-chamado fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.gi-atend { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); background: var(--gi-surface); overflow-wrap: anywhere; }
+.gi-atend input { flex: 0 0 auto; margin-top: 3px; }
+.gi-atend:has(input:checked) { border-color: var(--gi-acao); background: var(--gi-campo-bg); }
+.gi-lista-atend { display: grid; gap: 6px; margin-top: 8px; }
+.gi-atend__corpo { min-width: 0; flex: 1; }
+.gi-atend__t { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.gi-trilha { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; list-style: none; padding: 0; margin: 10px 0 16px; }
+.gi-trilha li { border-top: 4px solid var(--gi-borda); padding-top: 7px; font-size: 11px; color: var(--gi-mudo); }
+.gi-trilha .gi-trilha-feito { border-color: var(--gi-acao); }
+.gi-trilha .gi-trilha-atual { border-color: var(--gi-pendente); color: var(--gi-texto); font-weight: 700; }
+.gi-historico { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--gi-borda); }
+.gi-historico li { position: relative; padding: 0 0 14px 12px; overflow-wrap: anywhere; }
+.gi-historico li::before { content: ''; position: absolute; left: -19px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--gi-mudo); }
+.gi-historico p { margin: 4px 0; white-space: pre-wrap; }
+.gi-confirmacao { border: 1px solid var(--gi-borda); background: var(--gi-campo-bg); padding: 14px; border-radius: var(--gi-raio); margin: 12px 0; }
+.gi-confirmacao p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin: 8px 0 12px; }
+.gi-chamado-msg { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.gi-chamado-msg[role="alert"] { color: var(--gi-erro); }
+.gi-fotos { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.gi-foto { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; max-width: 100%; }
+.gi-foto img { width: 90px; height: 70px; object-fit: contain; border: 1px solid var(--gi-borda); border-radius: var(--gi-raio-p); }
+.gi-nota-check { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 12px; }
+.gi-modal:has(.gi-form-chamado) { overflow-wrap: anywhere; }
+.gi-modal:has(.gi-form-chamado) .gi-modal-rodape { flex-wrap: wrap; }
+.gi-modal:has(.gi-form-chamado) .gi-modal-recado { flex: 1 1 180px; }
+.gi-modal:has(.gi-form-chamado) .gi-modal-recado:empty { display: none; }
+.gi-modal:has(.gi-form-chamado) .gi-modal-rodape .btn { flex-shrink: 0; white-space: nowrap; }
+.gi-fatia4 { border: 0; padding: 0; margin: 0; min-width: 0; }
+.gi-fatia4 table { min-width: 540px; }
+.gi-fatia4 td { max-width: 230px; overflow-wrap: anywhere; }
+.gi-fatia4 .gi-barra { margin-top: 10px; flex-wrap: wrap; }
+.gi-fatia4 > .btn { margin-top: 8px; }
+.gi-form-chamado #c-sla { overflow-wrap: anywhere; }
+#gi-prestadores td { max-width: 320px; overflow-wrap: anywhere; }
+.gi-prestador-categorias { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 0; }
+.gi-prestador-categorias label { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--gi-acao); outline-offset: 2px; }
+@media (max-width: 620px) {
+  .gi-modal:has(.gi-form-chamado) .gi-modal-rodape .btn { padding-inline: 14px; }
+  .gi-form-chamado .gi-grade-modal { grid-template-columns: minmax(0, 1fr); }
+  .gi-trilha { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 10px; }
+  .gi-atend { flex-wrap: wrap; }
+  #gi-manutencao .gi-barra .gi-campo { min-width: 0; max-width: 100%; }
+}

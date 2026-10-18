@@ -1,0 +1,144 @@
+<meta charset="utf-8">
+<link rel="stylesheet" href="estilo.css?v=0.20.0">
+
+<div class="gi-topo">
+  <div><h1>Imóveis locados</h1><p class="gi-sub" id="gi-resumo">carregando locações…</p></div>
+  <div id="gi-nav"></div>
+</div>
+<div class="gi-erro" id="gi-erro" role="alert"></div>
+<div class="gi-aviso" id="gi-sem-portal" hidden>Locados exigem o portal conectado. Configure a conexão na instalação e abra a tela novamente.</div>
+<section>
+  <div class="gi-barra">
+    <div class="gi-campo gi-flex"><label for="f-busca">Buscar por imóvel, locatário, proprietário ou contrato</label><input id="f-busca" type="search" placeholder="código, nome ou contrato"></div>
+    <div class="gi-campo"><label for="f-contrato">Contrato</label><select id="f-contrato"><option value="ativas">Vigentes</option><option value="vencendo">Vencendo em 60 dias</option><option value="encerradas">Encerrados</option><option value="todas">todos</option></select></div>
+    <div class="gi-campo"><label for="f-origem">Origem</label><select id="f-origem"><option value="">todas</option><option value="manual">Manual</option><option value="imogestao">Imogestão</option></select></div>
+    <div class="gi-campo"><label for="f-porpagina">Por página</label><select id="f-porpagina"><option>30</option><option>50</option><option>100</option></select></div>
+    <button class="btn btn-primario" id="b-buscar" type="button">Buscar</button><button class="btn" id="b-limpar" type="button">Limpar</button>
+  </div>
+  <div class="gi-barra gi-barra-acoes"><span class="gi-mudo gi-pequeno">Cadastro da própria imobiliária. A coluna Origem mostra de onde veio cada locação.</span><button class="btn btn-primario" id="b-novo" type="button">Novo locado</button></div>
+  <div class="gi-aviso gi-faixa" id="gi-candidatas" hidden><span id="gi-candidatas-texto"></span><button class="btn btn-slim" id="b-candidatas" type="button">Ver imóveis</button></div>
+  <div class="gi-tabela-rolagem"><table><thead><tr><th>Imóvel</th><th>Locatário</th><th>Proprietário</th><th>Contrato</th><th>Vigência</th><th class="gi-direita">Aluguel</th><th>Origem</th><th>Chamados</th><th class="gi-direita">Funções</th></tr></thead><tbody id="gi-corpo"><tr><td colspan="9">carregando…</td></tr></tbody></table></div>
+  <div class="gi-rodape"><button class="btn btn-slim" id="b-anterior" type="button">&larr; anterior</button><span class="gi-pagina-atual" id="gi-pagina">1</span><button class="btn btn-slim" id="b-proxima" type="button">próxima &rarr;</button><span class="gi-pequeno gi-mudo" id="gi-total"></span></div>
+</section>
+<p class="gi-nota"><span id="gi-modo">verificando conexão…</span></p>
+<script src="comum.js?v=0.20.0"></script>
+<script src="locacao.js?v=0.20.0"></script>
+<script src="manutencao.js?v=0.20.0"></script>
+<script>
+(function () {
+  'use strict';
+  var el = function (id) { return document.getElementById(id); }, e = GI.escapar;
+  var pagina = 1, geracao = 0, candidatas = [], total = 0;
+  // Só aceita o formato do contrato: o que vier diferente não entra no HTML.
+  function data(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) ? String(d).split('-').reverse().join('/') : '—'; }
+  function pessoas(l, papel) {
+    var cs = (l.contatos || []).filter(function (c) { return c.papel === papel; });
+    return cs.length ? cs.map(function (c) { return e(c.nome) + (papel === 'locatario' && c.telefone ? '<div class="gi-ajuda">' + e(c.telefone) + '</div>' : ''); }).join('<br>') : '—';
+  }
+  function prazo(l) {
+    if (l.encerrada_em) return '<span class="gi-chip">Encerrado</span>';
+    // Número de verdade ou nada: o valor cru nunca é concatenado no HTML.
+    var dias = Number(l.vence_em_dias);
+    if (l.vence_em_dias === null || l.vence_em_dias === undefined || !Number.isFinite(dias)) return '';
+    return '<span class="' + (dias < 0 ? 'gi-prazo--erro' : dias <= 60 ? 'gi-prazo--warn' : '') + '">' +
+      (dias < 0 ? 'Vencido há ' + Math.abs(dias) + ' ' + GI.plural(Math.abs(dias), 'dia', 'dias') : 'Vence em ' + dias + ' ' + GI.plural(dias, 'dia', 'dias')) + '</span>';
+  }
+  function carregar() {
+    if (GI.modo !== 'portal') return Promise.resolve();
+    var atual = ++geracao;
+    el('gi-erro').style.display = 'none';
+    el('gi-corpo').innerHTML = '<tr><td colspan="9">buscando locações…</td></tr>';
+    return GI.locacoes({ busca: el('f-busca').value.trim(), contrato: el('f-contrato').value,
+      origem: el('f-origem').value, pagina: pagina, por_pagina: el('f-porpagina').value }).then(function (r) {
+      if (atual !== geracao) return;
+      total = r.total;
+      el('gi-resumo').textContent = r.resumo.ativas + ' ' + GI.plural(r.resumo.ativas, 'imóvel locado', 'imóveis locados') + ' · ' + r.resumo.vencendo_60d + ' ' + GI.plural(r.resumo.vencendo_60d, 'contrato vence', 'contratos vencem') + ' em 60 dias';
+      el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = r.rows.length + ' nesta página · ' + total + ' no total';
+      el('b-anterior').disabled = pagina <= 1;
+      el('b-proxima').disabled = pagina * r.pageSize >= total;
+      el('gi-corpo').innerHTML = r.rows.length ? r.rows.map(function (l) {
+        return '<tr><td>' + e(l.imovel_titulo) + '<div class="gi-ajuda">' + (l.imovel_codigo ? 'cód. ' + e(GI.codigoCurto(l.imovel_codigo)) : 'fora do catálogo') + '</div></td>' +
+          '<td>' + pessoas(l, 'locatario') + '</td><td>' + pessoas(l, 'proprietario') + '</td>' +
+          '<td><strong>' + e(l.contrato_numero || '—') + '</strong><div class="gi-ajuda">' + e(GI.GARANTIAS[l.garantia] || '') + '</div></td>' +
+          '<td class="gi-nowrap">' + data(l.inicio) + ' a ' + data(l.fim) + '<div class="gi-ajuda">' + prazo(l) + '</div></td>' +
+          '<td class="gi-direita gi-nowrap">' + (l.valor_aluguel_centavos == null ? '—' : GI.dinheiro(l.valor_aluguel_centavos)) + '</td>' +
+          '<td><span class="gi-chip">' + (l.origem === 'imogestao' ? 'Imogestão' : 'Manual') + '</span></td><td><span class="gi-mudo gi-pequeno">nenhum</span></td>' +
+          '<td><div class="gi-acoes"><button type="button" class="btn btn-slim btn-icone" title="' + (l.encerrada_em ? 'Consultar' : 'Editar') + '" aria-label="' + (l.encerrada_em ? 'Consultar' : 'Editar') + '" data-editar="' + e(l.id) + '">' + GI.iconeLocacao(l.encerrada_em ? 'ver' : 'editar') + '</button>' +
+          (!l.encerrada_em ? '<button type="button" class="btn btn-slim btn-icone" title="Encerrar locação e devolver ao catálogo" aria-label="Encerrar locação" data-encerrar="' + e(l.id) + '">' + GI.iconeLocacao('encerrar') + '</button>' : '') + '</div></td></tr>';
+      }).join('') : '<tr><td colspan="9"><div class="gi-vazio">Nenhuma locação com esses filtros.</div></td></tr>';
+      Array.prototype.forEach.call(el('gi-corpo').querySelectorAll('[data-editar]'), function (b) {
+        b.onclick = function () { GI.editarLocacao(b.getAttribute('data-editar')).then(atualizarAposGravar).catch(GI.erroFatal); };
+      });
+      Array.prototype.forEach.call(el('gi-corpo').querySelectorAll('[data-encerrar]'), function (b) {
+        b.onclick = function () { GI.encerrarLocacao(b.getAttribute('data-encerrar')).then(atualizarAposGravar).catch(GI.erroFatal); };
+      });
+      GI.ajustarAltura();
+    }).catch(function (err) {
+      if (atual !== geracao) return;
+      el('gi-corpo').innerHTML = '<tr><td colspan="9">Não foi possível carregar. Tente Buscar novamente.</td></tr>';
+      GI.erroFatal(err);
+    });
+  }
+  function carregarCandidatas() {
+    return GI.locacoesCandidatas(60).then(function (r) {
+      candidatas = r.rows;
+      el('gi-candidatas').hidden = !r.total;
+      el('b-candidatas').disabled = !r.total;
+      el('gi-candidatas-texto').textContent = r.total + ' ' + GI.plural(r.total, 'imóvel de locação saiu', 'imóveis de locação saíram') + ' do anúncio nos últimos 60 dias';
+    }).catch(function (err) {
+      el('gi-candidatas').hidden = false;
+      el('gi-candidatas-texto').textContent = 'Não foi possível consultar os imóveis que saíram do anúncio: ' + err.message;
+      el('b-candidatas').disabled = true;
+    });
+  }
+  function atualizarAposGravar(r) {
+    if (!r) return;
+    GI.aviso('Locação gravada.', 'success');
+    return Promise.all([carregar(), carregarCandidatas()]);
+  }
+  function verCandidatas() {
+    // Selecionar fecha a lista antes de abrir outro modal, sem sobrepor diálogos.
+    var escolhida = null;
+    var escolha = document.createElement('div');
+    escolha.className = 'gi-resultados';
+    escolha.innerHTML = candidatas.map(function (p, i) {
+      return '<div class="gi-candidato"><span>' + e(p.titulo) + '<div class="gi-ajuda">' + e(p.codigo) + ' · saiu em ' + e(GI.dataHora(p.saiu_em)) + '</div></span>' +
+        '<button class="btn btn-slim" type="button" data-candidata="' + i + '">Marcar como locado</button></div>';
+    }).join('');
+    GI.modal({ titulo: 'Imóveis que saíram do anúncio', corpo: escolha, rotuloOk: 'Marcar como locado',
+      aoAbrir: function (caixa) {
+        Array.prototype.forEach.call(caixa.querySelectorAll('[data-candidata]'), function (b) {
+          b.onclick = function () { escolhida = candidatas[Number(b.getAttribute('data-candidata'))]; caixa.parentNode.querySelector('[data-ok]').click(); };
+        });
+      }, aoConfirmar: function () {
+        if (!escolhida) throw new Error('Escolha um imóvel da lista.');
+        return escolhida;
+      }
+    }).then(function (p) {
+      if (!p) return null;
+      return GI.modalLocacao({ imovel: { internalcode: p.codigo, name: p.titulo, category: ' >  > ' + (p.bairro || '') } });
+    }).then(atualizarAposGravar).catch(GI.erroFatal);
+  }
+  GI.pronto(function () {
+    el('gi-nav').innerHTML = GI.cabecalho('gi-locados'); GI.ligarNavegacao();
+    if (GI.modo !== 'portal') {
+      el('gi-sem-portal').hidden = false;
+      el('gi-resumo').textContent = 'Locados exigem o portal conectado';
+      el('gi-corpo').innerHTML = '<tr><td colspan="9">Locados exigem o portal conectado.</td></tr>';
+      Array.prototype.forEach.call(document.querySelectorAll('section input, section select, section button'), function (b) { b.disabled = true; });
+      return;
+    }
+    el('b-buscar').onclick = function () { pagina = 1; carregar(); };
+    el('f-busca').onkeydown = function (ev) { if (ev.key === 'Enter') el('b-buscar').click(); };
+    el('b-limpar').onclick = function () {
+      el('f-busca').value = ''; el('f-contrato').value = 'ativas'; el('f-origem').value = ''; el('f-porpagina').value = '30'; pagina = 1; carregar();
+    };
+    el('f-porpagina').onchange = function () { pagina = 1; carregar(); };
+    el('b-anterior').onclick = function () { if (pagina > 1) { pagina--; carregar(); } };
+    el('b-proxima').onclick = function () { if (pagina * Number(el('f-porpagina').value) < total) { pagina++; carregar(); } };
+    el('b-novo').onclick = function () { GI.modalLocacao().then(atualizarAposGravar).catch(GI.erroFatal); };
+    el('b-candidatas').onclick = verCandidatas;
+    return Promise.all([carregar(), carregarCandidatas()]);
+  });
+})();
+</script>
