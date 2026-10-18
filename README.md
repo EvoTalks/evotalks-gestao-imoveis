@@ -1,8 +1,8 @@
 # Gerenciamento de Imóveis — extensão do EvoTalks
 
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
-um menu superior **Gerenciamento de Imóveis** com três telas — **Imóveis**, **Campos** e
-**Histórico**.
+um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Locados**, **Campos**,
+**Histórico** e **Configurações**.
 
 Registra, por imóvel, informações que **não aparecem no site** (taxas, IPTU, encargos, observações
 da administração) e que precisam chegar a quem atende.
@@ -10,6 +10,7 @@ da administração) e que precisam chegar a quem atende.
 | No portal (Docker + Postgres + n8n) | Aqui (extensão) |
 |---|---|
 | `/imoveis` + `/imovel/:codigo` | tela **Imóveis** — lista, filtros, 🟢/🟡 e o formulário de lançamento |
+| `/api/ext/locacoes` | tela **Locados** — banco de locações, contatos, contratos, vigência e encerramento |
 | `/campos` | tela **Campos** — os cinco tipos, recorrência padrão, ativar/desativar/apagar |
 | `/historico` | tela **Histórico** — quem, quando, de → para, com filtros |
 | `/consultas` | **removida na 0.3.0** — o que a IA consulta se vê no MCP do portal, não aqui |
@@ -19,25 +20,53 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade, config e as contribuições (o menu e os 3 itens)
-app/comum.js           SDK omni, persistência, catálogo, formatação — a camada que as 3 telas usam
+manifest.json          identidade 0.18.0, config e contribuições
+app/comum.js           SDK omni, persistência, catálogo, locações e formatação
+app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
 app/imoveis.html       lista + detalhe do imóvel
+app/locados.html       banco de locados + filtros + candidatos que saíram do anúncio
 app/campos.html        definição dos campos
 app/historico.html     eventos de edição
 ```
 
-## Onde o dado mora (e o que trocar depois)
+## Locações (0.18.0)
+
+**Locados exigem o portal conectado**, com `portalUrl` e `portalToken` configurados e as
+rotas `/api/ext/locacoes*` disponíveis. Locações nunca são gravadas em `omni.storage`.
+Sem conexão, as telas avisam e bloqueiam as ações de locação.
+
+A lista de **Imóveis** continua lendo o catálogo nativo (`products`). Uma leitura de
+`/locacoes/mapa` acrescenta a coluna **Situação**: Disponível ou Locado, com contrato e
+locatário. O filtro Situação vale **somente para a página atual**, assim como Estado.
+A chave abre **Marcar como locado**; nos já locados, abre a edição da locação.
+
+**Locados** lista e filtra por imóvel, contato, contrato, origem e vigência; mostra resumo
+e paginação. **Novo locado** permite escolher um anúncio ou informar imóvel que nunca
+esteve no catálogo (título, endereço, tipo, bairro e cidade). A faixa de candidatos lista
+anúncios de locação que saíram nos últimos 60 dias e abre o cadastro com seu snapshot.
+
+O locatário é escolhido pela busca de contatos do EvoTalks, disponível ao agente; seu ID
+vincula a locação ao contato. Proprietário, contrato, garantia, início/fim, aluguel,
+vencimento e observação completam o cadastro. Valores trafegam em centavos; datas em
+`YYYY-MM-DD`. Erros de validação ou conflito mantêm o formulário aberto com o digitado.
+Editar preserva os demais contatos (como fiadores) e vínculos que já existiam.
+
+**Encerrar locação** confirma, pede motivo e mantém o histórico. O portal remove o imóvel
+das buscas da assistente enquanto a locação está ativa e o devolve ao encerrar. O snapshot
+da locação sobrevive à saída do anúncio do feed. As locações encerradas ficam disponíveis
+para consulta pelo filtro de contrato, sem edição ou exclusão.
+
+## Onde os campos adicionais moram
+
+Com portal configurado, campos e valores também usam o backend compartilhado. O modo
+local abaixo continua disponível apenas para experimentar os campos adicionais.
 
 **Piloto:** `omni.storage` — por instalação **e por usuário**, no navegador dele, ~262 mil
 caracteres. Outro computador começa vazio. Serve para validar as telas, não para produção.
 
-A troca por armazenamento compartilhado mexe em **um lugar só**: as funções `ler`/`gravar` de
-`app/comum.js`. Os candidatos, em ordem de esforço:
-
-1. **Armazenamento Permanente do EvoTalks** (`POST /int/createPersistentStorageItem`, até 10.000
-   itens de 4 KB) via `omni.http.request`, com `apiKey` + `queueId` em `config` — sem infra nossa.
-2. **Backend próprio** com HTTPS público, como o Cockpit GEOvendas faz.
+A escolha do modo e as chamadas ao backend ficam em `app/comum.js`. Se o portal estiver
+configurado mas indisponível, a extensão avisa em vez de cair silenciosamente no modo local.
 
 ## Catálogo
 
@@ -52,6 +81,13 @@ O recorte do catálogo vem da configuração da instalação:
 | `marca` | `WILLIAM IMÓVEIS BOULEVARD` | filtra o `brand` — é o que separa os imóveis do resto do catálogo |
 | `prefixoCodigo` | `535` | o código do site não mostra o prefixo da imobiliária (`5350060` → `0060`) |
 | `rotulo` | `imóvel` | palavra usada nos textos |
+
+## Testar localmente
+
+Sem npm install: `node test/checar.mjs`, `node --test test/*.test.mjs` e
+`node test/bancada/testar.mjs`. Uso manual e cenários em
+[test/bancada/LEIA-ME.md](test/bancada/LEIA-ME.md). A bancada tem portal em memória e
+SDK sintético, isolados de qualquer instância real; os PNGs gerados não são versionados.
 
 ## Instalar
 
