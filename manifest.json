@@ -87,6 +87,7 @@
           "title": "Locados",
           "icon": "icon-far-key",
           "url": "app/locados.html",
+          "visibility": { "userTypes": [0] },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -96,6 +97,7 @@
           "title": "Chamados",
           "icon": "icon-far-list",
           "url": "app/chamados.html",
+          "visibility": { "userTypes": [0] },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -105,6 +107,7 @@
           "title": "Prestadores",
           "icon": "icon-far-user",
           "url": "app/prestadores.html",
+          "visibility": { "userTypes": [0] },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -145,11 +148,7 @@
       "url": "app/painel.html",
       "icon": "app/icone-casa.svg",
       "visibility": {
-        "userTypes": [
-          0,
-          1,
-          2
-        ]
+        "userTypes": [0]
       }
     }
   ],

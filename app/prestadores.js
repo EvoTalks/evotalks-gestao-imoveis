@@ -3,6 +3,7 @@
   'use strict';
   var e = GI.escapar, el = function (id) { return document.getElementById(id); };
   var itens = [], pagina = 1, geracao = 0;
+  function valorMapa(mapa, chave) { return Object.hasOwn(mapa, chave) ? mapa[chave] : undefined; }
   function erro(err) {
     var d = err.dados || {};
     if (err.status === 429) return 'Limite de consultas atingido. Aguarde um minuto e tente Buscar novamente.';
@@ -15,7 +16,7 @@
     el('b-anterior').disabled = pagina <= 1; el('b-proxima').disabled = inicio + tamanho >= itens.length;
     el('gi-corpo').innerHTML = rows.length ? rows.map(function (p, i) {
       return '<tr><td><strong>' + e(p.nome) + '</strong><div class="gi-ajuda">' + e(p.observacao) + '</div></td><td>' +
-        e((p.categorias || []).map(function (c) { return GI.CHAMADO_CATEGORIAS[c] || 'Não informada'; }).join(' · ') || '—') + '</td><td>' + e(p.telefone || '—') + '</td><td>' + e(p.email || '—') +
+        e((p.categorias || []).map(function (c) { return valorMapa(GI.CHAMADO_CATEGORIAS, c) || 'Não informada'; }).join(' · ') || '—') + '</td><td>' + e(p.telefone || '—') + '</td><td>' + e(p.email || '—') +
         '</td><td><span class="gi-estado ' + (p.ativo ? 'gi-estado-ok' : 'gi-estado-off') + '"><span class="gi-ponto"></span>' + (p.ativo ? 'Ativo' : 'Inativo') + '</span></td><td><div class="gi-acoes">' +
         '<button class="btn btn-slim btn-icone" type="button" data-editar="' + i + '" aria-label="Editar ' + e(p.nome) + '" title="Editar prestador"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9M16 4l4 4L7 21H3v-4Z"/></svg></button>' +
         '<button class="btn btn-slim" type="button" data-ativar="' + i + '">' + (p.ativo ? 'Desativar' : 'Ativar') + '</button></div></td></tr>';

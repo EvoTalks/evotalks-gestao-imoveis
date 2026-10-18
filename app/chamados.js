@@ -158,8 +158,8 @@
     function historico(eventos) {
       no('historico').innerHTML = eventos.length ? eventos.slice().sort(function (a, b) { return String(a.em).localeCompare(String(b.em)) || numero(a.id) - numero(b.id); }).map(function (ev) {
         var d = ev.detalhe || {}, texto = ev.texto || (ev.tipo === 'status' ? 'Status: ' + (valorMapa(GI.CHAMADO_STATUS, d.de) || d.de || '') + ' → ' + (valorMapa(GI.CHAMADO_STATUS, d.para) || d.para || '') + (d.motivo ? ' · ' + d.motivo : '') :
-          { criou: 'Chamado aberto', atualizou: 'Dados atualizados', vinculou_atendimento: 'Atendimento vinculado alterado', nota: 'Nota interna', anexo: 'Anexo incluído',
-            orcamento: 'Orçamento · ' + (d.acao || 'registrado'), aprovacao: 'Aprovação · ' + (d.acao || d.status || 'atualizada'), prestador: 'Prestador alterado', sla: 'SLA · ' + (d.acao || 'atualizado') }[ev.tipo] || ev.tipo);
+          valorMapa({ criou: 'Chamado aberto', atualizou: 'Dados atualizados', vinculou_atendimento: 'Atendimento vinculado alterado', nota: 'Nota interna', anexo: 'Anexo incluído',
+            orcamento: 'Orçamento · ' + (d.acao || 'registrado'), aprovacao: 'Aprovação · ' + (d.acao || d.status || 'atualizada'), prestador: 'Prestador alterado', sla: 'SLA · ' + (d.acao || 'atualizado') }, ev.tipo) || ev.tipo);
         return '<li><time class="gi-ajuda">' + e(data(ev.em)) + ' · ' + e(ev.autor) + '</time><p>' + e(texto) + '</p>' + (ev.notificou_cliente ? '<span class="gi-chip">Cliente avisado</span>' : '') + '</li>';
       }).join('') : '<li>Sem eventos.</li>';
     }
@@ -213,7 +213,7 @@
         campo('orc-nome', 'Nome do prestador avulso', '') + campo('orc-valor', 'Valor do orçamento (R$)', '', 'text', 'inputmode="decimal"') +
         campo('orc-prazo', 'Prazo (dias)', '', 'number', 'min="0" step="1"') + campo('orc-visita', 'Visita proposta', '', 'datetime-local') +
         campo('orc-observacao', 'Observação do orçamento', '') + '</div><button class="btn btn-slim" type="button" id="c-salvar-orcamento">Registrar orçamento</button></div></fieldset>';
-      no('aprovacao').innerHTML = '<div class="gi-secao"><strong>Aprovação do proprietário</strong><span class="gi-chip">' + e({ nao_necessaria: 'Não necessária', pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada' }[ap.status] || 'Não informada') + '</span></div>' +
+      no('aprovacao').innerHTML = '<div class="gi-secao"><strong>Aprovação do proprietário</strong><span class="gi-chip">' + e(valorMapa({ nao_necessaria: 'Não necessária', pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada' }, ap.status) || 'Não informada') + '</span></div>' +
         '<div class="gi-aviso"><span>Alçada: ' + e(configManutencao ? moeda(configManutencao.alcada_centavos) : 'não foi possível consultar') + '. ' +
         (ap.status === 'pendente' ? 'Aprovação pendente bloqueia Agendado e Em execução.' : ap.status === 'recusada' ? 'Orçamento recusado. Defina outra cotação ou registre nova decisão antes de prosseguir.' : 'A alçada se aplica ao orçamento escolhido pago pelo proprietário.') + '</span>' +
         '<div class="gi-ajuda">Envio registrado em: ' + e(data(ap.enviada_em)) + ' · Resposta: ' + e(data(ap.resposta_em)) + ' · ' + e(ap.por || '') + ' · ' + e(ap.canal || '') + '</div><p class="gi-pequeno">' + e(ap.observacao || '') + '</p></div>' +
@@ -334,7 +334,7 @@
           e(atendimentoTexto(a)) + '</strong><span class="gi-chip">' + e(a.vivo ? 'Em andamento' : 'Já vinculado') + '</span></span><span class="gi-ajuda">' +
           e(a.fila || '') + ' · ' + e(data(a.iniciado_em)) + (a.chamados && a.chamados.length ? ' · já vinculado: ' + e(a.chamados.map(function (os) { return GI.chamadoNumero(os.numero); }).join(', ')) : '') + '</span></span></label>';
       }).join('');
-      if (atendimentoOriginal && !atendimentos.some(function (a) { return a.chat_id === atendimentoOriginal.chat_id; })) rows += '<label class="gi-atend"><input type="radio" name="c-atendimento" value="atual"><span>' + e(atendimentoTexto(atendimentoOriginal)) + ' · vínculo registrado</span></label>';
+      if (atendimentoOriginal && !atendimentos.some(function (a) { return atendimentoOriginal.chat_id != null ? a.chat_id === atendimentoOriginal.chat_id : a.protocolo === atendimentoOriginal.protocolo; })) rows += '<label class="gi-atend"><input type="radio" name="c-atendimento" value="atual"><span>' + e(atendimentoTexto(atendimentoOriginal)) + ' · vínculo registrado</span></label>';
       rows += '<label class="gi-atend"><input type="radio" name="c-atendimento" value="manual"><span>Buscar por protocolo ou número · informado, não verificado</span></label>' +
         '<label class="gi-atend"><input type="radio" name="c-atendimento" value="nenhum"><span>Não vincular a um atendimento</span></label>';
       no('atendimentos').innerHTML = rows;

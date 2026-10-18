@@ -67,6 +67,11 @@ para consulta pelo filtro de contrato, sem edição ou exclusão.
 
 ## Chamados e manutenção (0.20.0)
 
+As contribuições **Locados**, **Chamados**, **Prestadores** e **Manutenção** no atendimento são
+visíveis somente para administradores (`userTypes: [0]`). Imóveis, Campos, Histórico e
+Configurações continuam herdando a visibilidade do menu. Para abrir a manutenção a supervisores
+e agentes, altere `userTypes` no manifest e publique uma nova versão.
+
 Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. Nenhum dado de
 manutenção é gravado em `omni.storage`. Sem portal, as telas avisam e bloqueiam ações.
 O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.

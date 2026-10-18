@@ -129,7 +129,7 @@ tbody tr:hover { background: var(--gi-acao-suave); }
   font-size: 12.5px; padding: 6px 12px; border-radius: 20px;
 }
 .gi-estado-pendente { background: color-mix(in srgb, var(--gi-pendente) 16%, var(--gi-surface)); color: color-mix(in srgb, var(--gi-texto) 85%, var(--gi-pendente)); }
-.gi-estado-ok       { background: rgba(34, 181, 115, .16); color: #10714a; }
+.gi-estado-ok       { background: color-mix(in srgb, var(--gi-ok) 16%, var(--gi-surface)); color: color-mix(in srgb, var(--gi-texto) 85%, var(--gi-ok)); }
 .gi-estado-off      { background: var(--gi-acao-suave); color: var(--gi-mudo); }
 .gi-ponto-off       { background: var(--gi-mudo); opacity: .5; }
 

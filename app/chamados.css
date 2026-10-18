@@ -45,7 +45,6 @@
 .gi-fatia4 { border: 0; padding: 0; margin: 0; min-width: 0; }
 .gi-fatia4 table { min-width: 540px; }
 .gi-fatia4 td { max-width: 230px; overflow-wrap: anywhere; }
-.gi-fatia4 .gi-estado-ok, #gi-prestadores .gi-estado-ok { color: var(--gi-texto); background: color-mix(in srgb, var(--gi-ok) 16%, var(--gi-surface)); }
 .gi-fatia4 .gi-barra { margin-top: 10px; flex-wrap: wrap; }
 .gi-fatia4 > .btn { margin-top: 8px; }
 .gi-form-chamado #c-sla { overflow-wrap: anywhere; }
