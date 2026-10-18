@@ -8,7 +8,9 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ falhasUpload = 0 } = {}) {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL } = {}) {
+  const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
+  if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
   const produtos = [
     { id: 9101, internalcode: 'DEMO-001', name: 'Apartamento Demonstração Alfa', category: 'Apartamento > Cidade Fictícia > Bairro Exemplo', value: 123456, brand: 'DEMONSTRACAO' },
     { id: 9102, internalcode: 'DEMO-002', name: 'Casa Demonstração Beta', category: 'Casa > Cidade Fictícia > Bairro Exemplo', value: 234500, brand: 'DEMONSTRACAO' },
@@ -71,6 +73,18 @@ export function criarServidor({ falhasUpload = 0 } = {}) {
         return json(404, { erro: 'recurso_nao_simulado' });
       }
       if (url.pathname.startsWith('/api/ext/')) {
+        if (destinoReal) {
+          const destino = new URL(url.pathname + url.search, destinoReal);
+          const headers = {};
+          for (const nome of ['authorization', 'x-gi-autor', 'x-gi-user-id', 'content-type']) if (req.headers[nome]) headers[nome] = req.headers[nome];
+          const resposta = await fetch(destino, { method: req.method, headers, redirect: 'manual',
+            ...(req.method === 'GET' || req.method === 'HEAD' ? {} : { body: req, duplex: 'half' }) });
+          const volta = {};
+          for (const nome of ['content-type', 'cache-control', 'retry-after', 'etag', 'content-disposition']) if (resposta.headers.has(nome)) volta[nome] = resposta.headers.get(nome);
+          res.writeHead(resposta.status, volta);
+          res.end(Buffer.from(await resposta.arrayBuffer()));
+          return;
+        }
         if (req.headers.authorization !== 'Bearer bancada-sintetica') return json(401, { erro: 'nao_autorizado' });
         const rota = url.pathname.slice('/api/ext'.length), q = url.searchParams;
         let dados = {};

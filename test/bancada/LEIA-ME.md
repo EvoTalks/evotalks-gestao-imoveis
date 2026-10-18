@@ -192,3 +192,13 @@ reabertura, falha de releitura, status hostil e bloqueio sem portal/demonstraç�
 Também amplia foto sintética em concluído/cancelado com uma requisição, mantendo
 adição bloqueada. Capturas: `status-{lista,modal}-390-{claro,escuro}.png`.
 `test/dialogos.test.mjs` reprova diálogos nativos em JS, scripts inline e eventos HTML.
+
+## Integração com portal real
+
+Com `PORTAL_REAL_URL=http://127.0.0.1:PORTA`, a API `/api/ext/` é encaminhada ao
+router real; estáticos e SDK seguem locais. Sem a variável, o simulador permanece.
+`node test/integracao/real.mjs` prepara e encerra sozinho o PGlite e ambos os
+servidores. Veja [a bancada de integração](../integracao/LEIA-ME.md).
+O cockpit agora é visível aos três perfis; só o administrador vê o atalho da gestão.
+`atendente.cenarios.mjs` prova notas/avisos, confirmação, janela encerrada, retry
+sem duplicação e descarte de detalhe atrasado após troca de chat.

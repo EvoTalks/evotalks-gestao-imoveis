@@ -22,7 +22,7 @@ test('manifest 0.21.0 declara navegação ordenada, cockpit e escrita opt-in', (
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
   assert.equal(cockpit.type, 'chatPanel'); assert.equal(cockpit.url, 'app/painel.html');
   assert.equal(cockpit.title, 'Manutenção'); assert.equal(cockpit.presentation, undefined);
-  assert.deepEqual(cockpit.visibility.userTypes, [0]);
+  assert.deepEqual(cockpit.visibility.userTypes, [0, 1, 2]);
   for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
     assert.deepEqual(m.contributions[0].items.find(i => i.id === id).visibility.userTypes, [0]);
   }
@@ -33,7 +33,8 @@ test('manifest 0.21.0 declara navegação ordenada, cockpit e escrita opt-in', (
     const c = m.config.find(c => c.key === k);
     assert.equal(c.type, 'boolean'); assert.equal(c.default, false); assert.ok(c.help);
   }
-  const cabecalho = carregar().cabecalho('gi-chamados');
+  const GI = carregar(); GI.ctx = () => ({ user: { type: 0 } });
+  const cabecalho = GI.cabecalho('gi-chamados');
   const titulos = m.contributions[0].items.map(i => i.title);
   for (let i = 1; i < titulos.length; i++) assert.ok(cabecalho.indexOf(titulos[i - 1]) < cabecalho.indexOf(titulos[i]));
 });

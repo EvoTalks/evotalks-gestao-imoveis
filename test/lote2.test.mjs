@@ -117,8 +117,8 @@ test('lote 2: regressões no navegador', async t => {
       }
       await b.captura('lote2-nota-sem-aviso');
     });
-    await t.test('21: handshake abre o chamado recebido do cockpit', async () => {
-      await cockpit();
+    await t.test('21: handshake abre o chamado recebido do cockpit administrador', async () => {
+      await cockpit('?perfil=admin');
       await b.avaliar(() => { omni.ui.openContribution = async (id, params) => { bancada.ultimaContribuicao = { id, params }; return { opened: true }; }; });
       await b.clicar('[data-gestao="0"]');
       await b.esperar(() => bancada.ultimaContribuicao?.id === 'gi-chamados');

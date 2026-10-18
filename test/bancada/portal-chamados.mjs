@@ -255,6 +255,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
           if (o.escolhido && !['novo', 'triagem', 'orcamento'].includes(c.status)) erro(409, 'orcamento_escolhido');
           arr.splice(arr.indexOf(o), 1);
         } else {
+          if (o.escolhido) return resposta({ ok: true, chamado: copia(c) });
           arr.forEach(x => { x.escolhido = x.id === o.id; });
           if (o.valor_centavos != null) c.valor_estimado_centavos = o.valor_centavos;
           c.prestador = o.prestador_id ? { id: o.prestador_id, nome: o.prestador_nome } : null;
