@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
+import { testarLoteY } from './lote-y.cenarios.mjs';
 import { testarFotos } from './fotos.cenarios.mjs';
 import { testarSimplificacao } from './simplificar.cenarios.mjs';
 const servidor = criarServidor();
@@ -28,6 +29,7 @@ try {
     assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST').length), 0);
     if (modo === 'demonstracao') assert.equal(await b.avaliar(() => bancada.rede.length), 0);
   }
+  await testarLoteY(b, origem);
   assert.deepEqual(b.erros, []);
   process.stdout.write('OK paginação 27 resultados; sem portal e demonstração bloqueiam escrita; zero exceções\n');
 } finally {

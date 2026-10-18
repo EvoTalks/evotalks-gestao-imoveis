@@ -53,7 +53,7 @@ test('JPEG 0,82, depois 0,7 e 1280; fundo branco, sem prefixo e libera bitmap', 
     document: { createElement() { return { getContext() { return { set fillStyle(v) { fundos.push(v); }, fillRect() {}, drawImage(...a) { desenhos.push(a.slice(3)); } }; },
       toBlob(cb, tipo, qualidade) { tentativas.push([this.width, this.height, tipo, qualidade]); cb(new Blob([new Uint8Array(tentativas.length < 3 ? 1600000 : 30)])); } }; } } });
   const r = await f.processar(Object.assign(new Blob([new Uint8Array([137,80,78,71])], { type: 'image/png' }), { name: 'sintetica.png' }));
-  assert.deepEqual(tentativas, [[1600,900,'image/jpeg',0.82], [1600,900,'image/jpeg',0.7], [1280,720,'image/jpeg',0.7]]);
+  assert.deepEqual(tentativas, [[1600,900,'image/jpeg',0.82], [1600,900,'image/jpeg',0.7], [1280,720,'image/jpeg',0.7], [160,90,'image/jpeg',0.7]]);
   assert.equal(r.dados_base64, '/9j/'); assert.equal(r.mimetype, 'image/jpeg'); assert.equal(r.tamanho, 30);
   assert.equal(r.previa, 'data:image/jpeg;base64,/9j/'); assert.ok(fundos.every(c => c === '#fff')); assert.equal(fechou, 1);
 });
@@ -68,4 +68,21 @@ test('fallback Image revoga object URL também quando o decoder recusa a imagem'
     Image: class { set src(v) { this.onerror(); } } });
   await assert.rejects(f.processar(new Blob([new Uint8Array([255,216,255])], { type: 'image/jpeg' })), /decodificar/);
   assert.deepEqual(revogadas, ['blob:sintetico']);
+});
+test('lote Y: miniatura 160 px, qualidade 0,7, reduz até 30 KB e omite se impossível', async () => {
+  for (const caso of ['normal', 'reduzir', 'impossivel']) {
+    const tentativas = [];
+    const f = carregar({ createImageBitmap: async () => ({ width: 3200, height: 1600, close() {} }),
+      FileReader: class { readAsDataURL() { this.result = 'data:image/jpeg;base64,/9j/'; this.onload(); } },
+      document: { createElement() { return { getContext() { return { fillRect() {}, drawImage() {} }; },
+        toBlob(cb, tipo, qualidade) {
+          tentativas.push([this.width, this.height, tipo, qualidade]);
+          const tamanho = this.width > 160 ? 100 : caso === 'impossivel' || caso === 'reduzir' && qualidade === 0.7 ? 31000 : 100;
+          cb(new Blob([new Uint8Array(tamanho)]));
+        } }; } } });
+    const r = await f.processar(new Blob([new Uint8Array([255,216,255])], { type: 'image/jpeg' }));
+    assert.deepEqual(tentativas[1], [160,80,'image/jpeg',0.7]);
+    assert.equal(r.miniatura_base64, caso === 'impossivel' ? null : '/9j/');
+    if (caso === 'reduzir') assert.ok(tentativas.length > 2);
+  }
 });

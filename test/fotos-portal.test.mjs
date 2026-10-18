@@ -83,3 +83,51 @@ test('portal aceita as quatro assinaturas e nunca aceita SVG no tipo permitido',
     assert.equal(api(rota, { nome: 'disfarce.png', mimetype, dados_base64: Buffer.from('<svg/>').toString('base64') }).status, 422);
   }
 });
+test('lote Y: miniatura no detalhe, fora das listas e duplicata não a substitui', () => {
+  const { api, id } = bancada(), base = '/chamados/' + id;
+  const miniatura_base64 = '/9j/AQ==';
+  const r = api(base + '/anexos/upload', { ...foto(), miniatura_base64 });
+  assert.equal(r.status, 200);
+  assert.equal(api(base).corpo.anexos[0].miniatura_base64, miniatura_base64);
+  assert.equal(JSON.stringify(api('/chamados').corpo).includes('miniatura_base64'), false);
+  api(base + '/anexos/upload', { ...foto(), miniatura_base64: '/9j/Ag==' });
+  assert.equal(api(base).corpo.anexos[0].miniatura_base64, miniatura_base64);
+  api(base + '/anexos/upload', foto([255,216,255,2]));
+  assert.equal(api(base).corpo.anexos[1].miniatura_base64, null);
+});
+test('lote Y: upload valida corpo antes do 404, nome textual e controles C1', () => {
+  const { p, api, id } = bancada(), rota = '/chamados/' + id + '/anexos/upload';
+  assert.equal(p.responder('POST', rota, undefined, null).status, 422);
+  assert.equal(api('/chamados/999/anexos/upload', {}).status, 422);
+  for (const nome of [1, {}, [], false, null]) assert.equal(api(rota, { ...foto(), nome }).status, 422);
+  assert.equal(api('/chamados/' + id).corpo.anexos.length, 0);
+  assert.equal(api(rota, { ...foto(), nome: 'a\x7fb\x85c\x9f.jpg' }).corpo.anexo.nome, 'a_b_c_.jpg');
+});
+test('lote Y: miniatura estrita JPEG até 40 KB e recusas atômicas', () => {
+  const { api, id } = bancada(), rota = '/chamados/' + id + '/anexos/upload';
+  const grande = Buffer.alloc(40 * 1024 + 1); grande.set([255,216,255]);
+  for (const miniatura_base64 of ['', '%%%', 'AB==', 'data:image/jpeg;base64,/9j/', 'YWJj', grande.toString('base64'), 1]) {
+    const r = api(rota, { ...foto(), miniatura_base64 });
+    assert.equal(r.status, 422); assert.ok(r.corpo.campos.miniatura_base64);
+    assert.equal(api('/chamados/' + id).corpo.anexos.length, 0);
+  }
+  const maxima = grande.subarray(0, 40 * 1024).toString('base64');
+  assert.equal(api(rota, { ...foto(), miniatura_base64: maxima }).status, 200);
+  assert.equal(api(rota, { ...foto([255,216,255,9]), miniatura_base64: null }).status, 200);
+});
+test('lote Y: simulador conta requisições por método e rota, inclusive recusas', () => {
+  const { p, api, id } = bancada(), base = '/chamados/' + id;
+  api(base); api(base); api(base + '/anexos/upload', {});
+  assert.equal(p.requisicoes.get('GET ' + base), 2);
+  assert.equal(p.requisicoes.get('POST ' + base + '/anexos/upload'), 1);
+});
+test('lote Y: dois orçamentos simultâneos reutilizam um prestador pelo nome normalizado', async () => {
+  const { api, id, entrada } = bancada();
+  const outro = api('/chamados', entrada).corpo.chamado.id;
+  const rs = await Promise.all([id, outro].map((n, i) => Promise.resolve().then(() => api('/chamados/' + n + '/orcamentos', {
+    prestador_nome: i ? '  tecnico   sintetico y ' : 'Técnico Sintético Y', valor_centavos: 100
+  }))));
+  assert.equal(rs[0].status, 201); assert.equal(rs[1].status, 201);
+  assert.equal(rs[0].corpo.orcamento.prestador_id, rs[1].corpo.orcamento.prestador_id);
+  assert.equal(api('/prestadores').corpo.total, 1);
+});

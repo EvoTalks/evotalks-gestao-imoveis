@@ -91,7 +91,15 @@ try {
   // Perfil sintético tem atendimento aberto do proprietário visível em sua fila.
   await b.avaliar(() => { omni.session.getPermissions = async () => ({ isSupervisor: true });
     omni.chats.listByQueue = async () => [{ id: 8803, contactId: 9903, queueId: 91, status: 'active', channel: 'WhatsApp' }]; });
+  // O status recusado permanece escolhido e bloqueia também a operação seguinte.
   await b.clicar('#c-enviar-proprietario');
+  await b.esperar(() => !document.querySelector('#c-enviar-proprietario').disabled);
+  assert.match(await texto('#c-mensagem'), /aprovação.*pendente/);
+  assert.equal(await valor('#c-status'), 'execucao');
+  assert.equal(await b.avaliar(() => bancada.mensagens.length), 0);
+  await b.preencher('#c-status', 'novo');
+  await b.clicar('#c-enviar-proprietario');
+  await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled);
   assert.match(await texto('#c-confirmacao-texto'), /650,10/);
   assert.equal(await b.avaliar(() => bancada.mensagens.length), 0);
   await confirmar();
@@ -149,7 +157,7 @@ try {
       return chamado.id;
     }, locacao);
     await b.clicar('#b-limpar'); await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), n); await abrir(n);
-    await b.clicar('#c-enviar-proprietario'); await confirmar();
+    await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
     assert.match(await texto('#c-mensagem'), /Mensagem não enviada/);
     detalhe = await b.avaliar(async id => GI.chamadosObter(id), n);
     assert.equal(detalhe.chamado.aprovacao.enviada_em, null);
@@ -161,7 +169,7 @@ try {
 
   await abrir(id);
   await b.avaliar(() => { bancada.recusarEnvio = true; });
-  await b.clicar('#c-enviar-proprietario'); await confirmar();
+  await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
   assert.match(await texto('#c-mensagem'), /janela de 24 horas/);
   await b.clicar('#c-voltar'); await b.avaliar(() => { bancada.recusarEnvio = false; });
   await b.avaliar(() => {
@@ -174,7 +182,7 @@ try {
       return original(op);
     };
   });
-  await b.clicar('#c-enviar-proprietario'); await confirmar();
+  await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
   assert.match(await texto('#c-mensagem'), /Mensagem enviada, mas o registro no portal falhou/);
   const enviados = await b.avaliar(() => bancada.mensagens.length);
   await confirmar();
@@ -183,7 +191,7 @@ try {
   await b.captura('fatia4-18-envio-sem-duplicacao');
   await b.clicar('[data-escolher-orcamento="0"]'); await b.esperar(() => !document.querySelector('#c-salvar-orcamento').disabled);
   await b.avaliar(() => { const original = omni.chats.get; omni.chats.get = async id => ({ ...(await original(id)), status: 'closed' }); });
-  await b.clicar('#c-enviar-proprietario'); await confirmar();
+  await b.clicar('#c-enviar-proprietario'); await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled); await confirmar();
   assert.match(await texto('#c-mensagem'), /não está mais aberto/);
   assert.equal(await b.avaliar(() => bancada.mensagens.length), enviados);
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);

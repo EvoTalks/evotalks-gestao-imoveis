@@ -158,7 +158,7 @@ export async function testarFotos(b, origem) {
     await b.arquivos('#c-pasta', [path.join(pasta, 'outra.png')]);
     await b.esperar(() => document.querySelector('#c-fotos-erros').textContent.includes('20'));
     assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes .gi-foto').length), 20);
-    await fechar();
+    await fechar(); await b.esperar(() => !document.querySelector('#c-descarte').hidden); await b.clicar('#c-descartar');
     await b.clicar('#b-novo'); await modal(); await b.arquivos('#c-pasta', Array(11).fill(path.join(pasta, 'sintetica.jpg')));
     await b.esperar(() => document.querySelector('#c-fotos-erros').textContent.includes('10 por seleção'));
     assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes .gi-foto').length), 0);

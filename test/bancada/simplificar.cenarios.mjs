@@ -182,8 +182,8 @@ export async function testarSimplificacao(b, origem) {
   prova('itens 1, 12 e 13: faixa abre aprovação; protocolo, última mensagem, prestador e descrição hostis permanecem texto');
 
   // Cancelar e reabrir pelo mesmo select e Salvar; dados e histórico permanecem.
-  await abrir(criado.id); await b.avaliar(() => { window.prompt = () => 'Motivo sintético'; });
-  await b.preencher('#c-status', 'cancelado'); await salvar();
+  await abrir(criado.id);
+  await b.preencher('#c-status', 'cancelado'); await b.preencher('#c-motivo-cancelamento', 'Motivo sintético'); await salvar();
   await b.esperar(() => document.querySelector('#gi-resumo').textContent.includes('7 chamados abertos'));
   await abrir(criado.id); assert.equal(await b.avaliar(() => document.querySelector('#c-dados').disabled), true);
   assert.deepEqual(await b.avaliar(() => Array.from(document.querySelector('#c-status').options, n => n.value).sort()), ['cancelado', 'triagem']);
