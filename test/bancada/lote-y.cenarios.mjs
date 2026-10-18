@@ -55,18 +55,18 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
   });
   await rodar('cancelar pelo campo opcional sem prompt e alternar a visibilidade', async () => {
     const id = await criar(); await abrir(id);
-    assert.equal(await b.avaliar(() => !!document.querySelector('#c-motivo-cancelamento')), true);
-    assert.equal(await b.avaliar(() => document.querySelector('#c-cancelamento-campo').hidden), true);
-    await b.preencher('#c-status', 'cancelado'); assert.equal(await b.avaliar(() => document.querySelector('#c-cancelamento-campo').hidden), false);
-    await b.preencher('#c-motivo-cancelamento', 'Motivo <img src=x onerror="window.hostilY=1">');
-    await b.preencher('#c-status', 'triagem'); assert.equal(await b.avaliar(() => document.querySelector('#c-cancelamento-campo').hidden), true);
-    await b.preencher('#c-status', 'cancelado'); await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
+    assert.equal(await b.avaliar(() => !!document.querySelector('#c-status-controle [data-status-motivo]')), true);
+    assert.equal(await b.avaliar(() => document.querySelector('#c-status-controle [data-status-cancelamento]').hidden), true);
+    await b.preencher('#c-status', 'cancelado'); assert.equal(await b.avaliar(() => document.querySelector('#c-status-controle [data-status-cancelamento]').hidden), false);
+    await b.preencher('#c-status-controle [data-status-motivo]', 'Motivo <img src=x onerror="window.hostilY=1">');
+    await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled); assert.equal(await b.avaliar(() => document.querySelector('#c-status-controle [data-status-cancelamento]').hidden), true);
+    await b.preencher('#c-status', 'cancelado'); await b.clicar('#c-status-controle [data-status-confirmar]'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
     assert.equal(await b.avaliar(() => window.hostilY), undefined);
     assert.equal((await dados(id)).chamado.status, 'cancelado'); assert.match((await dados(id)).chamado.motivo_cancelamento, /Motivo <img/);
   });
   await rodar('orçamentos aplicam prioridade, nota e status; dados inválidos preservam os textos', async () => {
     const id = await criar(); await abrir(id);
-    await b.preencher('#c-prioridade', 'alta'); await b.preencher('#c-status', 'triagem'); await b.preencher('#c-nota', 'Nota pendente sintética');
+    await b.preencher('#c-prioridade', 'alta'); await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.preencher('#c-nota', 'Nota pendente sintética');
     await b.preencher('#c-orc-nome', 'Prestador Y sintético'); await b.preencher('#c-orc-observacao', 'Descrição preservada'); await b.clicar('#c-salvar-orcamento');
     await b.esperar(() => document.querySelectorAll('[data-escolher-orcamento]').length === 1); await esperarLivre();
     let d = await dados(id); assert.equal(d.chamado.prioridade, 'alta'); assert.equal(d.chamado.status, 'triagem');
@@ -128,7 +128,7 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
   });
   await rodar('falha da nota ao concluir preserva texto e fotos na retomada', async () => {
     const id = await criar(); await abrir(id); await escolherFoto();
-    await b.preencher('#c-status', 'concluido'); await b.preencher('#c-nota', 'Nota que não pode sumir na retomada');
+    await b.preencher('#c-status', 'concluido'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.preencher('#c-nota', 'Nota que não pode sumir na retomada');
     await b.avaliar(() => {
       const http = omni.http.request;
       omni.http.request = op => {
@@ -136,7 +136,7 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
         return http(op);
       };
     });
-    await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('#c-dados')?.disabled && document.querySelectorAll('#c-pendentes .gi-foto').length === 1);
+    await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('#c-mensagem')?.textContent.includes('nota_indisponivel_sintetica') && document.querySelectorAll('#c-pendentes .gi-foto').length === 1);
     assert.equal(await b.avaliar(() => document.querySelector('#c-nota').value), 'Nota que não pode sumir na retomada');
     await b.clicar('#c-salvar-nota'); await b.esperar(() => document.querySelector('#c-nota').value === '' && !document.querySelector('.gi-modal [data-ok]').disabled);
     await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
@@ -154,7 +154,7 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
       await b.clicar('#c-voltar-descarte'); assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes .gi-foto').length), 1);
       await b.clicar('.gi-modal [data-cancelar]'); await b.captura('lote-y-descarte'); await b.clicar('#c-descartar'); await b.esperar(() => !document.querySelector('.gi-modal'));
     }
-    await abrir(id); await escolherFoto(); await b.preencher('#c-status', 'cancelado'); await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
+    await abrir(id); await escolherFoto(); await b.preencher('#c-status', 'cancelado'); await b.clicar('#c-status-controle [data-status-confirmar]'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
     const d = await dados(id); assert.equal(d.chamado.status, 'cancelado'); assert.equal(d.anexos.length, 1); assert.ok(d.anexos[0].miniatura_base64);
     assert.deepEqual(await b.avaliar(async mini => { const img = new Image(); img.src = 'data:image/jpeg;base64,' + mini; await img.decode(); return [img.naturalWidth, img.naturalHeight]; }, d.anexos[0].miniatura_base64), [160,80]);
   });

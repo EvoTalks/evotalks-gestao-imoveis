@@ -84,7 +84,7 @@ export async function testarFotos(b, origem) {
     assert.equal(await b.avaliar(() => bancada.uploadsAtivosMax), 1);
     await b.captura('fotos-01-parcial-retomada');
     const salvoId = await b.avaliar(async () => (await GI.chamados({ busca: 'Fotos sintéticas F5' })).rows[0].id);
-    await b.preencher('#c-status', 'triagem');
+    await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled);
     assert.equal(await b.avaliar(() => document.querySelector('#c-mudar-status')), null);
     await pendentes(1);
     await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
@@ -107,8 +107,8 @@ export async function testarFotos(b, origem) {
     await b.avaliar(() => document.querySelector('#c-pendentes').scrollIntoView({ block: 'center' }));
     await b.captura('fotos-02-editar-390-escuro');
     assert.equal(await b.avaliar(() => { const m = document.querySelector('.gi-modal'); return m.scrollWidth <= m.clientWidth + 1; }), true);
-    // O Salvar aplica status e fotos juntos, preservando os pendentes se a cota recusar.
-    await b.preencher('#c-status', 'triagem');
+    // Status é imediato e preserva fotos; o Salvar mantém os pendentes se a cota recusar.
+    await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled);
     assert.equal(await b.avaliar(() => document.querySelector('#c-mudar-status')), null);
     const uploadsAntes = await b.avaliar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/anexos/upload')).length);
     await b.avaliar(() => {
@@ -129,7 +129,7 @@ export async function testarFotos(b, origem) {
     prova('cota bloqueia o upload antes da rede, mantém pendentes e libera repetição idempotente após 60s; status preserva fotos');
     prova('editar acrescenta foto, recupera bytes do portal e exibe prévias em 390 px e tema escuro');
 
-    // Mesmo concluindo junto, uma falha de upload permite repetir só as fotos, sem reabrir.
+    // Concluir pelo select preserva as fotos escolhidas; falha de upload permite retry sem reabrir.
     await b.navegar(origem + '/app/chamados.html');
     await b.esperar(n => !!document.querySelector('[data-editar="' + n + '"]'), salvoId);
     await b.clicar('[data-editar="' + salvoId + '"]'); await modal();
@@ -142,13 +142,13 @@ export async function testarFotos(b, origem) {
         return request(op);
       };
     });
-    await b.preencher('#c-status', 'concluido'); await b.clicar('.gi-modal [data-ok]');
+    await b.preencher('#c-status', 'concluido'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.clicar('.gi-modal [data-ok]');
     await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('0 de 1 fotos enviadas'));
     await pendentes(1);
     await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
     d = await b.avaliar(async n => GI.chamadosObter(n), salvoId);
     assert.equal(d.chamado.status, 'concluido'); assert.equal(d.chamado.anexos_total, 4);
-    prova('concluir e enviar fotos no mesmo Salvar; falha parcial permite repetir upload sem reabrir nem perder fotos');
+    prova('concluir pelo select e enviar fotos pelo Salvar; falha parcial permite repetir upload sem reabrir nem perder fotos');
 
     await b.navegar(origem + '/app/chamados.html'); await b.esperar(() => !document.querySelector('#b-novo').disabled);
     await b.clicar('#b-novo'); await modal();

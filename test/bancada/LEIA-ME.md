@@ -170,8 +170,8 @@ bancada de fotos reinstala a cota real para provar bloqueio antes da rede e retr
 ## Simplificação dos chamados (0.21.0)
 
 A bancada de chamados executa `simplificar.cenarios.mjs` e preserva `fotos.cenarios.mjs`.
-Prova Salvar único para dados/status/fotos, atualização imediata da lista/resumo,
-recusa parcial, orçamento livre sem valor e prestador automático reutilizado em sugestões,
+Prova Salvar para dados/fotos, status imediato na lista e modal sem perder rascunhos,
+recusa restaurando o select, cancelamento inline, orçamento livre sem valor e prestador automático reutilizado em sugestões,
 lista de chats por contato e filas sem duplicatas, protocolo manual e fallback,
 nota interna direta e aviso só com chat aberto e `sent:true`, Mais opções e faixa da decisão.
 As capturas `simplificar-{novo,editar}-390-{claro,escuro}.png` mostram a tela nova;
@@ -183,3 +183,12 @@ tem chat aberto. `bancada.falharLista` recusa listagem e `bancada.semConfirmarEn
 devolve `sent:false`. `queues.list` e `session.getPermissions` respeitam o perfil.
 O portal simulado salva prestador pelo nome normalizado (caixa/acentos/espaços),
 reaproveita inclusive inativos e aceita valor ausente/null, sem zerar a estimativa.
+
+
+`status.cenarios.mjs` roda em um simulador separado dentro de `chamados.testar.mjs`.
+Prova uma requisição por troca, fila sem concorrência/duplicação, resumo/prazo sem
+recarregar a lista, aprovação pendente/recusada, cancelamento com Voltar e motivo,
+reabertura, falha de releitura, status hostil e bloqueio sem portal/demonstração.
+Também amplia foto sintética em concluído/cancelado com uma requisição, mantendo
+adição bloqueada. Capturas: `status-{lista,modal}-390-{claro,escuro}.png`.
+`test/dialogos.test.mjs` reprova diálogos nativos em JS, scripts inline e eventos HTML.

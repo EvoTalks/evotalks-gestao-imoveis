@@ -81,9 +81,9 @@ try {
   await capturar('fatia4-01-orcamentos-aprovacao', '#c-orcamentos');
   prova('dois orçamentos pela tela; escolha única substitui anterior; centavos, repasse e alçada visíveis; aprovação pendente');
   for (const destino of ['agendado', 'execucao']) {
-    await b.preencher('#c-status', destino); await salvarReabrir();
-    assert.match(await texto('#c-mensagem'), /409.*aprovação.*pendente/);
-    await b.clicar('#c-voltar');
+    await b.preencher('#c-status', destino); await b.esperar(() => !document.querySelector('#c-status').disabled);
+    assert.match(await texto('#c-status-controle'), /aprovação.*pendente/);
+    assert.equal(await valor('#c-status'), 'novo');
   }
   await b.captura('fatia4-02-trava-pendente');
   prova('alçada excedida bloqueia Agendado e Em execução com 409 do portal');
@@ -91,13 +91,8 @@ try {
   // Perfil sintético tem atendimento aberto do proprietário visível em sua fila.
   await b.avaliar(() => { omni.session.getPermissions = async () => ({ isSupervisor: true });
     omni.chats.listByQueue = async () => [{ id: 8803, contactId: 9903, queueId: 91, status: 'active', channel: 'WhatsApp' }]; });
-  // O status recusado permanece escolhido e bloqueia também a operação seguinte.
-  await b.clicar('#c-enviar-proprietario');
-  await b.esperar(() => !document.querySelector('#c-enviar-proprietario').disabled);
-  assert.match(await texto('#c-mensagem'), /aprovação.*pendente/);
-  assert.equal(await valor('#c-status'), 'execucao');
-  assert.equal(await b.avaliar(() => bancada.mensagens.length), 0);
-  await b.preencher('#c-status', 'novo');
+  // O select voltou ao estado real e o envio segue sem status pendente.
+  assert.equal(await valor('#c-status'), 'novo');
   await b.clicar('#c-enviar-proprietario');
   await b.esperar(() => !document.querySelector('#c-confirmacao').hidden && !document.querySelector('#c-confirmar-acao').disabled);
   assert.match(await texto('#c-confirmacao-texto'), /650,10/);
@@ -118,10 +113,10 @@ try {
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.aprovacao.por, 'Proprietário Demonstração');
   assert.equal(detalhe.chamado.aprovacao.canal, 'telefone');
-  await b.preencher('#c-status', 'agendado'); await salvarReabrir();
-  assert.match(await texto('#c-mensagem'), /422.*visita/); await b.clicar('#c-voltar');
+  await b.preencher('#c-status', 'agendado'); await b.esperar(() => !document.querySelector('#c-status').disabled);
+  assert.match(await texto('#c-status-controle'), /visita/);
   await b.captura('fatia4-04-trava-sem-visita');
-  await b.preencher('#c-status', 'triagem'); await b.preencher('#c-prestador-id', '2'); await salvarReabrir();
+  await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.preencher('#c-prestador-id', '2'); await salvarReabrir();
   await b.preencher('#c-visita-inicio', '2026-11-02T14:00'); await b.preencher('#c-visita-fim', '2026-11-02T13:00');
   await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('posterior'));
   await b.preencher('#c-visita-fim', '2026-11-02T16:00'); await salvarReabrir();
@@ -129,7 +124,7 @@ try {
   assert.equal(detalhe.chamado.prestador.id, 2);
   assert.equal(Date.parse(detalhe.chamado.visita.fim) - Date.parse(detalhe.chamado.visita.inicio), 7200000);
   await capturar('fatia4-05-prestador-visita', '#c-prestador');
-  await b.preencher('#c-status', 'agendado'); await salvarReabrir();
+  await b.preencher('#c-status', 'agendado'); await b.esperar(() => !document.querySelector('#c-status').disabled);
   await b.esperar(() => !!document.querySelector('#c-orc-nome') && document.querySelector('#c-status').value === 'agendado');
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id); assert.equal(detalhe.chamado.status, 'agendado');
   prova('aprovação com autor/canal, trava sem visita, validação de intervalo, prestador e visita gravados; Agendado liberado');

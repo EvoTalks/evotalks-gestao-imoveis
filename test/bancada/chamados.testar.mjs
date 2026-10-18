@@ -3,6 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { testarLoteY } from './lote-y.cenarios.mjs';
 import { testarFotos } from './fotos.cenarios.mjs';
+import { testarStatus } from './status.cenarios.mjs';
 import { testarSimplificacao } from './simplificar.cenarios.mjs';
 const servidor = criarServidor();
 await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));
@@ -30,6 +31,10 @@ try {
     if (modo === 'demonstracao') assert.equal(await b.avaliar(() => bancada.rede.length), 0);
   }
   await testarLoteY(b, origem);
+  const statusServidor = criarServidor();
+  await new Promise(resolve => statusServidor.listen(0, '127.0.0.1', resolve));
+  try { await testarStatus(b, 'http://127.0.0.1:' + statusServidor.address().port); }
+  finally { statusServidor.closeAllConnections(); await new Promise(resolve => statusServidor.close(resolve)); }
   assert.deepEqual(b.erros, []);
   process.stdout.write('OK paginação 27 resultados; sem portal e demonstração bloqueiam escrita; zero exceções\n');
 } finally {

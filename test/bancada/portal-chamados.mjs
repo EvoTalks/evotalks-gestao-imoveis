@@ -81,6 +81,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if (!aberto(c) && status !== 'triagem') erro(409, 'chamado_encerrado');
     if (status === 'aprovacao' && !orcamentos[c.id]?.some(o => o.escolhido)) erro(422, 'sem_orcamento_escolhido');
     if (['agendado', 'execucao'].includes(status) && c.aprovacao.status === 'pendente') erro(409, 'aprovacao_pendente');
+    if (['agendado', 'execucao'].includes(status) && c.aprovacao.status === 'recusada') erro(409, 'aprovacao_recusada');
     if (status === 'agendado' && !c.visita.inicio) erro(422, 'sem_visita');
     const de = c.status, em = instante();
     if (de !== status && de === 'aprovacao' && c.sla.pausado) {

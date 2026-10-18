@@ -47,19 +47,20 @@ export async function testarSimplificacao(b, origem) {
   assert.equal(criado.atendimento.chat_id, 8801); assert.equal(criado.atendente.user_id, 9998); assert.equal(criado.categoria, 'eletrica');
   await abrir(criado.id);
   assert.equal(await b.avaliar(() => document.querySelector('#c-mudar-status') || document.querySelector('.gi-trilha')), null);
-  await b.preencher('#c-titulo', 'Simplificação editada'); await b.preencher('#c-status', 'triagem'); await salvar();
+  await b.preencher('#c-titulo', 'Simplificação editada'); await b.preencher('#c-status', 'triagem');
+  await b.esperar(() => !document.querySelector('#c-status').disabled); await salvar();
   await b.esperar(id => document.querySelector('[data-editar="' + id + '"]').closest('tr').cells[7].textContent.includes('Triagem'), criado.id);
   let d = await b.avaliar(async id => GI.chamadosObter(id), criado.id);
   assert.equal(d.chamado.titulo, 'Simplificação editada'); assert.equal(d.chamado.status, 'triagem');
   const posts = await b.avaliar(id => bancada.chamadas.filter(r => r.method === 'POST' && r.caminho.startsWith('/api/ext/chamados/' + id)).map(r => r.caminho), criado.id);
-  assert.ok(posts.indexOf('/api/ext/chamados/' + criado.id) < posts.indexOf('/api/ext/chamados/' + criado.id + '/status'));
-  await abrir(criado.id); await b.preencher('#c-titulo', 'Dados salvos apesar do status'); await b.preencher('#c-status', 'aprovacao');
-  await b.clicar('.gi-modal [data-ok]');
-  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Os outros dados foram salvos'));
-  assert.match(await texto('#c-mensagem'), /orçamento/);
-  await b.esperar(id => document.querySelector('[data-editar="' + id + '"]').closest('tr').textContent.includes('Dados salvos apesar do status'), criado.id);
+  assert.ok(posts.indexOf('/api/ext/chamados/' + criado.id + '/status') < posts.indexOf('/api/ext/chamados/' + criado.id));
+  await abrir(criado.id); await b.preencher('#c-titulo', 'Dados salvos após recusa do status'); await b.preencher('#c-status', 'aprovacao');
+  await b.esperar(() => document.querySelector('#c-status').value === 'triagem' && !document.querySelector('#c-status').disabled);
+  assert.match(await texto('#c-status-controle'), /orçamento/);
+  assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Dados salvos após recusa do status');
+  await salvar();
+  await b.esperar(id => document.querySelector('[data-editar="' + id + '"]').closest('tr').textContent.includes('Dados salvos após recusa do status'), criado.id);
   assert.equal((await b.avaliar(async id => GI.chamadosObter(id), criado.id)).chamado.status, 'triagem');
-  await fechar();
   await novo(); await b.preencher('#c-locacao', '1');
   await b.avaliar(async () => GI.locacoesEncerrar(3, 'Encerramento concorrente sintético'));
   await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('409'));
@@ -71,7 +72,7 @@ export async function testarSimplificacao(b, origem) {
   assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Edição preservada no conflito');
   assert.equal(await b.avaliar(() => document.querySelector('#c-dados').disabled), false);
   await b.avaliar(async id => GI.chamadosStatus(id, 'triagem'), criado.id); await fechar();
-  prova('itens 2, 4, 9–11: Salvar único, dados antes do status, recusa parcial mantém modal e lista atualizada, Mais opções fechado');
+  prova('itens 2, 4, 9–11: Salvar para dados, status imediato independente, recusa preserva rascunho e lista atualizada, Mais opções fechado');
 
   await abrir(criado.id); await b.clicar('#c-tirar-vinculo');
   await b.esperar(() => document.querySelector('#c-vinculo').textContent === 'Nenhum atendimento vinculado' && !document.querySelector('#c-tirar-vinculo').disabled);
@@ -181,13 +182,19 @@ export async function testarSimplificacao(b, origem) {
   assert.equal(await b.avaliar(() => window.executouHostil), undefined); await fechar();
   prova('itens 1, 12 e 13: faixa abre aprovação; protocolo, última mensagem, prestador e descrição hostis permanecem texto');
 
-  // Cancelar e reabrir pelo mesmo select e Salvar; dados e histórico permanecem.
+  // Cancelar pede confirmação inline; reabrir grava na hora pelo select.
   await abrir(criado.id);
-  await b.preencher('#c-status', 'cancelado'); await b.preencher('#c-motivo-cancelamento', 'Motivo sintético'); await salvar();
+  await b.preencher('#c-status', 'cancelado'); await b.preencher('#c-status-controle [data-status-motivo]', 'Motivo sintético');
+  await b.clicar('#c-status-controle [data-status-confirmar]'); await b.esperar(() => !document.querySelector('#c-status').disabled); await fechar();
   await b.esperar(() => document.querySelector('#gi-resumo').textContent.includes('7 chamados abertos'));
   await abrir(criado.id); assert.equal(await b.avaliar(() => document.querySelector('#c-dados').disabled), true);
-  assert.deepEqual(await b.avaliar(() => Array.from(document.querySelector('#c-status').options, n => n.value).sort()), ['cancelado', 'triagem']);
-  await b.preencher('#c-status', 'triagem'); await salvar();
+  assert.deepEqual(await b.avaliar(() => Array.from(document.querySelector('#c-status').options, n => n.value).sort()), ['agendado', 'aprovacao', 'cancelado', 'concluido', 'execucao', 'novo', 'orcamento', 'triagem']);
+  await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled);
+  assert.equal(await b.avaliar(() => document.querySelector('#c-atendente').matches(':disabled')), false);
+  assert.equal(await b.avaliar(() => document.querySelector('#c-buscar-pasta').matches(':disabled')), false);
+  await b.preencher('#c-orc-nome', 'Prestador após reabertura sintética'); await b.clicar('#c-salvar-orcamento');
+  await b.esperar(() => document.querySelector('#c-orcamentos').textContent.includes('Prestador após reabertura sintética'));
+  await fechar();
   d = await b.avaliar(async id => GI.chamadosObter(id), criado.id); assert.equal(d.chamado.status, 'triagem');
   assert.ok(d.eventos.some(e => e.tipo === 'status' && e.detalhe.motivo === 'Motivo sintético'));
   for (const tema of ['', '&tema=escuro']) for (const largura of [260, 300, 334, 390]) {
@@ -200,5 +207,5 @@ export async function testarSimplificacao(b, origem) {
     if (largura === 390) await b.captura('simplificar-editar-390-' + (tema ? 'escuro' : 'claro')); await fechar();
   }
   assert.deepEqual(b.erros, []);
-  prova('cancelamento e reabertura via Salvar, resumo atualizado, claro/escuro 260/300/334/390 px, capturas e zero exceções');
+  prova('cancelamento confirmado e reabertura imediata pelo select, resumo atualizado, claro/escuro 260/300/334/390 px, capturas e zero exceções');
 }
