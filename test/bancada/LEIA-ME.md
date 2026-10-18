@@ -81,12 +81,11 @@ Capturas ficam em `test/bancada/capturas/` e são ignoradas pelo Git:
 - `08-modal-estreito.png`
 
 
-## Manutenção (base compartilhada M0)
+## Manutenção (0.20.0)
 
-O manifest 0.19.0 declara `/app/chamados.html`, `/app/prestadores.html` e
-`/app/painel.html` (contribuição `gi-cockpit`). São esqueletos para os nós de telas:
-apenas cabeçalho, navegação quando aplicável e aviso do modo. Os arquivos específicos
-JS/CSS estão vazios intencionalmente. O layout completo será implementado nesses nós.
+O manifest 0.20.0 declara `/app/chamados.html`, `/app/prestadores.html` e
+`/app/painel.html` (contribuição `gi-cockpit`). As telas de gestão e o cockpit
+estão implementados e cobertos pelas bancadas.
 
 `portal-chamados.mjs` implementa todas as rotas das Fatias 2 e 4 em memória e compartilha
 as locações do servidor. Há oito chamados (um de cada status, números 1001–1008),

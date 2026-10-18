@@ -99,7 +99,13 @@ try {
   await b.clicar('#c-atendimentos input[value="manual"]');
   await b.preencher('#c-protocolo', 'DEMO-PROTOCOLO-INFORMADO');
   await b.clicar('.gi-modal [data-ok]');
-  assert.match(await texto('#c-mensagem'), /portal exige esse número/);
+  assert.match(await texto('#c-confirmacao-texto'), /DEMO-PROTOCOLO-INFORMADO/);
+  await b.clicar('#c-voltar');
+  const soProtocolo = await gravarNovo();
+  assert.equal(soProtocolo.atendimento.chat_id, null);
+  assert.equal(soProtocolo.atendimento.protocolo, 'DEMO-PROTOCOLO-INFORMADO');
+  await novo(); await b.clicar('#c-atendimentos input[value="manual"]');
+  await b.preencher('#c-protocolo', 'DEMO-PROTOCOLO-INFORMADO');
   await b.preencher('#c-chat-id', '8877');
   await b.clicar('.gi-modal [data-ok]');
   assert.match(await texto('#c-confirmacao-texto'), /informado, não verificado/);

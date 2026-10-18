@@ -201,11 +201,13 @@ try {
   await b.esperar(() => document.querySelectorAll('[data-editar]').length === 1);
   await b.clicar('[data-editar="0"]'); await b.preencher('#p-observacao', 'Alteração sintética preservada');
   await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));
+  await b.esperar(() => !!document.querySelector('[data-ativar="0"]'));
   await b.clicar('[data-ativar="0"]'); await b.clicar('.gi-modal [data-ok]');
   await b.esperar(() => !document.querySelector('.gi-modal') && document.querySelector('#gi-corpo').textContent.includes('Nenhum'));
   await b.preencher('#f-ativos', ''); await b.clicar('#b-buscar');
   await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Inativo'));
   await b.captura('fatia4-10-prestador-inativo');
+  await b.esperar(() => !!document.querySelector('[data-ativar="0"]'));
   await b.clicar('[data-ativar="0"]'); await b.clicar('.gi-modal [data-ok]');
   await b.esperar(() => !document.querySelector('.gi-modal') && document.querySelector('#gi-corpo').textContent.includes('Ativo'));
   const p = await b.avaliar(async () => (await GI.prestadores({ busca: 'Prestador sintético Fatia 4' })).rows[0]);

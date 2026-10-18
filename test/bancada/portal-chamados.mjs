@@ -41,7 +41,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if ('origem' in d && !['atendimento', 'gestao', 'ia'].includes(d.origem)) campos.origem = 'Origem inválida.';
     if ((novo || 'solicitante' in d) && (!texto(d.solicitante?.nome) || d.solicitante.contato_id != null && !positivo(d.solicitante.contato_id))) campos.solicitante = 'Informe o solicitante.';
     if ('locacao_id' in d && !positivo(d.locacao_id) || novo && !locacao(d.locacao_id)) campos.locacao_id = 'Locação inválida.';
-    if (d.atendimento != null && (!positivo(d.atendimento.chat_id) || d.atendimento.iniciado_em != null && !iso(d.atendimento.iniciado_em))) campos.atendimento = 'Atendimento inválido.';
+    if (d.atendimento != null && ((d.atendimento.chat_id == null ? !texto(d.atendimento.protocolo) : !positivo(d.atendimento.chat_id)) || d.atendimento.iniciado_em != null && !iso(d.atendimento.iniciado_em))) campos.atendimento = 'Atendimento inválido.';
     if (d.atendente != null && (!positivo(d.atendente.user_id) || !texto(d.atendente.nome))) campos.atendente = 'Atendente inválido.';
     if (d.acesso != null && (typeof d.acesso !== 'object' || 'sem_cliente' in d.acesso && typeof d.acesso.sem_cliente !== 'boolean')) campos.acesso = 'Acesso inválido.';
     if (d.quem_paga != null && !['proprietario', 'inquilino', 'imobiliaria'].includes(d.quem_paga)) campos.quem_paga = 'Pagador inválido.';
@@ -151,7 +151,7 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if (rota === '/atendimentos/vinculados' && get) {
       const ids = porContato(q.get('contato_id')), rows = [];
       for (const c of chamados.filter(c => ids.includes(c.locacao_id) && c.atendimento)) {
-        let r = rows.find(r => r.chat_id === c.atendimento.chat_id);
+        let r = rows.find(r => c.atendimento.chat_id != null ? r.chat_id === c.atendimento.chat_id : r.chat_id == null && r.protocolo === c.atendimento.protocolo);
         if (!r) { r = { ...copia(c.atendimento), chamados: [] }; rows.push(r); }
         r.chamados.push({ id: c.id, numero: c.numero, titulo: c.titulo, status: c.status });
       }

@@ -1,10 +1,12 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const raiz = path.resolve(process.argv[2] || fileURLToPath(new URL('../', import.meta.url)));
 let arquivos = 0, inline = 0, erros = 0;
+const manifest = path.join(raiz, 'manifest.json');
+const versao = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).version : null;
 function validar(nome, codigo, modulo) {
   const r = spawnSync(process.execPath, codigo === undefined ? ['--check', nome] :
     ['--check', '--input-type=' + (modulo ? 'module' : 'commonjs')], { input: codigo, encoding: 'utf8' });
@@ -21,6 +23,13 @@ function visitar(pasta) {
     else if (/\.(?:js|mjs|cjs)$/.test(item.name)) { arquivos++; validar(nome); }
     else if (/\.html$/.test(item.name)) {
       const html = readFileSync(nome, 'utf8');
+      for (const tag of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
+        for (const v of tag[0].matchAll(/[?&]v=([^\s"'&>]+)/g)) {
+          if (versao && v[1] !== versao) {
+            erros++; process.stderr.write(nome + ': versão ' + v[1] + ' diverge da versão ' + versao + ' do manifest.\n');
+          }
+        }
+      }
       let indice = 0;
       for (const script of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
         indice++;

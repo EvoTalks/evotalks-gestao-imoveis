@@ -290,3 +290,21 @@ test('Chromium: páginas esqueleto, SDK, navegação, escrita desligada e demons
     assert.deepEqual(b.erros, []);
   } finally { if (b) await b.fechar(); servidor.closeAllConnections(); await new Promise(r => servidor.close(r)); }
 });
+
+test('17: plural seleciona singular só para um, incluindo contagens vazias', () => {
+  const GI = carregar();
+  assert.equal(GI.plural(1, 'aberto', 'abertos'), 'aberto');
+  assert.equal(GI.plural(0, 'aberto', 'abertos'), 'abertos');
+  assert.equal(GI.plural(2, 'concluído', 'concluídos'), 'concluídos');
+  assert.equal(GI.plural('1', 'imóvel', 'imóveis'), 'imóvel');
+});
+
+test('22: estados pendentes e azuis derivam cores dos tokens do tema', () => {
+  const estilo = readFileSync(new URL('../app/estilo.css', import.meta.url), 'utf8');
+  const chamados = readFileSync(new URL('../app/chamados.css', import.meta.url), 'utf8');
+  const pendente = estilo.match(/\.gi-estado-pendente\s*\{([^}]+)\}/)[1];
+  assert.match(pendente, /color-mix\(in srgb, var\(--gi-texto\)/);
+  assert.match(pendente, /var\(--gi-pendente\)/);
+  assert.doesNotMatch(pendente + chamados, /#[\da-f]{3,8}\b|rgba?\(/i);
+  assert.match(chamados, /var\(--ext-color-info/);
+});

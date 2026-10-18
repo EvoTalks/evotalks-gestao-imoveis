@@ -59,7 +59,7 @@ servidor.prependListener('request', (req, res) => {
   if (!req.url.startsWith('/app/painel.html')) return;
   const end = res.end;
   res.end = function (data, ...args) {
-    if (typeof data === 'string' || Buffer.isBuffer(data)) data = data.toString().replace('<script src="comum.js">', '<script>(' + instrumentar.toString() + ')();</script><script src="comum.js">');
+    if (typeof data === 'string' || Buffer.isBuffer(data)) data = data.toString().replace(/<script src="comum.js(?:\?v=[^"]+)?">/, '<script>(' + instrumentar.toString() + ')();</script>$&');
     return end.call(this, data, ...args);
   };
 });
@@ -161,7 +161,7 @@ try {
   assert.match(await texto('#cp-conteudo'), /Proprietário Demonstração/);
   const n = await b.avaliar(() => bancada.chamadas.length);
   await b.clicar('#cp-atualizar'); await pronto();
-  assert.equal(await b.avaliar(() => bancada.chamadas.length), n);
+  await b.esperar(n => bancada.chamadas.length === n + 2, n);
   await b.clicar('#cp-tab-imovel'); await new Promise(r => setTimeout(r, 200));
   await b.clicar('#cp-tab-novo'); await new Promise(r => setTimeout(r, 200));
   const alturas = await b.avaliar(() => cenario.alturas.slice());
@@ -169,7 +169,7 @@ try {
   assert.ok(alturas.some((h, i) => i && h > alturas[i - 1] + 2));
   await new Promise(r => setTimeout(r, 500));
   assert.equal(await b.avaliar(() => cenario.alturas.length), alturas.length);
-  prova('cache 60s; wrapper cresce e encolhe sem realimentação de altura');
+  prova('atualização ignora cache 60s; wrapper cresce e encolhe sem realimentação de altura');
 
   await b.navegar(base + '?cenario=fixo'); await pronto();
   await b.clicar('#cp-tab-novo'); await new Promise(r => setTimeout(r, 200));
