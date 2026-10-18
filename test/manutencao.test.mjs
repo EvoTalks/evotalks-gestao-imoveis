@@ -14,9 +14,9 @@ function carregar() {
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
-test('manifest 0.19.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
+test('manifest 0.20.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.19.0');
+  assert.equal(m.version, '0.20.0');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
