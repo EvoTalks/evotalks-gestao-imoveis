@@ -57,14 +57,14 @@ try {
   });
   await caso('rascunho Novo, aba, imóvel e filtros sobrevivem à releitura', async () => {
     await abrir(); await b.clicar('[data-filtro="abertos"]'); await b.preencher('#cp-busca', 'reparo');
-    await b.preencher('#cp-imovel', '1'); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', '1');
+    await b.preencher('#cp-imovel', '3'); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', '3');
     await b.preencher('#cp-titulo', '<Título sintético>'); await b.preencher('#cp-descricao', 'Rascunho não pode sumir');
     await zerar(); await marca(); await acionar('focus');
     assert.equal((await consultas()).length, 2);
     assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').getAttribute('aria-selected')), 'true');
     assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), '<Título sintético>');
     assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Rascunho não pode sumir');
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-imovel').value), '1');
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-imovel').value), '3');
     await b.clicar('#cp-tab-chamados');
     assert.equal(await b.avaliar(() => document.querySelector('#cp-busca').value), 'reparo');
     assert.equal(await b.avaliar(() => document.querySelector('[data-filtro="abertos"]').getAttribute('aria-pressed')), 'true');
@@ -99,7 +99,7 @@ try {
     await pausa(200); assert.equal((await consultas()).length, 2);
   });
   await caso('gravação de Novo e criação incerta impedem releitura', async () => {
-    await abrir(); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', '0');
+    await abrir(); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
     await b.preencher('#cp-titulo', 'Incerta F19'); await b.clicar('#cp-revisar');
     await b.avaliar(() => {
       const http = omni.http.request;

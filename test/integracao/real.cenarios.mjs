@@ -195,7 +195,7 @@ export async function testarReal(b, origem, real) {
       await b.esperar(() => !!document.querySelector('[data-chamado]'));
       assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true);
       assert.match(await texto('#cp-conteudo'), /Reparo Sintético Integração/);
-      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração');
       await b.captura('integracao-i-novo-vinculado');
       await b.clicar('#cp-revisar'); await b.captura('integracao-i-confirmacao'); await b.clicar('#cp-confirmar');
       await b.esperar(() => !!document.querySelector('#cp-sucesso'));
@@ -258,7 +258,7 @@ export async function testarReal(b, origem, real) {
         const altura = await b.avaliar(() => Math.ceil(document.querySelector('#gi-cockpit').getBoundingClientRect().height) + 100);
         await b.viewport(largura, altura);
         await b.captura('integracao-atendente-' + largura + '-' + tema);
-        await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); assert.match(await texto('#cp-escrita-aviso'), /desligadas/); assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').hidden), true);
+        await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); assert.match(await texto('#cp-escrita-aviso'), /desligadas/); assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').hidden), true);
       });
     }
     await cenario('F10 cockpit vincula catálogo e avulso ao contato sem locação', async () => {
@@ -279,7 +279,7 @@ export async function testarReal(b, origem, real) {
       assert.equal(contato.contato_id, 9905); assert.equal(contato.papel, 'locatario');
       assert.equal(contato.nome, 'Contato Sem Residência Demonstração'); assert.equal(contato.telefone, '00000000005');
       assert.match(await texto('#cp-conteudo'), /Sala Demonstração Gama/);
-      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
       await b.clicar('#cp-vincular-residencia'); await b.clicar('#cp-r-fora'); await b.preencher('#cp-r-titulo', 'Avulso F10 Integração Sintética');
       await b.clicar('#cp-r-form button[type=submit]'); await b.clicar('#cp-r-confirmar');
       await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Residência vinculada.'));
