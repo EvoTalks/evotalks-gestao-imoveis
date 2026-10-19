@@ -528,7 +528,7 @@ O desenho não cobre vazios, falhas, carregamento, demonstração, edição inli
 filtros extras, muitos chamados, múltiplas residências ou miniaturas carregadas;
 as bancadas verificam esses estados preservando os componentes e tokens.
 
-### Pessoa do atendimento e atendente (0.25.1)
+### Pessoa do atendimento e atendente (0.25.2)
 
 No cockpit, **Não é esta pessoa?** permite buscar por nome, telefone, e-mail ou CPF e escolher a pessoa usada na extensão. A busca começa em três caracteres, aguarda 400 ms e mostra até oito opções com telefone e CPF mascarados. O contato original do atendimento permanece na plataforma. **Vendo como** informa a escolha e permite voltar ao contato original; a preferência fica por atendimento em `gi-pessoa-v1`, expira em sete dias e funciona na sessão quando o storage está indisponível.
 
@@ -539,3 +539,6 @@ Locações, chamados, resumo, cache, releitura automática, solicitante da nova 
 `GI.nomeDoUsuario` centraliza o nome do atendente: nome da sessão, nome da lista de usuários pelo id ou `Usuário <id>`. A lista comum é compartilhada e consultada uma vez por documento. Demonstração usa apenas pessoas sintéticas e não lê nem grava preferências no host.
 
 Regressões específicas: `node --test test/pessoa.test.mjs` e `node test/bancada/pessoa.testar.mjs`.
+
+
+O nome do atendente vem de `omni.users.list()` quando `getUser()` traz `name` vazio; a rota crua de usuários não é usada.

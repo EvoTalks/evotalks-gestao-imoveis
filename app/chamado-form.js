@@ -972,9 +972,9 @@
           caixa.closest('.gi-modal').querySelector('.gi-modal-recado').setAttribute('role', 'alert');
           no('cancelar-fotos').onclick = function () { cancelarFotos = true; mensagem('Cancelando as fotos restantes…', 'info'); };
           caixa.querySelectorAll('form').forEach(function (f) { f.noValidate = true; });
-          sdk('users', 'list').then(function (r) {
+          GI.usuariosOrdenados().then(function (ordem) {
             if (!caixa.isConnected) return;
-            usuarios = (Array.isArray(r) ? r : []).filter(function (u) { return idValido(u.id); }).map(function (u) { return { id: u.id, name: GI.nomeDoUsuario(u) }; });
+            usuarios = (ordem || []).filter(function (id) { return idValido(id); }).map(function (id) { return { id: Number(id), name: GI.nomeDoUsuario({ id: id }) }; });
             preencherUsuarios();
           }).catch(function () { if (caixa.isConnected) { usuarios = []; preencherUsuarios(); mensagem('Não foi possível listar atendentes. O vínculo existente foi preservado; reabra para tentar novamente.', 'erro'); } });
           function preencherUsuarios() {

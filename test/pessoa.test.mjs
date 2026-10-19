@@ -7,18 +7,32 @@ function carregar(omni = {}) {
   vm.runInNewContext(readFileSync(new URL('../app/comum.js', import.meta.url), 'utf8'), { window, omni, document: {}, URL, setTimeout });
   return window.GI;
 }
-test('nome real usa a lista uma vez por sessão e reserva legível, nunca id isolado', async () => {
-  let chamadas = 0;
-  const GI = carregar({ data: { request: async () => { chamadas++; return [{ id: 531, name: 'Atendente Sintético' }]; } } });
+test('nome real usa users.list do host uma vez, sem consultar a rota crua', async () => {
+  let chamadas = 0, cruas = 0;
+  const omni = { users: { list: async () => { chamadas++; return [{ id: 531, name: 'Atendente Teste Cockpit', type: 2, email: 'x@y' }, { id: 9, name: 'Outro', type: 1, email: 'o@y' }]; } }, data: { request: async (...args) => { cruas++; assert.equal(String(args[0]).includes('users'), false); return []; } } };
+  const GI = carregar(omni);
   await Promise.all([GI.usuarios(), GI.usuarios()]);
-  assert.equal(GI.nomeDoUsuario({ id: 531, name: '' }), 'Atendente Sintético');
+  assert.deepEqual(Array.from(await GI.usuariosOrdenados()), [531, 9]);
+  assert.equal(GI.nomeDoUsuario({ id: 531, name: '' }), 'Atendente Teste Cockpit');
   assert.equal(GI.nomeDoUsuario({ id: 531, name: 'Nome da sessão' }), 'Nome da sessão');
   assert.equal(GI.nomeDoUsuario({ id: 532, name: ' ' }), 'Usuário 532');
-  assert.equal(chamadas, 1);
+  assert.equal(chamadas, 1); assert.equal(cruas, 0);
+  assert.equal(GI.nomeDoUsuario({ id: 531, fullname: 'Nome completo' }), 'Nome completo');
   for (const falha of [() => { throw Error('fora'); }, () => Promise.reject(Error('fora'))]) {
-    const g = carregar({ data: { request: falha } });
+    const g = carregar({ users: { list: falha } });
     await g.usuarios(); assert.equal(g.nomeDoUsuario({ id: 531 }), 'Usuário 531');
   }
+});
+test('ordem dos atendentes preserva a ordem original do SDK', async () => {
+  const GI = carregar({ users: { list: async () => [
+    { id: 9999, name: 'Primeiro', type: 2, email: 'a@b' },
+    { id: 9998, name: 'Segundo', type: 2, email: 'b@b' },
+    { id: 9997, name: 'Terceiro', type: 2, email: 'c@b' }
+  ] } });
+  await GI.usuarios();
+  assert.deepEqual(Array.from(await GI.usuariosOrdenados()), [9999, 9998, 9997]);
+  assert.equal(GI.nomeDoUsuario({ id: 9999 }), 'Primeiro');
+  assert.equal(GI.nomeDoUsuario({ id: 1234 }), 'Usuário 1234');
 });
 test('pessoas: seleção por atendimento, poda de sete dias e restauração', async () => {
   let salvo;
