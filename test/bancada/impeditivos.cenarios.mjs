@@ -48,10 +48,15 @@ export async function testarImpeditivos(b, origem, real) {
     const extra = q.includes('531') || q.includes('admin');
     assert.equal(await b.avaliar(() => !!document.querySelector('[data-lista-completa]')), extra);
     assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').hidden), true);
-    assert.equal(await b.avaliar(() => !!document.querySelector('#cp-abrir, [data-rapida]')), false);
+    assert.equal(await b.avaliar(() => !!document.querySelector('#cp-abrir, #cp-abrir-imovel, [data-rapida]')), false);
     assert.match(await texto('#cp-escrita-aviso'), /Abertura e edição.*desligadas nesta instalação/);
     await b.clicar('#cp-tab-imovel');
     assert.equal(await b.avaliar(() => !!document.querySelector('#cp-abrir-imovel')), false);
+    await abrir(q + '&escrita=1'); await pronto();
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').hidden), false);
+    assert.equal(await b.avaliar(() => !!document.querySelector('#cp-abrir, #cp-abrir-imovel')), false);
+    await b.clicar('#cp-tab-imovel');
+    assert.equal(await b.avaliar(() => !!document.querySelector('#cp-abrir, #cp-abrir-imovel')), false);
     await b.clicar('#cp-tab-chamados');
     assert.equal(await b.avaliar(() => GI.gestor()), extra);
     const nav = await b.avaliar(() => GI.cabecalho('gi-imoveis'));

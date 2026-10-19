@@ -90,7 +90,7 @@
         return Promise.resolve(msgs.slice(0, opts && opts.limit || 50));
       },
       getFile: function (ref) {
-        if (Number.isSafeInteger(Number(ref))) return Promise.resolve({ url: 'data:image/png;base64,iVBORw0KGgo=', mimetype: 'image/png' });
+        if (Number.isSafeInteger(Number(ref))) return Promise.resolve({ url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=', mimetype: 'image/png' });
         if (!/^DEMO-FOTO-880[1-4]$/.test(String(ref))) return falhar('not_found', 'Arquivo não encontrado.');
         return Promise.resolve({ url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="60"><text x="4" y="30">DEMO</text></svg>'), mimetype: 'image/svg+xml', name: 'foto-demonstracao.svg', size: 100 });
       },
@@ -119,7 +119,7 @@
       if (ctx.config.modoDemonstracao) return Promise.reject(new Error('Demonstração: HTTP bloqueado.'));
       var url = new URL(op.url);
       if (url.origin !== 'http://portal.bancada.invalid') return Promise.reject(new Error('Portal externo bloqueado na bancada.'));
-      window.bancada.chamadas.push({ caminho: url.pathname + url.search, method: op.method, body: op.body, autor: op.headers['X-GI-Autor'] });
+      window.bancada.chamadas.push({ caminho: url.pathname + url.search, method: op.method, body: op.body, timeout: op.timeout, autor: op.headers['X-GI-Autor'] });
       if (modo === 'fora' && !window.bancada.portalRestaurado) return Promise.resolve({ status: 503, body: JSON.stringify({ erro: 'portal_indisponivel' }) });
       return localFetch(url.pathname + url.search, { method: op.method, headers: op.headers, body: op.body }).then(function (r) {
         return r.text().then(function (body) {

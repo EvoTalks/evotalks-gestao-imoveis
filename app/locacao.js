@@ -17,7 +17,7 @@
     if (d.campos) return Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ');
     if (d.erro === 'imovel_ja_locado') return 'Este imóvel já tem uma locação ativa. Consulte Locados antes de continuar.';
     if (d.erro === 'locacao_encerrada') return 'Esta locação já foi encerrada. Atualize a lista.';
-    return d.detalhe || err.message || 'Não foi possível gravar a locação.';
+    return GI.mensagemErro(d.detalhe ? { message: d.detalhe, status: err.status } : err);
   };
   function campo(id, rotulo, valor, tipo, extra) {
     return '<div class="gi-campo-caixa"><label for="l-' + id + '">' + rotulo + '</label>' +
@@ -109,7 +109,7 @@
                   no('resultados-imovel').textContent = ''; resumo();
                 };
               });
-            }).catch(function (err) { if (caixa.isConnected && geracao === buscaImovel) no('resultados-imovel').textContent = err.message; });
+            }).catch(function (err) { if (caixa.isConnected && geracao === buscaImovel) no('resultados-imovel').textContent = GI.mensagemErro(err); });
           };
           no('busca-imovel').onkeydown = function (ev) { if (ev.key === 'Enter') no('buscar-imovel').click(); };
         }
@@ -136,7 +136,7 @@
                   no('contatos').textContent = '';
                 };
               });
-            }).catch(function (err) { if (caixa.isConnected && geracao === geracaoContato) no('contatos').textContent = err.message; });
+            }).catch(function (err) { if (caixa.isConnected && geracao === geracaoContato) no('contatos').textContent = GI.mensagemErro(err); });
           }, 350);
         };
       },

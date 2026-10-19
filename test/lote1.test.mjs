@@ -46,7 +46,7 @@ for (const codigo of codigos) test('lote 1: erro em português ' + codigo, () =>
 test('lote 1: 422 nomeia campos e rede nunca expõe status nem código', () => {
   const { GI } = carregar();
   assert.match(GI.mensagemErro({ status: 422, dados: { erro: 'dados_invalidos', campos: { titulo: 'Informe um texto.', 'atendimento.canal': 'Informe um texto.' } } }), /Título:.*Canal:/);
-  assert.equal(GI.mensagemErro({ code: 'timeout' }), 'O portal não respondeu. Tente de novo em instantes.');
+  assert.equal(GI.mensagemErro({ code: 'timeout' }), 'Não consegui falar com o servidor. Confira sua conexão e tente de novo.');
 });
 test('lote 1: POST gravado com resposta perdida reconcilia sem duplicar', async () => {
   const { GI } = carregar(); let posts = 0;

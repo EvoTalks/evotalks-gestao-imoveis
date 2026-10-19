@@ -352,8 +352,8 @@ Avisar cliente, com texto editável, confirmação, checagem de chat aberto e pr
 da janela de envio. Um aviso enviado não se repete ao tentar novamente salvar sua nota.
 A cópia usa `document.execCommand('copy')`, compatível com o iframe do host.
 
-O cartão Imóvel oferece pessoas, telefones, endereço e código para copiar, além de
-Abrir chamado; com múltiplas residências, a escolha no Novo é explícita. No Novo, Mais detalhes recolhe os campos
+O cartão Imóvel oferece pessoas, telefones, endereço e código para copiar. A abertura
+de chamados começa somente pela aba Novo do topo; com múltiplas residências, a escolha no Novo é explícita. No Novo, Mais detalhes recolhe os campos
 secundários e Usar última mensagem do cliente sugere a descrição, editável. A categoria
 sugere apenas o placeholder do título. Após criar: Gestão, copiar resumo e voltar à lista.
 Esc volta/fecha o estado aberto; Enter confirma campos de uma linha. Claro/escuro e
@@ -392,7 +392,7 @@ com o portal real em memória. Também pode ser executado isoladamente com
 
 ### Lote 2 — perfis e fluxos sem impeditivos (0.23.0)
 
-`cockpitAbreChamado` tem padrão `true`. Desligado, oculta Novo, Abrir chamado e a
+`cockpitAbreChamado` tem padrão `true`. Desligado, oculta Novo e a
 edição rápida; a consulta e Gestão em diálogo continuam, com uma linha neutra sobre
 a configuração. Sem contato, o cockpit orienta o caminho Sem contato cadastrado →
 Adicionar dados a contato existente. Portal fora/local orienta conferir URL/token;
@@ -434,3 +434,5 @@ completa usam o helper único `GI.gestor()` e `GI.GESTORES_EXTRA = [531]` em
 ajustando junto o verificador e os testes.
 
 Patch 0.23.1: o cockpit relê silenciosamente escritas de outras telas, preserva o rascunho e exibe um único ícone nos recados.
+
+0.24.0: botão Editar inline na O.S., grade de fotos selecionáveis e erros de rede legíveis com rascunho preservado. Escritas usam timeout de 30 s (leituras, 20 s); o host pode abortar antes e devolver status 0.

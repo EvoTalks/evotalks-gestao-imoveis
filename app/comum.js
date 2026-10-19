@@ -199,9 +199,10 @@
   };
   var rotulosCampos = { titulo: 'Título', imovel: 'Imóvel', imovel_codigo: 'Imóvel', locacao_id: 'Imóvel', nome: 'Nome', telefone: 'Telefone', contato_id: 'Contato', solicitante: 'Solicitante',
     valor: 'Valor', valor_centavos: 'Valor', valor_estimado_centavos: 'Valor estimado', canal: 'Canal', chat_id: 'Atendimento', protocolo: 'Protocolo', fila: 'Fila', iniciado_em: 'Início do atendimento',
-    user_id: 'Atendente', file_ref: 'Arquivo', descricao: 'Descrição', categoria: 'Categoria', prioridade: 'Prioridade', texto: 'Nota', inicio: 'Início', fim: 'Fim', contatos: 'Contatos', contrato_numero: 'Contrato', prestador_nome: 'Prestador', aluguel: 'Aluguel', valor_aluguel_centavos: 'Aluguel', dia_vencimento: 'Vencimento', garantia: 'Garantia', endereco: 'Endereço', bairro: 'Bairro', cidade: 'Cidade', tipo: 'Tipo', papel: 'Papel', email: 'E-mail', observacao: 'Observação' };
+    disponibilidade: 'Quando dá para entrar', chaves: 'Chaves / acesso', sem_cliente: 'Autoriza entrar sem o cliente', acesso: 'Acesso', user_id: 'Atendente', file_ref: 'Arquivo', descricao: 'Descrição', categoria: 'Categoria', prioridade: 'Prioridade', texto: 'Nota', inicio: 'Início', fim: 'Fim', contatos: 'Contatos', contrato_numero: 'Contrato', prestador_nome: 'Prestador', aluguel: 'Aluguel', valor_aluguel_centavos: 'Aluguel', dia_vencimento: 'Vencimento', garantia: 'Garantia', endereco: 'Endereço', bairro: 'Bairro', cidade: 'Cidade', tipo: 'Tipo', papel: 'Papel', email: 'E-mail', observacao: 'Observação' };
   GI.mensagemErro = function (err) {
     err = err || {}; var d = err.dados || {}, codigo = d.erro || err.code || err.message;
+    if (err.status === 0 || /Http failure response|Unknown Error|ERR_[A-Z_]+|NetworkError|Failed to fetch|\bstatus 0\b|extensionsruntime/i.test([typeof err === 'string' ? err : '', err.message, err.code, d.erro, d.detalhe].join(' '))) return 'Não consegui falar com o servidor. Confira sua conexão e tente de novo.';
     if (err.status === 429) codigo = 'rate_limited';
     if (codigo === 'dados_invalidos' || (err.status === 422 || err.status === 400) && d.campos) {
       if (!d.campos) return 'Confira os dados informados antes de salvar.';
@@ -216,7 +217,7 @@
     }
     if (Object.hasOwn(errosPortal, codigo)) return errosPortal[codigo];
     if (err.status === 401) return 'A conexão do portal foi recusada. Verifique a configuração.';
-    if (err.semResposta || err.status === 0 || /timeout|network|fetch|rede|ECONN/i.test(codigo || '')) return 'O portal não respondeu. Tente de novo em instantes.';
+    if (err.semResposta || err.status === 0 || /timeout|network|fetch|rede|ECONN/i.test(codigo || '')) return 'Não consegui falar com o servidor. Confira sua conexão e tente de novo.';
     if (typeof d.erro === 'string' && !/\bHTTP\b/i.test(d.erro) && /[ \u00c0-\u00ff]/.test(d.erro) && !/^[a-z_]+$/.test(d.erro)) return d.erro;
     if (err.status || /\bHTTP\b/i.test(codigo || '') || /^[a-z_]+$/.test(codigo || '')) return 'Não foi possível concluir a operação. Tente de novo em instantes.';
     return err.message || 'Não foi possível concluir a operação. Tente de novo em instantes.';
@@ -363,7 +364,7 @@
       method: opcoes.method || (opcoes.corpo !== undefined ? "POST" : "GET"),
       headers: cabecalhos(opcoes.corpo !== undefined),
       body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined,
-      timeout: 20000
+      timeout: /^(POST|PUT|PATCH|DELETE)$/i.test(opcoes.method || (opcoes.corpo !== undefined ? 'POST' : 'GET')) ? 30000 : 20000
     })).then(function (r) {
       // O body volta em TEXTO, sempre — o JSON.parse é nosso.
       if (!r || r.status < 200 || r.status >= 300) {
@@ -381,6 +382,13 @@
       if (/^(POST|PUT|PATCH|DELETE)$/.test(metodo)) return GI.invalidarSnapshots().then(function () { return r; });
       return r;
     }).catch(function (err) {
+      if (!(err instanceof Error) || !Object.isExtensible(err)) {
+        var normalizado = new Error(String(err && err.message || err || ''));
+        if (err && typeof err === 'object') {
+          ['status', 'code', 'dados', 'semResposta'].forEach(function (chave) { if (err[chave] !== undefined) normalizado[chave] = err[chave]; });
+        }
+        err = normalizado;
+      }
       if (!err.status && !/rate_limit|forbidden|bad_args/.test(err.code || '')) err.semResposta = true;
       err.message = GI.mensagemErro(err); throw err;
     });
@@ -446,7 +454,7 @@
       return 'portal';
     }).catch(function (e) {
       GI.modo = 'portal-fora';
-      GI.portalErro = e && e.message ? e.message : String(e);
+      GI.portalErro = GI.mensagemErro(e);
       return 'portal-fora';
     });
   };
