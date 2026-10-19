@@ -23,7 +23,7 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.23.0, config e contribuições
+manifest.json          identidade 0.23.1, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
@@ -91,6 +91,7 @@ no diálogo `gi-os`; administrador e usuário 531 veem **Lista completa** (`gi-c
 
 Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. O storage guarda apenas o alvo temporário da abertura do diálogo e snapshots de consulta do cockpit (máximo 8 contatos, 10 minutos, menos de 60 mil caracteres no conjunto; sem credenciais, fotos ou arquivos). A fonte das gravações continua sendo o portal. Sem portal, as telas avisam e bloqueiam ações.
 O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.
+Uma escrita do cockpit preserva a marca externa ainda não vista, para a próxima releitura consultar também a alteração feita em outra tela.
 
 **Chamados**: escolher o status na lista ou no modal grava na hora, atualiza a linha,
 o prazo e o resumo. A recusa do portal devolve o seletor ao status anterior e explica
@@ -431,3 +432,5 @@ completa usam o helper único `GI.gestor()` e `GI.GESTORES_EXTRA = [531]` em
 `gi-os` continua disponível aos perfis `[0,1,2]`. Para revogar a exceção, esvazie
 `GI.GESTORES_EXTRA` e substitua os três filtros por `visibility.userTypes: [0]`,
 ajustando junto o verificador e os testes.
+
+Patch 0.23.1: o cockpit relê silenciosamente escritas de outras telas, preserva o rascunho e exibe um único ícone nos recados.

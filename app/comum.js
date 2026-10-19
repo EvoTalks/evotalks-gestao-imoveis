@@ -130,6 +130,7 @@
     if (!box) return;
     clearTimeout(timerRecado); box.textContent = ''; box.hidden = !texto;
     if (!texto) return;
+    texto = String(texto).replace(/^(?:[✓!]\s+)+/, '');
     tipo = tipo || 'erro';
     box.className = 'gi-recado gi-recado--' + tipo; box.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
     box.setAttribute('tabindex', '-1');
@@ -262,12 +263,24 @@
   GI.usaPortal = function () { return !!(baseDoPortal() && tokenDoPortal()); };
 
   GI.CHAVE_SNAPSHOTS = 'gi-cockpit-snapshots-v1';
+  GI.CHAVE_ESCRITA = 'gi-ultima-escrita';
+  GI.instanciaId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   GI.invalidarSnapshots = function () {
+    // A marca independe da leitura/invalidação do cache: cada operação é opcional.
+    var marca, invalidacao;
+    function publicarMarca() { return omni.storage.set(GI.CHAVE_ESCRITA, { em: Date.now(), por: GI.instanciaId }); }
     try {
-      return Promise.resolve(omni.storage.get(GI.CHAVE_SNAPSHOTS)).then(function (snapshot) {
+      marca = Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).then(function (v) {
+        if (typeof GI.cockpitCarregadoEm === 'function' && v && v.por !== GI.instanciaId && v.em > GI.cockpitCarregadoEm()) return;
+        return publicarMarca();
+      }, publicarMarca).catch(function () {});
+    } catch (_) { marca = Promise.resolve(); }
+    try {
+      invalidacao = Promise.resolve(omni.storage.get(GI.CHAVE_SNAPSHOTS)).then(function (snapshot) {
         if (snapshot) return omni.storage.set(GI.CHAVE_SNAPSHOTS, { origem: GI.cfg('portalUrl', ''), rows: [] });
       }).catch(function () {});
-    } catch (_) { return Promise.resolve(); }
+    } catch (_) { invalidacao = Promise.resolve(); }
+    return Promise.all([marca, invalidacao]);
   };
 
   /* Como a chamada sai daqui, e por que NÃO é sempre fetch.

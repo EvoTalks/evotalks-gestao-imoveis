@@ -14,6 +14,80 @@
   var transporte = GI.chamarPortal;
   var filtroImovel = '', novoSelecionado = false, filtro = 'todos', busca = '', limiteLista = 10, atualizadoEm = 0, snapshots = [], fila = Promise.resolve(), versaoDados = 0;
   var chaveSnapshot = GI.CHAVE_SNAPSHOTS, filasConhecidas = [], contatosComLocacao = {}, inicioTimer, atualizarTimer, ultimaAtualizacao = 0;
+  var carregadoEm = 0, timerEscrita, relendoEscrita = false, ultimaEscritaTentada = '', ultimoToque = 0, escritasEmCurso = 0;
+  GI.cockpitCarregadoEm = function () { return carregadoEm; };
+  function pararVerificacao() { clearInterval(timerEscrita); timerEscrita = null; }
+  function contatoCarregado() { return !destruido && !demo() && GI.modo === 'portal' && contato && chat && carregadoEm; }
+  function naoOculto(el) {
+    // Recolher um cartão não descarta rascunhos nem encerra operações.
+    return !el.closest('[hidden]');
+  }
+  function painelOcioso() {
+    if (!contatoCarregado() || gravando || criacaoIncerta || escritasEmCurso || residencia) return false;
+    // Botões só ocupam por operação explícita (aria-busy), nunca por permissão estática.
+    if (Array.from(document.querySelectorAll('#cp-conteudo button:disabled[aria-busy="true"], [data-edicao] select:disabled, [data-cancelar-caixa], [data-aviso-form]')).some(naoOculto)) return false;
+    var foco = document.activeElement;
+    if (foco && naoOculto(foco) && foco.closest('[data-chamado]') && foco.matches('input, select, textarea')) return false;
+    return !Array.from(document.querySelectorAll('[data-complemento] textarea')).some(function (campo) { return naoOculto(campo) && campo.value; });
+  }
+  function iniciarVerificacao() {
+    if (timerEscrita || !contatoCarregado()) return;
+    timerEscrita = setInterval(function () {
+      if (document.visibilityState === 'visible' && contatoCarregado()) verificarEscritaExterna();
+    }, 4000);
+  }
+  function verificarEscritaExterna() {
+    if (relendoEscrita || !painelOcioso()) return;
+    var g = geracao, c = chat, versao = versaoDados;
+    relendoEscrita = true;
+    Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).then(function (v) {
+      if (g !== geracao || !painelOcioso() || !v || v.por === GI.instanciaId || !(v.em > carregadoEm)) return;
+      var chave = String(v.por) + ':' + String(v.em);
+      if (chave === ultimaEscritaTentada) return;
+      return atual(g, c).then(function (valido) {
+        if (!valido || !painelOcioso()) return;
+        // Falha também consome esta marca; só outra escrita ou o botão ⟳ tenta de novo.
+        var anterior = ultimaEscritaTentada;
+        ultimaEscritaTentada = chave;
+        var rota = '/contatos/' + id(c.contactId);
+        cache.delete(rota + '/chamados'); cache.delete(rota + '/locacoes');
+        return Promise.all([GI.chamadosPorContato(c.contactId), GI.chamarPortal(rota + '/locacoes')]).then(function (respostas) {
+          return atual(g, c).then(function (aindaAtual) {
+            if (!aindaAtual || versao !== versaoDados || !painelOcioso()) {
+              if (g === geracao) ultimaEscritaTentada = anterior;
+              return;
+            }
+            var imovelId = locacao() && locacao().id;
+            var cartoes = {};
+            document.querySelectorAll('[data-os-id]').forEach(function (card) { cartoes[card.dataset.osId] = card.open; });
+            chamados = linhas(respostas[0]); locacoes = linhas(respostas[1]);
+            var indice = locacoes.findIndex(function (l) { return String(l.id) === String(imovelId); });
+            selecionada = indice < 0 ? 0 : indice;
+            contatosComLocacao[c.contactId] = locacoes.length > 0;
+            carregadoEm = atualizadoEm = Date.now();
+            cabecalho();
+            // Novo e a confirmação conservam o próprio DOM, foco, fotos e rascunho.
+            if (aba !== 'novo') {
+              render();
+              document.querySelectorAll('[data-os-id]').forEach(function (card) {
+                if (Object.hasOwn(cartoes, card.dataset.osId)) card.open = cartoes[card.dataset.osId];
+              });
+            }
+            return guardarSnapshot(c);
+          });
+        });
+      });
+    }).catch(function () { /* Releitura silenciosa: mantém o dado e o rascunho atuais. */ }).then(function () {
+      if (g === geracao) relendoEscrita = false;
+    });
+  }
+  window.addEventListener('focus', verificarEscritaExterna);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') verificarEscritaExterna(); });
+  $('gi-cockpit').addEventListener('pointerdown', function () {
+    var agora = Date.now();
+    if (agora - ultimoToque < 1000) return;
+    ultimoToque = agora; verificarEscritaExterna();
+  });
   async function lerSnapshot(c) {
     try {
       var r = await omni.storage.get(chaveSnapshot);
@@ -59,6 +133,7 @@
     function enviar() { return transporte(rota, op); }
     var operacao;
     if (post) {
+      ++escritasEmCurso;
       ++versaoDados;
       snapshots = [];
       // O transporte comum invalida o storage após confirmar a gravação.
@@ -72,6 +147,7 @@
     });
     if (!post) cache.set(rota, { em: agora, promessa: promessa });
     else cache.clear();
+    if (post) return promessa.then(function (r) { --escritasEmCurso; return r; }, function (err) { --escritasEmCurso; throw err; });
     return promessa;
   };
   GI.definirModo = function () {
@@ -135,6 +211,7 @@
     return g === geracao && !!s && String(s.id) === String(c.id) && String(s.contactId) === String(c.contactId);
   }
   function limpar() {
+    pararVerificacao(); carregadoEm = 0; relendoEscrita = false; ultimaEscritaTentada = ''; ultimoToque = 0;
     clearTimeout(timerResidencia); ++buscaResidencia; residencia = null;
     $('cp-vincular-residencia').hidden = true; $('cp-residencia-aviso').textContent = '';
     chat = contato = null; locacoes = []; chamados = []; selecionada = 0; formulario = confirmado = criacaoIncerta = null;
@@ -198,7 +275,7 @@
       var snapshot = forcar ? null : await lerSnapshot(c);
       if (!await atual(g, c)) return;
       if (snapshot) {
-        locacoes = snapshot.dados.locacoes; chamados = snapshot.dados.chamados; atualizadoEm = snapshot.em;
+        locacoes = snapshot.dados.locacoes; chamados = snapshot.dados.chamados; atualizadoEm = snapshot.em; carregadoEm = Date.now(); iniciarVerificacao();
         contatosComLocacao[c.contactId] = locacoes.length > 0; cabecalho(); render(); return;
       }
       var versaoConsulta = versaoDados;
@@ -212,7 +289,7 @@
       if (!await atual(g, c)) return;
       contatosComLocacao[c.contactId] = linhas(lr).length > 0;
       if (versaoConsulta !== versaoDados) return; // Uma gravação posterior vence a leitura que já estava em voo.
-      chat = c; contato = pessoa; locacoes = linhas(lr); chamados = linhas(cr); atualizadoEm = Date.now();
+      chat = c; contato = pessoa; locacoes = linhas(lr); chamados = linhas(cr); carregadoEm = atualizadoEm = Date.now(); iniciarVerificacao();
       cabecalho();
       if (!snapshot || aba === 'chamados') render();
       await guardarSnapshot(c);
@@ -356,7 +433,7 @@
       aba = 'imovel'; cabecalho(); render(); recado('Residência vinculada.', 'sucesso');
       var cr = await GI.chamadosPorContato(c.contactId);
       if (!await atual(g, c)) return;
-      chamados = linhas(cr); cabecalho();
+      chamados = linhas(cr); carregadoEm = atualizadoEm = Date.now(); cabecalho();
     } catch (err) {
       if (g !== geracao) return;
       if (gravou) { residencia = null; cabecalho(); render(); recado('Residência vinculada. Não foi possível atualizar a consulta. Use Atualizar para consultar o vínculo.', 'erro'); }
@@ -534,7 +611,7 @@
   function base64(v) { return typeof v === 'string' && v.length > 0 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(v); }
   async function carregarDetalhes(botao) {
     var g = geracao, c = chat, n = id(botao.dataset.detalhes), alvo = botao.closest('details').querySelector('[data-complemento]');
-    botao.disabled = true; alvo.textContent = 'Carregando fotos e observações…';
+    botao.disabled = true; botao.setAttribute('aria-busy', 'true'); alvo.textContent = 'Carregando fotos e observações…';
     function valido() { return g === geracao && alvo.isConnected; }
     try {
       var d = demo() ? { chamado: {}, anexos: [], eventos: [] } : await GI.chamadosObter(n);
@@ -559,7 +636,7 @@
         function imagem(url) { var img = document.createElement('img'); img.alt = a.nome || 'Foto'; img.src = url; return img; }
         if (base64(a.miniatura_base64)) b.prepend(imagem('data:image/jpeg;base64,' + a.miniatura_base64));
         b.onclick = async function () {
-          b.disabled = true;
+          b.disabled = true; b.setAttribute('aria-busy', 'true');
           try {
             var r = a.origem === 'upload' ? await GI.chamadosAnexoArquivo(n, a.id) : await omni.chats.getFile(a.file_ref);
             if (!await atual(g, c) || !valido()) return;
@@ -567,7 +644,7 @@
             if (!url || !/^(https?:|data:image\/)/i.test(url)) throw new Error('Foto indisponível.');
             no('imagem').textContent = ''; no('imagem').appendChild(imagem(url)); no('foto-inteira').hidden = false; no('fechar-foto').focus();
           } catch (err) { if (valido()) recado('Não foi possível abrir a foto. ' + err.message, 'erro'); }
-          finally { if (valido()) b.disabled = false; }
+          finally { if (valido()) { b.disabled = false; b.removeAttribute('aria-busy'); } }
         };
       });
       no('fechar-foto').onclick = function () { no('foto-inteira').hidden = true; };
@@ -620,8 +697,9 @@
           finally { salvando = false; if (valido()) { no('salvar-nota').disabled = no('confirmar-nota').disabled = no('nota').disabled = no('avisar').disabled = false; no('salvar-nota').textContent = 'Salvar nota'; } }
         }
       }
-      botao.hidden = true;
+      botao.disabled = false; botao.hidden = true;
     } catch (err) { if (valido()) { alvo.textContent = 'Não foi possível consultar. ' + GI.mensagemErro(err); recado(alvo.textContent, 'erro'); botao.disabled = false; } }
+    finally { botao.removeAttribute('aria-busy'); }
     GI.ajustarAltura();
   }
   function renderImovel() {
@@ -760,7 +838,7 @@
         if (!await atual(g, c)) return;
         var ch = demo() ? { rows: chamados } : await GI.chamadosPorContato(c.contactId);
         if (!await atual(g, c)) return;
-        locacoes = linhas(l); chamados = linhas(ch); cabecalho();
+        locacoes = linhas(l); chamados = linhas(ch); carregadoEm = atualizadoEm = Date.now(); cabecalho();
       } catch (_) { if (g === geracao) recado('Chamado aberto. Não foi possível atualizar a lista; consulte novamente.', 'erro'); }
     } catch (err) {
       if (g === geracao) {
@@ -863,7 +941,7 @@
   var desassinar, desassinarDestroy, destruido = false;
   function destruir() {
     if (destruido) return;
-    destruido = true; ++geracao; clearTimeout(temporizador); clearTimeout(timerResidencia); clearTimeout(inicioTimer); clearTimeout(atualizarTimer); ++buscaResidencia; observer.disconnect(); fixo = true;
+    destruido = true; pararVerificacao(); ++geracao; clearTimeout(temporizador); clearTimeout(timerResidencia); clearTimeout(inicioTimer); clearTimeout(atualizarTimer); ++buscaResidencia; observer.disconnect(); fixo = true;
     if (typeof desassinar === 'function') desassinar();
     if (typeof desassinarDestroy === 'function') desassinarDestroy();
   }
