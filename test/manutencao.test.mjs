@@ -14,9 +14,9 @@ function carregar() {
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
-test('manifest 0.21.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
+test('manifest 0.21.1 declara navegação ordenada, cockpit e escrita opt-in', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.21.0');
+  assert.equal(m.version, '0.21.1');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
@@ -209,7 +209,10 @@ test('portal: prestadores, configuração validada, visita, orçamento único, a
   assert.ok(api(base).corpo.chamado.aprovacao.enviada_em);
   api(base + '/aprovacao', { acao: 'recusada', por: 'Proprietário Demonstração' });
   assert.equal(api(base).corpo.chamado.status, 'aprovacao');
-  api(base + '/aprovacao', { acao: 'aprovada', por: 'Proprietário Demonstração' });
+  assert.equal(api(base + '/aprovacao', { acao: 'aprovada', por: 'Proprietário Demonstração' }).corpo.erro, 'aprovacao_recusada');
+  const o3 = api(base + '/orcamentos', { prestador_nome: 'Nova cotação sintética', valor_centavos: 60000 }).corpo.orcamento;
+  api(base + '/orcamentos/' + o3.id + '/escolher', {});
+  assert.equal(api(base + '/aprovacao', { acao: 'aprovada', por: 'Proprietário Demonstração' }).status, 200);
   assert.equal(api(base + '/status', { status: 'agendado' }).status, 200);
 });
 test('portal: SLA recalcula prioridade com pausas acumuladas e encerrar limpa pausa', () => {

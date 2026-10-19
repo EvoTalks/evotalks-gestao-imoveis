@@ -114,7 +114,7 @@ export async function testarFotos(b, origem) {
     await b.avaliar(() => {
       bancada.instanteCota = 0;
       GI.cotaPortal = GI.criarCotaPortal(() => bancada.instanteCota);
-      for (let i = 0; i < 29; i++) GI.cotaPortal.reservar();
+      for (let i = 0; i < 30; i++) GI.cotaPortal.reservar();
     });
     await b.clicar('.gi-modal [data-ok]');
     await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Aguarde um minuto'));

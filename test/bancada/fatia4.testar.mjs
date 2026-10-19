@@ -3,7 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.21.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.21.1');
 
 const servidor = criarServidor();
 // O contrato legado de configuração é independente do simulador de manutenção.
@@ -106,13 +106,12 @@ try {
   await capturar('fatia4-03-envio-proprietario', '#c-aprovacao');
   prova('mensagem revisada antes do envio; enviada pelo chat aberto do proprietário; envio registrado após sent:true');
 
-  await b.preencher('#c-aprovacao-por', 'Proprietário Demonstração'); await b.preencher('#c-aprovacao-canal', 'telefone');
   await b.preencher('#c-aprovacao-observacao', 'Aprovado em conversa sintética');
   await b.clicar('#c-aprovar'); await b.esperar(() => !document.querySelector('#c-aprovar').disabled);
   assert.match(await texto('#c-aprovacao'), /Aprovada/);
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.aprovacao.por, 'Proprietário Demonstração');
-  assert.equal(detalhe.chamado.aprovacao.canal, 'telefone');
+  assert.equal(detalhe.chamado.aprovacao.canal, 'WhatsApp');
   await b.preencher('#c-status', 'agendado'); await b.esperar(() => !document.querySelector('#c-status').disabled);
   assert.match(await texto('#c-status-controle'), /visita/);
   await b.captura('fatia4-04-trava-sem-visita');
@@ -128,7 +127,6 @@ try {
   await b.esperar(() => !!document.querySelector('#c-orc-nome') && document.querySelector('#c-status').value === 'agendado');
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id); assert.equal(detalhe.chamado.status, 'agendado');
   prova('aprovação com autor/canal, trava sem visita, validação de intervalo, prestador e visita gravados; Agendado liberado');
-  await b.preencher('#c-aprovacao-por', 'Proprietário Demonstração');
   await b.preencher('#c-aprovacao-observacao', 'Recusa sintética exige decisão'); await b.clicar('#c-recusar'); await b.esperar(() => !document.querySelector('#c-recusar').disabled);
   assert.match(await texto('#c-aprovacao'), /Recusada/);
   assert.equal(await valor('#c-status'), 'aprovacao');

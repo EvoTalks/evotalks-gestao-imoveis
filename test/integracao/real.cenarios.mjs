@@ -22,6 +22,16 @@ export async function testarReal(b, origem, real) {
     assert.deepEqual(b.erros, []);
     process.stdout.write('OK real ' + nome + ': ' + chamadas.length + '/30 requisições; ' + (cliques - cliquesAntes) + ' cliques; banco conferido\n');
   }
+  async function orcamentoBarato(nome, fn, pendente = false) {
+    const inicio = real.requisicoes.length;
+    await fn(); await livre();
+    const rs = real.requisicoes.slice(inicio);
+    assert.ok(rs.length <= 3, nome + ': ' + JSON.stringify(rs));
+    assert.equal(rs.filter(r => r.method === 'GET' && r.url === '/chamados/' + id).length, 1, nome + ': uma releitura');
+    assert.equal(rs.filter(r => r.method === 'POST' && r.url === '/chamados/' + id).length, pendente ? 1 : 0, nome + ': só atualização pendente');
+    assert.equal(rs.filter(r => /^\/chamados(?:\?|$)/.test(r.url)).length, 0, nome + ': sem reler lista');
+    process.stdout.write('OK real F9 ' + nome + ': ' + rs.length + '/3 requisições; 1 releitura; sem POST vazio nem GET da lista\n');
+  }
   let cliques = 0;
   const clicarOriginal = b.clicar;
   b.clicar = async function (seletor) { cliques++; return clicarOriginal(seletor); };
@@ -91,8 +101,10 @@ export async function testarReal(b, origem, real) {
     await cenario('e orçamento livre e prestador reutilizado sem acento/caixa', async () => {
       await abrir(id);
       for (const nome of ['Técnico Sintético Integração', '  tecnico sintetico integracao  ']) {
-        await b.preencher('#c-orc-nome', nome); await b.preencher('#c-orc-observacao', 'Descrição livre, sem preço definido.');
-        await b.clicar('#c-salvar-orcamento'); await livre();
+        await orcamentoBarato('adicionar orçamento livre', async () => {
+          await b.preencher('#c-orc-nome', nome); await b.preencher('#c-orc-observacao', 'Descrição livre, sem preço definido.');
+          await b.clicar('#c-salvar-orcamento');
+        });
       }
       const lista = await real.api('/prestadores'); assert.equal(lista.total, 1);
       const orc = await sql('SELECT * FROM chamado_orcamentos WHERE chamado_id=$1 ORDER BY id', [id]);
@@ -100,14 +112,46 @@ export async function testarReal(b, origem, real) {
       assert.equal(orc[0].valor_centavos, null); assert.equal(orc[1].observacao, 'Descrição livre, sem preço definido.');
       await b.captura('integracao-e-orcamentos');
     });
+    await cenario('F9 orçamento escolhido, Salvar quem paga e prioridade depois da escolha', async () => {
+      await orcamentoBarato('adicionar orçamento com valor', async () => {
+        await b.preencher('#c-descricao', 'Descrição pendente sintética F9');
+        await b.preencher('#c-orc-nome', 'Cotação Sintética F9'); await b.preencher('#c-orc-valor', '350');
+        await b.clicar('#c-salvar-orcamento');
+      }, true);
+      assert.equal((await chamado(id)).descricao, 'Descrição pendente sintética F9');
+      await orcamentoBarato('escolher orçamento', () => b.clicar('[data-escolher-orcamento="2"]'));
+      await b.clicar('[data-apagar-orcamento="1"]');
+      await orcamentoBarato('remover orçamento', () => b.clicar('[data-apagar-orcamento="1"]'));
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').tagName), 'P');
+      assert.match(await texto('#c-valor'), /350,00.*definido pelo orçamento escolhido/);
+      await b.clicar('#c-mais summary'); await b.preencher('#c-quem-paga', 'proprietario');
+      let inicio = real.requisicoes.length; await salvar();
+      let posts = real.requisicoes.slice(inicio).filter(r => r.method === 'POST');
+      assert.deepEqual(posts.map(r => r.url), ['/chamados/' + id]);
+      assert.equal((await chamado(id)).quem_paga, 'proprietario');
+      assert.equal((await chamado(id)).valor_estimado_centavos, 35000);
+      assert.equal((await chamado(id)).aprovacao_status, 'pendente');
+      await abrir(id); await b.preencher('#c-prioridade', 'normal'); await salvar();
+      assert.equal((await chamado(id)).prioridade, 'normal');
+      assert.equal((await chamado(id)).valor_estimado_centavos, 35000);
+      await abrir(id); inicio = real.requisicoes.length; await salvar();
+      assert.equal(real.requisicoes.slice(inicio).filter(r => r.method === 'POST').length, 0, 'Salvar sem alterações não grava');
+      await abrir(id); await b.preencher('#c-descricao', 'Rascunho independente do status');
+      await b.preencher('#c-status', 'orcamento'); await livre();
+      assert.equal((await chamado(id)).status, 'orcamento');
+      assert.notEqual((await chamado(id)).descricao, 'Rascunho independente do status');
+      await b.avaliar(() => { document.querySelector('#c-mais').open = true; document.querySelector('#c-valor').scrollIntoView({ block: 'center' }); });
+      await b.captura('integracao-f9-valor-escolhido'); await fechar();
+    });
     await cenario('f alçada, aprovação, visita e conclusão', async () => {
-      await b.clicar('#c-mais summary'); await b.preencher('#c-quem-paga', 'proprietario'); await b.preencher('#c-valor', '650,10');
-      await salvar(); await abrir(id);
+      await abrir(id);
       assert.equal((await chamado(id)).aprovacao_status, 'pendente');
       await b.preencher('#c-status', 'agendado'); await livre();
-      assert.equal((await chamado(id)).status, 'triagem'); assert.match(await texto('#c-status-controle'), /aprovação.*pendente/);
-      await b.clicar('#c-registrar-decisao'); await b.preencher('#c-aprovacao-por', 'Proprietário Sintético'); await b.clicar('#c-aprovar'); await livre();
+      assert.equal((await chamado(id)).status, 'orcamento'); assert.match(await texto('#c-status-controle'), /aprovação.*pendente/);
+      await b.clicar('#c-registrar-decisao'); await b.clicar('#c-aprovar'); await livre();
       assert.equal((await chamado(id)).aprovacao_status, 'aprovada');
+      assert.equal((await chamado(id)).aprovacao_por, 'Proprietário');
+      assert.equal((await chamado(id)).aprovacao_canal, 'WhatsApp');
       await b.preencher('#c-visita-inicio', '2026-12-01T14:00'); await salvar(); await abrir(id);
       assert.ok((await chamado(id)).visita_inicio);
       await b.preencher('#c-status', 'agendado'); await livre(); assert.equal((await chamado(id)).status, 'agendado');
@@ -143,7 +187,7 @@ export async function testarReal(b, origem, real) {
       assert.match(await texto('#cp-conteudo'), /Reparo Sintético Integração/);
       await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração');
       await b.captura('integracao-i-novo-vinculado');
-      await b.clicar('#cp-revisar'); await b.captura('integracao-i-confirmacao'); await b.clicar('#cp-conferi'); await b.clicar('#cp-confirmar');
+      await b.clicar('#cp-revisar'); await b.captura('integracao-i-confirmacao'); await b.clicar('#cp-confirmar');
       await b.esperar(() => !!document.querySelector('#cp-sucesso'));
       assert.equal(await b.avaliar(() => !!document.querySelector('#cp-ver-gestao')), false);
       await b.captura('integracao-i-sucesso');
@@ -167,6 +211,8 @@ export async function testarReal(b, origem, real) {
         for (const tela of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
           assert.equal(await b.avaliar(tela => !!document.querySelector('[data-tela="' + tela + '"]'), tela), perfil === 'admin');
         }
+        await b.esperar(() => !!document.querySelector('[data-abrir]'));
+        assert.equal(await b.avaliar(() => !!document.querySelector('[data-locacao]')), perfil === 'admin');
         if (perfil !== 'admin') {
           await b.avaliar(() => {
             bancada.aberturas = []; omni.ui.openContribution = async id => { bancada.aberturas.push(id); };

@@ -92,8 +92,14 @@
     return rows;
   };
   GI.atendimentoTexto = function (a) {
-    return a ? (Number.isSafeInteger(Number(a.chat_id)) && Number(a.chat_id) > 0 ? '#' + Number(a.chat_id) + ' · ' : '') + (a.canal || 'Canal não informado') +
-      ' · ' + (a.protocolo || 'Sem protocolo') + ' · ' + (typeof a.iniciado_em === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(a.iniciado_em) && Number.isFinite(Date.parse(a.iniciado_em)) ? GI.dataHora(a.iniciado_em) : 'Início não informado') : 'Nenhum atendimento vinculado';
+    if (!a) return 'Nenhum atendimento vinculado';
+    var chat = Number.isSafeInteger(Number(a.chat_id)) && Number(a.chat_id) > 0;
+    if (!chat) return 'Protocolo ' + (a.protocolo || 'informado') + ' · sem conversa vinculada';
+    var partes = ['#' + Number(a.chat_id)];
+    if (a.canal) partes.push(a.canal);
+    if (a.protocolo) partes.push(a.protocolo);
+    if (typeof a.iniciado_em === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(a.iniciado_em) && Number.isFinite(Date.parse(a.iniciado_em))) partes.push(GI.dataHora(a.iniciado_em));
+    return partes.join(' · ');
   };
   GI.chamadoTrilha = function (status) {
     var ordem = ['novo', 'triagem', 'orcamento', 'aprovacao', 'agendado', 'execucao', 'concluido'];
