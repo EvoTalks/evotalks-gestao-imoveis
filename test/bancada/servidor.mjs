@@ -13,9 +13,9 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
   const produtos = [
-    { id: 9101, internalcode: 'DEMO-001', name: 'Apartamento Demonstração Alfa', category: 'Apartamento > Cidade Fictícia > Bairro Exemplo', value: 123456, brand: 'DEMONSTRACAO' },
-    { id: 9102, internalcode: 'DEMO-002', name: 'Casa Demonstração Beta', category: 'Casa > Cidade Fictícia > Bairro Exemplo', value: 234500, brand: 'DEMONSTRACAO' },
-    { id: 9103, internalcode: 'DEMO-003', name: 'Sala Demonstração Gama', category: 'Sala > Cidade Fictícia > Bairro Modelo', value: 100000, brand: 'DEMONSTRACAO' },
+    { id: 9101, internalcode: 'DEMO-001', name: 'Apartamento Demonstração Alfa', description: '[Locacao] Apartamento - 2 quarto(s) de demonstração', category: 'Apartamento > Cidade Fictícia > Bairro Exemplo', value: 123456, brand: 'DEMONSTRACAO' },
+    { id: 9102, internalcode: 'DEMO-002', name: 'Casa Demonstração Beta', description: '[Venda] Casa - 2 quarto(s) de demonstração', category: 'Casa > Cidade Fictícia > Bairro Exemplo', value: 234500, brand: 'DEMONSTRACAO' },
+    { id: 9103, internalcode: 'DEMO-003', name: 'Sala Demonstração Gama', description: 'Sala para finalidade não identificada', category: 'Sala > Cidade Fictícia > Bairro Modelo', value: 100000, brand: 'DEMONSTRACAO' },
   ];
   const contatos = [
     { id: 9901, name: 'Locatário Demonstração Um', phone: '00000000001', email: 'um@example.invalid' },
@@ -79,7 +79,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
         if (nome === 'users') return json(200, [{ id: 9999, name: 'Agente Demonstração' }]);
         if (nome === 'products') {
           const where = JSON.parse(url.searchParams.get('where') || '{}');
-          const casa = (p, w) => Object.entries(w).every(([k, v]) => k === 'or' ? v.some(x => casa(p, x)) : v?.contains !== undefined ? normalizar(p[k]).includes(normalizar(v.contains)) : p[k] === v);
+          const casa = (p, w) => Object.entries(w).every(([k, v]) => k === 'or' ? v.some(x => casa(p, x)) : typeof v?.contains === 'string' ? normalizar(p[k]).includes(normalizar(v.contains)) : typeof v?.startsWith === 'string' ? String(p[k] || '').startsWith(v.startsWith) : p[k] === v);
           const lista = produtos.filter(p => casa(p, where));
           const skip = Number(url.searchParams.get('skip') || 0), limit = Number(url.searchParams.get('limit') || 25);
           return json(200, lista.slice(skip, skip + limit));
