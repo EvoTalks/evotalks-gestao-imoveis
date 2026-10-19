@@ -95,14 +95,16 @@ test('lote 2: regressões no navegador', async t => {
     await t.test('20: só sent true registra nota enviada; falha preserva o texto', async () => {
       for (const resposta of [null, {}, { sent: false }, { sent: 'true' }, { sent: true }]) {
         await abrir('chamados'); await b.esperar(() => !!document.querySelector('[data-editar="1"]'));
-        await b.clicar('[data-editar="1"]'); await b.esperar(() => !!document.querySelector('#c-nota'));
         await b.avaliar(async r => {
           const d = await GI.chamadosObter(1), get = omni.chats.get;
           omni.chats.get = async id => ({ ...await get(id), contactId: d.chamado.solicitante.contato_id });
+          omni.chats.listMine = async () => [{ ...await get(8801), contactId: d.chamado.solicitante.contato_id }];
+          bancada.historico = [];
           omni.chats.sendMessage = async () => r;
         }, resposta);
-        await b.clicar('#c-trocar'); await b.clicar('#c-informar'); await b.preencher('#c-chat-id', '8801');
-        await b.clicar('#c-vincular-manual'); await b.esperar(() => !document.querySelector('#c-avisar').disabled && !document.querySelector('#c-tirar-vinculo').disabled);
+        await b.clicar('[data-editar="1"]'); await b.esperar(() => !!document.querySelector('#c-nota'));
+        await b.clicar('#c-trocar'); await b.esperar(() => !!document.querySelector('[data-atendimento]'));
+        await b.clicar('[data-atendimento]'); await b.esperar(() => !document.querySelector('#c-avisar').disabled && !document.querySelector('#c-tirar-vinculo').disabled);
         await b.preencher('#c-nota', 'Nota sintética sem confirmação de envio'); await b.clicar('#c-avisar');
         await b.clicar('#c-salvar-nota'); await b.clicar('#c-confirmar-acao');
         if (resposta?.sent === true) {

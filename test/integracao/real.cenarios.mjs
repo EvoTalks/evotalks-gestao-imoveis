@@ -57,6 +57,7 @@ export async function testarReal(b, origem, real) {
     });
     await cenario('b chamado na gestão escolhendo chat da lista', async () => {
       await navegar('chamados'); await b.esperar(() => !document.querySelector('#b-novo').disabled);
+      await b.avaliar(() => { bancada.historico = [{ id: 8899, status: 0, protocol: '', origin: 999, qname: 'Fila Encerrada Sintética', begintime: '2026-10-20T12:00:00.000Z', endreason: 'Finalizado Sintético' }]; });
       await b.clicar('#b-novo'); await modal(); await b.preencher('#c-cliente', 'Demonstração Um');
       await b.esperar(() => !!document.querySelector('[data-contato="0"]')); await b.clicar('[data-contato="0"]');
       await b.esperar(() => document.querySelector('#c-locacao').options.length >= 2 && !!document.querySelector('[data-atendimento="0"]'));
@@ -66,9 +67,16 @@ export async function testarReal(b, origem, real) {
       await b.clicar('[data-atendimento="0"]'); await salvar();
       id = (await sql("SELECT id FROM chamados WHERE titulo='Reparo Sintético Integração'"))[0].id;
       const c = await chamado(id);
-      assert.equal(c.locacao_id, locacaoId); assert.equal(c.atendimento_chat_id, 8801); assert.equal(c.prioridade, 'alta');
+      assert.equal(c.locacao_id, locacaoId); assert.equal(c.atendimento_chat_id, 8899); assert.equal(c.prioridade, 'alta');
+      assert.equal(c.atendimento_protocolo, null); assert.equal(c.atendimento_canal, 'Atendimento');
+      assert.equal(c.atendimento_fila, 'Fila Encerrada Sintética'); assert.equal(new Date(c.atendimento_iniciado_em).toISOString(), '2026-10-20T12:00:00.000Z');
       assert.match(c.descricao, /<img/);
       await abrir(id); assert.equal(await b.avaliar(() => window.__xss), undefined); await b.captura('integracao-b-chamado');
+      assert.match(await texto('#c-vinculo'), /#8899/);
+      // As provas seguintes exercitam mensagens e fotos de um atendimento aberto.
+      await b.clicar('#c-trocar'); await b.esperar(() => document.querySelectorAll('[data-atendimento]').length === 3);
+      await b.clicar('[data-atendimento="2"]'); await livre();
+      assert.equal((await chamado(id)).atendimento_chat_id, 8801);
     });
     await cenario('c PNG e JPEG pela pasta, miniaturas e foto inteira', async () => {
       const imagens = await b.avaliar(() => ['image/png', 'image/jpeg'].map((tipo, i) => {
@@ -251,6 +259,32 @@ export async function testarReal(b, origem, real) {
         await b.clicar('#cp-tab-novo'); assert.match(await texto('#cp-conteudo'), /desligada/);
       });
     }
+    await cenario('F10 cockpit vincula catálogo e avulso ao contato sem locação', async () => {
+      await sql("INSERT INTO imoveis (codigo,titulo,tipo,bairro,cidade) VALUES ('DEMO-003','Sala Demonstração Gama','Sala','Bairro Modelo','Cidade Fictícia')");
+      await b.navegar(origem + '/app/painel.html?chat=8806&perfil=agente&escrita=1');
+      await b.esperar(() => document.querySelector('#cp-conteudo').textContent.includes('Este contato ainda não tem residência vinculada.'));
+      await b.clicar('#cp-vincular-residencia'); await b.preencher('#cp-r-busca', 'DEMO-003');
+      await b.esperar(() => !!document.querySelector('[data-residencia]'));
+      await b.preencher('#cp-r-contrato', 'DEMO-INVALIDO-REAL'); await b.clicar('[data-residencia]');
+      assert.equal((await sql('SELECT count(*)::int AS n FROM locacao_contatos WHERE contato_id=9905'))[0].n, 0);
+      let inicio = real.requisicoes.length;
+      await b.clicar('#cp-r-confirmar'); await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Residência vinculada.');
+      await b.esperar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/9905/chamados')).length === 2);
+      assert.ok(real.requisicoes.length - inicio <= 3);
+      const l = (await sql("SELECT * FROM locacoes WHERE imovel_codigo='DEMO-003'"))[0];
+      assert.equal(l.contrato_numero, 'DEMO-INVALIDO-REAL');
+      const contato = (await sql('SELECT * FROM locacao_contatos WHERE locacao_id=$1', [l.id]))[0];
+      assert.equal(contato.contato_id, 9905); assert.equal(contato.papel, 'locatario');
+      assert.equal(contato.nome, 'Contato Sem Residência Demonstração'); assert.equal(contato.telefone, '00000000005');
+      assert.match(await texto('#cp-conteudo'), /Sala Demonstração Gama/);
+      await b.clicar('#cp-tab-novo'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
+      await b.clicar('#cp-vincular-residencia'); await b.clicar('#cp-r-fora'); await b.preencher('#cp-r-titulo', 'Avulso F10 Integração Sintética');
+      await b.clicar('#cp-r-form button[type=submit]'); await b.clicar('#cp-r-confirmar');
+      await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Residência vinculada.');
+      const avulso = (await sql("SELECT id,imovel_codigo FROM locacoes WHERE imovel_titulo='Avulso F10 Integração Sintética'"))[0];
+      assert.equal(avulso.imovel_codigo, null); assert.equal((await sql('SELECT contato_id FROM locacao_contatos WHERE locacao_id=$1', [avulso.id]))[0].contato_id, 9905);
+      await b.captura('integracao-f10-residencia');
+    });
     process.stdout.write('OK real j: cada cenário respeitou no máximo 30 requisições por minuto; zero exceções no Chromium.\n');
   } finally { b.clicar = clicarOriginal; rmSync(pasta, { recursive: true, force: true }); }
 }

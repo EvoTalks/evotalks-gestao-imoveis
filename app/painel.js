@@ -7,7 +7,7 @@
   function escrita() { return GI.cfg('cockpitAbreChamado', false) === true; }
   var geracao = 0, temporizador, chat = null, contato = null, locacoes = [], chamados = [], selecionada = 0;
   var aba = 'chamados', formulario = null, fotos = [], fotosLidas = false, fotosAviso = '', confirmado = null, gravando = false;
-  var administrador = false;
+  var administrador = false, residencia = null, timerResidencia, buscaResidencia = 0;
   var cache = new Map(), requisicoes = [], esperarAte = 0;
   var transporte = GI.chamarPortal;
 
@@ -33,7 +33,7 @@
   GI.chamarPortal = function (rota, op) {
     if (demo()) return Promise.reject(new Error('Demonstração sem rede: use os dados sintéticos da tela.'));
     var post = op && op.corpo !== undefined;
-    if (post && !escrita()) return Promise.reject(new Error('Abertura de chamados desligada neste cockpit.'));
+    if (post && rota !== '/locacoes' && !escrita()) return Promise.reject(new Error('Abertura de chamados desligada neste cockpit.'));
     if (post && GI.modo !== 'portal') return Promise.reject(new Error('Manutenção exige o portal conectado.'));
     var agora = Date.now(), anterior = cache.get(rota);
     if (!post && anterior && agora - anterior.em < 60000) return anterior.promessa;
@@ -100,6 +100,8 @@
     return g === geracao && !!s && String(s.id) === String(c.id) && String(s.contactId) === String(c.contactId);
   }
   function limpar() {
+    clearTimeout(timerResidencia); ++buscaResidencia; residencia = null;
+    $('cp-vincular-residencia').hidden = true; $('cp-residencia-aviso').textContent = '';
     chat = contato = null; locacoes = []; chamados = []; selecionada = 0; formulario = confirmado = null;
     fotos = []; fotosLidas = false; fotosAviso = ''; aba = 'chamados'; gravando = false;
     $('cp-abas').hidden = true; $('cp-selecao').hidden = true;
@@ -121,6 +123,7 @@
     $('cp-demo').hidden = !demo();
     if (demo()) { dadosDemo(); cabecalho(); render(); return; }
     if (GI.modo !== 'portal') {
+      botaoResidencia();
       estado('Manutenção exige o portal conectado. ' + (GI.portalErro || ''), true);
       $('cp-tentar').onclick = async function () { await GI.definirModo(); if (g === geracao) { GI.manutencaoMostrarModo(); iniciar(true); } };
       return;
@@ -152,9 +155,11 @@
     $('cp-imovel').value = String(selecionada);
     $('cp-abas').hidden = !l;
     $('cp-tab-chamados').textContent = 'Chamados (' + rows.length + ')';
+    botaoResidencia();
   }
   function render() {
-    if (!locacao()) { estado('Nenhum imóvel locado vinculado a este contato. Peça ao administrador para cadastrar a locação.'); return; }
+    if (residencia) { renderResidencia(); return; }
+    if (!locacao()) { estado('Este contato ainda não tem residência vinculada.'); return; }
     $('cp-conteudo').setAttribute('aria-busy', 'false');
     document.querySelectorAll('[data-aba]').forEach(function (b) { var ativo = b.dataset.aba === aba; b.setAttribute('aria-selected', String(ativo)); b.tabIndex = ativo ? 0 : -1; });
     $('cp-conteudo').setAttribute('aria-labelledby', 'cp-tab-' + aba);
@@ -163,6 +168,116 @@
     else renderNovo();
     GI.ajustarAltura();
   }
+  function impedimentoResidencia() {
+    return demo() ? 'Na demonstração, o vínculo de residência está desabilitado.' :
+      GI.modo !== 'portal' ? 'Conecte o portal para vincular uma residência.' : '';
+  }
+  function botaoResidencia() {
+    var motivo = impedimentoResidencia();
+    $('cp-vincular-residencia').hidden = !contato && !motivo;
+    $('cp-vincular-residencia').disabled = !!motivo || gravando;
+    $('cp-vincular-residencia').textContent = locacoes.length ? 'Vincular outra residência' : 'Vincular residência';
+    $('cp-residencia-aviso').textContent = motivo;
+  }
+  function campoResidencia(chave, rotulo) {
+    return '<div><label for="cp-r-' + chave + '">' + rotulo + '</label><input id="cp-r-' + chave + '" maxlength="' + (chave === 'contrato' ? 120 : 300) + '" value="' + e(residencia[chave] || '') + '"></div>';
+  }
+  function renderResidencia() {
+    var r = residencia, g = geracao, c = chat;
+    $('cp-abas').hidden = true;
+    $('cp-conteudo').setAttribute('aria-busy', 'false');
+    if (r.etapa === 'confirmar') {
+      $('cp-conteudo').innerHTML = '<div class="gi-cartao gi-cp-form"><p>Vincular <strong>' + e(r.imovel ? r.imovel.name : r.titulo) + '</strong> a <strong>' + e(contato.name) + '</strong>?</p>' +
+        (r.contrato ? kv('Contrato', r.contrato) : '') + '<button type="button" class="btn btn-primario" id="cp-r-confirmar">Vincular</button><button type="button" class="btn" id="cp-r-voltar">Voltar</button></div>';
+      $('cp-r-voltar').onclick = function () { if (!gravando) { r.etapa = 'buscar'; renderResidencia(); } };
+      $('cp-r-confirmar').onclick = function () { gravarResidencia(r, g, c); };
+      return;
+    }
+    $('cp-conteudo').innerHTML = '<form class="gi-cartao gi-cp-form" id="cp-r-form"><h2>Vincular residência</h2>' +
+      (r.fora ? campoResidencia('titulo', 'Título do imóvel (obrigatório)') + campoResidencia('endereco', 'Endereço (opcional)') + campoResidencia('bairro', 'Bairro (opcional)') + campoResidencia('cidade', 'Cidade (opcional)') :
+      '<div><label for="cp-r-busca">Buscar por código, título ou bairro</label><input type="search" id="cp-r-busca" value="' + e(r.termo || '') + '" autocomplete="off"></div><div id="cp-r-resultados" class="gi-cp-form" aria-live="polite"></div>') +
+      '<button type="button" class="btn" id="cp-r-fora">' + (r.fora ? 'Buscar no catálogo' : 'Não está no catálogo') + '</button>' + campoResidencia('contrato', 'Contrato (opcional)') +
+      (r.fora ? '<button type="submit" class="btn btn-primario">Revisar vínculo</button>' : '') + '<button type="button" class="btn" id="cp-r-cancelar">Voltar</button><p class="panel__note">Nada é gravado antes de Vincular.</p></form>';
+    ['titulo', 'endereco', 'bairro', 'cidade', 'contrato'].forEach(function (k) {
+      if ($('cp-r-' + k)) $('cp-r-' + k).oninput = function () { r[k] = this.value; };
+    });
+    $('cp-r-cancelar').onclick = function () { ++buscaResidencia; clearTimeout(timerResidencia); residencia = null; recado(''); cabecalho(); render(); };
+    $('cp-r-fora').onclick = function () { ++buscaResidencia; clearTimeout(timerResidencia); r.fora = !r.fora; r.imovel = null; renderResidencia(); };
+    $('cp-r-form').onsubmit = function (ev) {
+      ev.preventDefault();
+      if (!r.fora) return;
+      if (!String(r.titulo || '').trim()) { recado('Informe o título do imóvel.'); return; }
+      r.etapa = 'confirmar'; recado(''); renderResidencia();
+    };
+    function resultados() {
+      if (!$('cp-r-resultados')) return;
+      $('cp-r-resultados').innerHTML = (r.resultados || []).slice(0, 8).map(function (p, i) {
+        return '<button type="button" class="btn" data-residencia="' + i + '">' + e(p.internalcode) + ' · ' + e(p.name) + '</button>';
+      }).join('');
+      $('cp-r-resultados').querySelectorAll('[data-residencia]').forEach(function (b) { b.onclick = function () {
+        ++buscaResidencia; clearTimeout(timerResidencia); r.imovel = r.resultados[Number(b.dataset.residencia)]; r.etapa = 'confirmar'; recado(''); renderResidencia();
+      }; });
+    }
+    if ($('cp-r-busca')) {
+      resultados();
+      $('cp-r-busca').oninput = function () {
+        var termo = this.value.trim();
+        if (termo === (r.termo || '')) return;
+        r.termo = termo; r.resultados = []; resultados(); clearTimeout(timerResidencia); var v = ++buscaResidencia;
+        if (!termo) return;
+        timerResidencia = setTimeout(async function () {
+          try {
+            if (!await atual(g, c) || residencia !== r || v !== buscaResidencia) return;
+            var resposta = await GI.buscarImoveis({ termo: termo, porPagina: 8 });
+            if (!await atual(g, c) || residencia !== r || v !== buscaResidencia) return;
+            r.resultados = resposta.itens.slice(0, 8); resultados();
+            if (!r.resultados.length) $('cp-r-resultados').textContent = 'Nenhum imóvel encontrado. Você pode usar Não está no catálogo.';
+          } catch (_) { if (g === geracao && residencia === r && v === buscaResidencia) recado('Não foi possível buscar os imóveis. Tente de novo.'); }
+        }, 300);
+      };
+    }
+  }
+  async function gravarResidencia(r, g, c) {
+    if (gravando || residencia !== r || impedimentoResidencia()) return;
+    gravando = true; $('cp-r-confirmar').disabled = true; $('cp-r-voltar').disabled = true; botaoResidencia(); recado('Vinculando residência…');
+    var gravou = false;
+    try {
+      if (!await atual(g, c) || residencia !== r) return;
+      var dados = { contatos: [{ contato_id: id(c.contactId), nome: contato.name, telefone: contato.phone || null, papel: 'locatario' }] };
+      if (r.imovel) dados.imovel_codigo = r.imovel.internalcode;
+      else dados.imovel = { titulo: String(r.titulo || '').trim(), endereco: r.endereco || '', bairro: r.bairro || '', cidade: r.cidade || '' };
+      if (String(r.contrato || '').trim()) dados.contrato_numero = r.contrato.trim();
+      var salvo = await GI.locacoesCriar(dados); gravou = true;
+      if (!await atual(g, c)) return;
+      residencia = null;
+      var lr = await GI.chamarPortal('/contatos/' + id(c.contactId) + '/locacoes');
+      if (!await atual(g, c)) return;
+      locacoes = linhas(lr);
+      selecionada = Math.max(0, locacoes.findIndex(function (l) { return String(l.id) === String(salvo.locacao.id); }));
+      aba = 'imovel'; cabecalho(); render(); recado('Residência vinculada.');
+      var cr = await GI.chamadosPorContato(c.contactId);
+      if (!await atual(g, c)) return;
+      chamados = linhas(cr); cabecalho();
+    } catch (err) {
+      if (g !== geracao) return;
+      if (gravou) { residencia = null; cabecalho(); render(); recado('Residência vinculada. Não foi possível atualizar a consulta. Use Atualizar para consultar o vínculo.'); }
+      else {
+        var d = err.dados || {};
+        recado(d.erro === 'imovel_ja_locado' ? 'Este imóvel já está locado para outro cliente. Peça ao administrador para incluir este contato na locação.' :
+          err.status === 422 && d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : 'Não foi possível vincular a residência. Tente de novo.');
+      }
+    } finally {
+      if (g === geracao) {
+        gravando = false; botaoResidencia();
+        if ($('cp-r-confirmar')) $('cp-r-confirmar').disabled = false;
+        if ($('cp-r-voltar')) $('cp-r-voltar').disabled = false;
+      }
+    }
+  }
+  $('cp-vincular-residencia').onclick = function () {
+    if (gravando || impedimentoResidencia() || !contato) return;
+    clearTimeout(timerResidencia); ++buscaResidencia; residencia = { etapa: 'buscar', fora: false }; recado(''); render();
+  };
   function dado(rotulo, valor) {
     return valor == null || valor === '' || valor === '—' || valor === 'A definir' || valor === 'Não necessária' || valor === 'Não informada' || valor === 'Prazo não informado' || valor === 'Não vinculado' || rotulo === 'Orçamentos' && !valor ? '' : kv(rotulo, valor);
   }
@@ -398,7 +513,7 @@
   var desassinar, desassinarDestroy, destruido = false;
   function destruir() {
     if (destruido) return;
-    destruido = true; ++geracao; clearTimeout(temporizador); observer.disconnect(); fixo = true;
+    destruido = true; ++geracao; clearTimeout(temporizador); clearTimeout(timerResidencia); ++buscaResidencia; observer.disconnect(); fixo = true;
     if (typeof desassinar === 'function') desassinar();
     if (typeof desassinarDestroy === 'function') desassinarDestroy();
   }

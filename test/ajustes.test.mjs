@@ -95,12 +95,12 @@ test('F9: ajustes após o teste real, sem instância', async t => {
       // O teste de vínculo seguinte começa sem conversa, como no cadastro original.
       await b.clicar('#c-tirar-vinculo'); await livre();
     });
-    await t.test('3: vínculo manual simples, botões condicionais e erro 422 orientado', async () => {
-      await navegar(); await abrir(id);
-      assert.equal(await b.avaliar(() => document.querySelector('#c-tirar-vinculo').hidden), true);
+    await t.test('3: vínculo legado por protocolo, botões condicionais e erro 422 orientado', async () => {
+      await navegar();
+      await b.avaliar(async id => GI.chamadosAtualizar(id, { atendimento: { protocolo: 'TESTE-F9-0001' } }), id);
+      await abrir(id);
+      assert.equal(await b.avaliar(() => document.querySelector('#c-tirar-vinculo').hidden), false);
       assert.equal(await b.avaliar(() => document.querySelector('#c-abrir-atendimento').hidden), true);
-      await b.clicar('#c-trocar'); await b.clicar('#c-informar');
-      await b.preencher('#c-protocolo', 'TESTE-F9-0001'); await b.clicar('#c-vincular-manual'); await livre();
       assert.equal(await texto('#c-vinculo'), 'Protocolo TESTE-F9-0001 · sem conversa vinculada');
       assert.equal(await b.avaliar(() => document.querySelector('#c-tirar-vinculo').hidden), false);
       assert.equal(await b.avaliar(() => document.querySelector('#c-abrir-atendimento').hidden), true);

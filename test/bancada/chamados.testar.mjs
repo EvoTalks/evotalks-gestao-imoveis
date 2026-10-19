@@ -1,3 +1,4 @@
+import { testarHistorico } from './vinculos.cenarios.mjs';
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
@@ -11,6 +12,10 @@ const origem = 'http://127.0.0.1:' + servidor.address().port;
 let b;
 try {
   b = await abrirChromium();
+  const vinculosServidor = criarServidor();
+  await new Promise(r => vinculosServidor.listen(0, '127.0.0.1', r));
+  try { await testarHistorico(b, 'http://127.0.0.1:' + vinculosServidor.address().port); }
+  finally { vinculosServidor.closeAllConnections(); await new Promise(r => vinculosServidor.close(r)); }
   await testarSimplificacao(b, origem);
   await testarFotos(b, origem);
   // Paginação permanece na lista, sem depender da quantidade de fixtures anteriores.

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Manutenção</title>
-<link rel="stylesheet" href="estilo.css?v=0.21.1">
-<link rel="stylesheet" href="painel.css?v=0.21.1">
+<link rel="stylesheet" href="estilo.css?v=0.22.0">
+<link rel="stylesheet" href="painel.css?v=0.22.0">
 </head>
 <body>
 <main class="gi-cockpit panel" id="gi-cockpit" aria-label="Manutenção do imóvel">
@@ -15,6 +15,8 @@
     <button type="button" class="btn button--icon" id="cp-atualizar" aria-label="Atualizar consulta" title="Atualizar consulta">⟳</button>
     <p class="panel__context" id="cp-contexto"></p>
     <p class="panel__summary" id="cp-resumo"></p>
+    <button type="button" class="btn" id="cp-vincular-residencia" hidden>Vincular residência</button>
+    <p class="panel__note" id="cp-residencia-aviso"></p>
     <div id="cp-selecao" hidden><label for="cp-imovel">Imóvel locado</label><select id="cp-imovel"></select></div>
   </header>
   <nav class="gi-cp-tabs tabs" role="tablist" aria-label="Dados de manutenção" hidden id="cp-abas">
@@ -27,8 +29,8 @@
   <footer class="panel__note" id="gi-modo"></footer>
   <div id="gi-erro" role="alert" hidden></div>
 </main>
-<script src="comum.js?v=0.21.1"></script>
-<script src="manutencao.js?v=0.21.1"></script>
-<script src="painel.js?v=0.21.1"></script>
+<script src="comum.js?v=0.22.0"></script>
+<script src="manutencao.js?v=0.22.0"></script>
+<script src="painel.js?v=0.22.0"></script>
 </body>
 </html>
