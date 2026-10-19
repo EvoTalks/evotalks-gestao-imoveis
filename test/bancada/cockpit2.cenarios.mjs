@@ -113,7 +113,7 @@ export async function testarCockpit2(b, base) {
   assert.match(await texto('#cp-conteudo'), /LOCATÁRIO.*PROPRIETÁRIO.*FIADOR/);
   await b.avaliar(() => { document.execCommand = function () { window.f12Copia = document.activeElement.value; return true; }; });
   await b.clicar('[data-copia-texto]'); assert.match(await b.avaliar(() => f12Copia), /^0+\d*$/);
-  await b.clicar('#cp-abrir-imovel'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
   assert.equal(await b.avaliar(() => document.querySelector('#cp-mais-detalhes').open), false);
   await b.clicar('#cp-ultima'); await b.esperar(() => document.querySelector('#cp-descricao').value.includes('Relato sintético'));
   assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), '');

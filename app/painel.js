@@ -14,6 +14,7 @@
   var transporte = GI.chamarPortal;
   var filtroImovel = '', novoSelecionado = false, filtro = 'todos', busca = '', limiteLista = 10, atualizadoEm = 0, snapshots = [], fila = Promise.resolve(), versaoDados = 0;
   var chaveSnapshot = GI.CHAVE_SNAPSHOTS, filasConhecidas = [], contatosComLocacao = {}, inicioTimer, atualizarTimer, ultimaAtualizacao = 0;
+  var editando = null, limiteFotos = 12, previasFotos = Object.create(null), ampliacaoOrigem = null, leituraFotos = null;
   var carregadoEm = 0, timerEscrita, relendoEscrita = false, ultimaEscritaTentada = '', ultimoToque = 0, escritasEmCurso = 0;
   GI.cockpitCarregadoEm = function () { return carregadoEm; };
   function aplicarLeitura(em) {
@@ -35,7 +36,7 @@
     return !el.closest('[hidden]');
   }
   function painelOcioso() {
-    if (!contatoCarregado() || gravando || criacaoIncerta || escritasEmCurso || residencia) return false;
+    if (!contatoCarregado() || gravando || criacaoIncerta || escritasEmCurso || residencia || editando) return false;
     // Botões só ocupam por operação explícita (aria-busy), nunca por permissão estática.
     if (Array.from(document.querySelectorAll('#cp-conteudo button:disabled[aria-busy="true"], [data-edicao] select:disabled, [data-cancelar-caixa], [data-aviso-form]')).some(naoOculto)) return false;
     var foco = document.activeElement;
@@ -184,7 +185,7 @@
     if (demo()) { GI.modo = 'demonstracao'; return Promise.resolve(GI.modo); }
     if (!GI.usaPortal()) { GI.modo = 'local'; return Promise.resolve(GI.modo); }
     return GI.chamarPortal('/info').then(function () { GI.modo = 'portal'; GI.portalErro = ''; return GI.modo; }, function (err) {
-      GI.modo = 'portal-fora'; GI.portalErro = err.message; return GI.modo;
+      GI.modo = 'portal-fora'; GI.portalErro = GI.mensagemErro(err); return GI.modo;
     });
   };
 
@@ -241,6 +242,7 @@
     return g === geracao && !!s && String(s.id) === String(c.id) && String(s.contactId) === String(c.contactId);
   }
   function limpar() {
+    editando = null; limiteFotos = 12; previasFotos = Object.create(null); ampliacaoOrigem = null; leituraFotos = null;
     pararVerificacao(); carregadoEm = 0; relendoEscrita = false; ultimaEscritaTentada = ''; ultimoToque = 0;
     clearTimeout(timerResidencia); ++buscaResidencia; residencia = null;
     $('cp-vincular-residencia').hidden = true; $('cp-residencia-aviso').textContent = '';
@@ -260,6 +262,7 @@
       atendimento: { chat_id: 8800, protocolo: 'DEMO-INVALIDO', canal: 'Demonstração' }, sla: {}, prestador: { nome: 'Prestador Demonstração' }, orcamentos_total: 1 }];
   }
   async function iniciar(forcar) {
+    if (editando) { solicitarSaidaEdicao(function () { iniciar(forcar); }); return; }
     if (criacaoIncerta) {
       var g = geracao, incerta = criacaoIncerta, selecionado;
       try { selecionado = await omni.chats.getSelected(); }
@@ -268,16 +271,18 @@
       if (selecionado && id(selecionado.id) === incerta.chatId && id(selecionado.contactId) === incerta.contatoId) { await conferirCriacaoIncerta(); return; }
       criacaoIncerta = null;
     }
-    if (formulario && (formulario.titulo || formulario.descricao || formulario.disponibilidade || formulario.chaves)) {
+    if (formulario) {
       var chatAnterior = chat, tituloAnterior = formulario && formulario.titulo;
-      var rascunhoAnterior = formulario && Object.assign({}, formulario);
+      var rascunhoAnterior = Object.assign({}, formulario), abaAnterior = aba;
+      var fotosAnteriores = fotos, fotosJaLidas = fotosLidas && !fotosAviso && (!leituraFotos || leituraFotos.concluida), leituraFotosAnterior = fotosAviso ? null : leituraFotos, avisoFotosAnterior = fotosAviso, previasAnteriores = previasFotos, limiteAnterior = limiteFotos;
       var atualizacao = iniciarInterno(forcar);
       await atualizacao;
       if (chatAnterior && chat && String(chatAnterior.id) === String(chat.id) && String(chatAnterior.contactId) === String(chat.contactId)) {
-        formulario = rascunhoAnterior;
+        formulario = rascunhoAnterior; leituraFotos = leituraFotosAnterior; fotos = fotosAnteriores; fotosLidas = fotosJaLidas; fotosAviso = avisoFotosAnterior; previasFotos = previasAnteriores; limiteFotos = limiteAnterior;
+        aba = abaAnterior;
         selecionada = locacoes.findIndex(function (l) { return String(l.id) === String(formulario.locacaoId); });
         novoSelecionado = selecionada >= 0; validarImovelNovo(); cabecalho();
-        if (aba === 'novo') renderNovo();
+        if (aba === 'novo') render();
       }
       return;
     }
@@ -338,7 +343,7 @@
     var totais = GI.cockpit.resumo(rows), rotulos = { abertos: 'Abertos', atrasados: 'Atrasados', aguardando: 'Aguardando proprietário', emergencias: 'Emergências' };
     $('cp-resumo').innerHTML = Object.keys(rotulos).map(function (k) { return '<button type="button" data-resumo="' + k + '" aria-pressed="' + (filtro === k) + '">' + totais[k] + ' ' + rotulos[k] + '</button>'; }).join('');
     $('cp-idade').textContent = 'atualizado há ' + Math.max(0, Math.floor((Date.now() - atualizadoEm) / 60000)) + ' min';
-    document.querySelectorAll('[data-resumo]').forEach(function (b) { b.onclick = function () { filtro = filtro === b.dataset.resumo ? 'todos' : b.dataset.resumo; limiteLista = 10; aba = 'chamados'; cabecalho(); render(); }; });
+    document.querySelectorAll('[data-resumo]').forEach(function (b) { b.onclick = function () { if (editando) { solicitarSaidaEdicao(function () { b.click(); }); return; } filtro = filtro === b.dataset.resumo ? 'todos' : b.dataset.resumo; limiteLista = 10; aba = 'chamados'; cabecalho(); render(); }; });
     $('cp-selecao').hidden = locacoes.length < 2 && !!l;
     $('cp-imovel').innerHTML = (!l ? '<option value="">Escolha o imóvel</option>' : '') + locacoes.map(function (l) { return '<option value="' + e(l.id) + '">' + e(rotuloImovel(l)) + '</option>'; }).join('');
     $('cp-imovel').value = l ? String(l.id) : '';
@@ -349,6 +354,7 @@
     botaoResidencia();
   }
   function render() {
+    if (editando) { solicitarSaidaEdicao(render); return; }
     if (residencia) { renderResidencia(); return; }
     if (!locacao() && !(aba === 'novo' && formulario)) { estado(locacoes.length ? 'Escolha o imóvel.' : 'Este contato ainda não tem residência vinculada.'); return; }
     $('cp-conteudo').setAttribute('aria-busy', 'false');
@@ -492,6 +498,7 @@
     }
   }
   $('cp-vincular-residencia').onclick = function () {
+    if (editando) { solicitarSaidaEdicao(function () { $('cp-vincular-residencia').click(); }); return; }
     if (gravando || impedimentoResidencia() || !contato) return;
     clearTimeout(timerResidencia); ++buscaResidencia; residencia = { etapa: 'buscar', fora: false }; recado('', 'info'); render();
   };
@@ -499,15 +506,16 @@
     return valor == null || valor === '' || valor === '—' || valor === 'A definir' || valor === 'Não necessária' || valor === 'Não informada' || valor === 'Prazo não informado' || valor === 'Não vinculado' || rotulo === 'Orçamentos' && !valor ? '' : kv(rotulo, valor);
   }
   function renderChamados() {
+    if (editando) { solicitarSaidaEdicao(renderChamados); return; }
     var todos = GI.cockpit.listar(lista(), filtro, busca, chat.id), rows = todos.slice(0, limiteLista);
     $('cp-conteudo').innerHTML = (locacoes.length > 1 ? '<label class="gi-cp-form">Imóvel dos chamados<select id="cp-filtro-imovel"><option value="">Todas</option>' + locacoes.map(function (l) { return '<option value="' + e(l.id) + '"' + (String(l.id) === filtroImovel ? ' selected' : '') + '>' + e(rotuloImovel(l)) + '</option>'; }).join('') + '</select></label>' : '') + '<div class="gi-cp-chips">' + ['abertos', 'todos', 'atrasados', 'aguardando'].map(function (k) { return '<button type="button" data-filtro="' + k + '" aria-pressed="' + (filtro === k) + '">' + ({ abertos: 'Abertos', todos: 'Todos', atrasados: 'Atrasados', aguardando: 'Aguardando' })[k] + '</button>'; }).join('') + '</div><label class="gi-cp-form">Buscar título ou O.S.<input id="cp-busca" type="search" value="' + e(busca) + '"></label>' + rows.map(function (c, i) {
       var status = valorMapa(GI.CHAMADO_STATUS, c.status) || 'Status não informado', at = c.atendimento, trilha = GI.chamadoTrilha(c.status);
-      return '<details class="gi-cp-acc' + (c.prioridade === 'emergencia' && abertos(c) ? ' gi-cp-urgente' : '') + '" data-os-id="' + e(c.id) + '" data-chamado="' + i + '"' + (i === 0 && abertos(c) ? ' open' : '') + '><summary>' + resumoCartao(c) + '</summary><div class="gi-cp-detalhe"><div class="gi-cp-trilha" aria-label="Trilha de status">' + trilha.map(function (s) { return '<i title="' + e(s.rotulo) + '" class="' + (s.atual ? 'atual' : s.feito ? 'feito' : '') + '"></i>'; }).join('') + '</div>' + edicaoRapida(c) + (escrita() ? '<details class="gi-cp-info"><summary>Dados da O.S.</summary>' : '') + dado('Status', status) + dado('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || 'Não informada') + dado('Aberto em', instante(c.criado_em)) + dado('Relato', c.descricao) + dado('Solicitante', c.solicitante && c.solicitante.nome) + dado('Atendimento', at ? (id(at.chat_id) ? '#' + id(at.chat_id) : at.protocolo || '') + (at.canal ? ' · ' + at.canal : '') : null) + dado('Atendente', c.atendente && c.atendente.nome) + dado('Quem paga', valorMapa({ proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária', indefinido: 'A definir' }, c.quem_paga) || 'A definir') + dado('Valor estimado', moeda(c.valor_estimado_centavos)) + dado('Prestador', c.prestador && c.prestador.nome) + dado('Orçamentos', numero(c.orcamentos_total)) + dado('Aprovação do proprietário', valorMapa({ pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada', nao_necessaria: 'Não necessária' }, (c.aprovacao || {}).status) || 'Não informada') + dado('Visita', instante((c.visita || {}).inicio)) + dado('Prazo de solução', instante((c.sla || {}).prazo_solucao_em)) + dado('Prazo', GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + (escrita() ? '</details>' : '') + '<div data-complemento="' + e(c.id) + '"></div><div class="gi-cp-acoes"><button class="btn" type="button" data-detalhes="' + e(c.id) + '">Fotos e observações</button>' + '<button class="btn btn-primario" type="button" data-gestao="' + i + '">Gestão</button>' + (administrador ? '<button class="btn btn-texto" type="button" data-lista-completa>Lista completa</button>' : '') + '<button class="btn" type="button" data-copiar="' + i + '">Copiar protocolo</button><button type="button" class="btn" data-copiar-os="' + i + '">Copiar nº da O.S.</button><button type="button" class="btn" data-resumo-copiar="' + i + '">⧉ Copiar resumo</button>' + (escrita() ? '<button type="button" class="btn" data-aviso="' + i + '">✉ Avisar cliente</button>' + (!GI.cockpit.ligado(c, chat.id) ? '<button type="button" class="btn" data-vincular="' + i + '">↔ Vincular este atendimento</button>' : '') : '') + '<button type="button" class="btn" data-voltar-lista>← Voltar</button></div><div data-acao aria-live="polite"></div></div></details>';
-    }).join('') + (todos.length > limiteLista ? '<button type="button" class="btn" id="cp-mais">Mostrar mais 10</button>' : '') + (!rows.length ? '<p class="gi-cartao state">Nenhum chamado deste imóvel.</p>' : '') + (escrita() ? '<button type="button" class="btn btn-primario" id="cp-abrir">Abrir chamado</button>' : '') + '<p class="panel__note">Chamados de todas as residências do contato, inclusive os abertos por outras pessoas.</p>';
-    if ($('cp-filtro-imovel')) $('cp-filtro-imovel').onchange = function () { filtroImovel = this.value; limiteLista = 10; cabecalho(); renderChamados(); };
-    document.querySelectorAll('[data-filtro]').forEach(function (b) { b.onclick = function () { filtro = b.dataset.filtro; limiteLista = 10; cabecalho(); renderChamados(); }; });
-    $('cp-busca').oninput = function () { var pos = this.selectionStart; busca = this.value; limiteLista = 10; renderChamados(); $('cp-busca').focus(); $('cp-busca').setSelectionRange(pos, pos); };
-    if ($('cp-mais')) $('cp-mais').onclick = function () { limiteLista += 10; renderChamados(); };
+      return '<details class="gi-cp-acc' + (c.prioridade === 'emergencia' && abertos(c) ? ' gi-cp-urgente' : '') + '" data-os-id="' + e(c.id) + '" data-chamado="' + i + '"' + (i === 0 && abertos(c) ? ' open' : '') + '><summary>' + resumoCartao(c) + '</summary><div class="gi-cp-detalhe"><div class="gi-cp-trilha" aria-label="Trilha de status">' + trilha.map(function (s) { return '<i title="' + e(s.rotulo) + '" class="' + (s.atual ? 'atual' : s.feito ? 'feito' : '') + '"></i>'; }).join('') + '</div>' + edicaoRapida(c) + (escrita() ? '<details class="gi-cp-info"><summary>Dados da O.S.</summary>' : '') + dado('Status', status) + dado('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || 'Não informada') + dado('Aberto em', instante(c.criado_em)) + dado('Relato', c.descricao) + dado('Solicitante', c.solicitante && c.solicitante.nome) + dado('Atendimento', at ? (id(at.chat_id) ? '#' + id(at.chat_id) : at.protocolo || '') + (at.canal ? ' · ' + at.canal : '') : null) + dado('Atendente', c.atendente && c.atendente.nome) + dado('Quem paga', valorMapa({ proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária', indefinido: 'A definir' }, c.quem_paga) || 'A definir') + dado('Valor estimado', moeda(c.valor_estimado_centavos)) + dado('Prestador', c.prestador && c.prestador.nome) + dado('Orçamentos', numero(c.orcamentos_total)) + dado('Aprovação do proprietário', valorMapa({ pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada', nao_necessaria: 'Não necessária' }, (c.aprovacao || {}).status) || 'Não informada') + dado('Visita', instante((c.visita || {}).inicio)) + dado('Prazo de solução', instante((c.sla || {}).prazo_solucao_em)) + dado('Prazo', GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + (escrita() ? '</details>' : '') + '<div data-complemento="' + e(c.id) + '"></div><div data-os-edicao></div><div class="gi-cp-acoes">' + botaoEditar(c) + '<button class="btn" type="button" data-detalhes="' + e(c.id) + '">Fotos e observações</button>' + '<button class="btn btn-primario" type="button" data-gestao="' + i + '">Gestão</button>' + (administrador ? '<button class="btn btn-texto" type="button" data-lista-completa>Lista completa</button>' : '') + '<button class="btn" type="button" data-copiar="' + i + '">Copiar protocolo</button><button type="button" class="btn" data-copiar-os="' + i + '">Copiar nº da O.S.</button><button type="button" class="btn" data-resumo-copiar="' + i + '">⧉ Copiar resumo</button>' + (escrita() ? '<button type="button" class="btn" data-aviso="' + i + '">✉ Avisar cliente</button>' + (!GI.cockpit.ligado(c, chat.id) ? '<button type="button" class="btn" data-vincular="' + i + '">↔ Vincular este atendimento</button>' : '') : '') + '<button type="button" class="btn" data-voltar-lista>← Voltar</button></div><div data-acao aria-live="polite"></div></div></details>';
+    }).join('') + (todos.length > limiteLista ? '<button type="button" class="btn" id="cp-mais">Mostrar mais 10</button>' : '') + (!rows.length ? '<p class="gi-cartao state">Nenhum chamado deste imóvel.' + (escrita() ? ' Para abrir um chamado, use a aba Novo.' : '') + '</p>' : '') + '<p class="panel__note">Chamados de todas as residências do contato, inclusive os abertos por outras pessoas.</p>';
+    if ($('cp-filtro-imovel')) $('cp-filtro-imovel').onchange = function () { if (editando) { var sel = this, valor = this.value; this.value = filtroImovel; solicitarSaidaEdicao(function () { sel.value = valor; sel.onchange(); }); return; } filtroImovel = this.value; limiteLista = 10; cabecalho(); renderChamados(); };
+    document.querySelectorAll('[data-filtro]').forEach(function (b) { b.onclick = function () { if (editando) { solicitarSaidaEdicao(function () { b.click(); }); return; } filtro = b.dataset.filtro; limiteLista = 10; cabecalho(); renderChamados(); }; });
+    $('cp-busca').oninput = function () { if (editando) { var campo = this, valor = this.value; this.value = busca; solicitarSaidaEdicao(function () { campo.value = valor; campo.oninput(); }); return; } var pos = this.selectionStart; busca = this.value; limiteLista = 10; renderChamados(); $('cp-busca').focus(); $('cp-busca').setSelectionRange(pos, pos); };
+    if ($('cp-mais')) $('cp-mais').onclick = function () { if (editando) { solicitarSaidaEdicao(function () { $('cp-mais').click(); }); return; } limiteLista += 10; renderChamados(); };
     document.querySelectorAll('[data-chamado]').forEach(function (card, i) { ligarRapida(card, rows[i]); });
     document.querySelectorAll('[data-resumo-copiar]').forEach(function (b) { b.onclick = function () { copiarTexto(resumoTexto(rows[Number(b.dataset.resumoCopiar)]), b); }; });
     document.querySelectorAll('[data-aviso]').forEach(function (b) { b.onclick = function () { avisarCliente(b.closest('details'), rows[Number(b.dataset.aviso)]); }; });
@@ -515,11 +523,153 @@
     document.querySelectorAll('[data-voltar-lista]').forEach(function (b) { b.onclick = function () { b.closest('details').open = false; b.closest('details').querySelector('summary').focus(); }; });
     document.querySelectorAll('details[data-chamado]').forEach(function (card) { card.addEventListener('toggle', function () { if (card.open) document.querySelectorAll('details[data-chamado]').forEach(function (outro) { if (outro !== card) outro.open = false; }); }); });
     ligarListaCompleta();
-    if ($('cp-abrir')) $('cp-abrir').onclick = function () { mudarAba('novo'); };
+    document.querySelectorAll('[data-editar-os]').forEach(function (b) { b.onclick = function () { abrirEdicao(b, rows[Number(b.closest('[data-chamado]').dataset.chamado)]); }; });
     document.querySelectorAll('[data-detalhes]').forEach(function (b) { b.onclick = function () { carregarDetalhes(b); }; });
     document.querySelectorAll('[data-gestao]').forEach(function (b) { b.onclick = function () { abrirGestao(rows[Number(b.dataset.gestao)]); }; });
     document.querySelectorAll('[data-copiar-os]').forEach(function (b) { b.onclick = function () { copiarTexto(GI.chamadoNumero(rows[Number(b.dataset.copiarOs)].numero), b); }; });
     document.querySelectorAll('[data-copiar]').forEach(function (b) { b.onclick = function () { copiar(rows[Number(b.dataset.copiar)]); }; });
+  }
+  function impedimentoEdicao(c) {
+    if (!abertos(c)) return 'Reabra o chamado (Status → Reabrir) para editar.';
+    if (demo()) return 'Demonstração: edição indisponível.';
+    if (GI.modo !== 'portal') return 'Conecte o portal para editar.';
+    if (!escrita()) return 'Edição de chamados desligada neste cockpit.';
+    return '';
+  }
+  function botaoEditar(c) {
+    var motivo = impedimentoEdicao(c);
+    return '<button class="btn btn-primario" type="button" data-editar-os' + (motivo ? ' disabled' : '') + '>✎ Editar</button><span data-editar-ajuda class="panel__note">' + e(motivo) + '</span>';
+  }
+  function atualizarBotaoEditar(card, c) {
+    var b = card.querySelector('[data-editar-os]');
+    if (!b) return;
+    b.disabled = !!impedimentoEdicao(c) || !!(editando && editando.card === card);
+    card.querySelector('[data-editar-ajuda]').textContent = impedimentoEdicao(c);
+  }
+  function edicaoSuja(ed) { return ed.original && Object.keys(GI.cockpit.diffEdicao(ed.original, ed.dados)).length > 0; }
+  function fecharEdicao() {
+    var ed = editando;
+    if (!ed) return;
+    editando = null;
+    ed.card.querySelector('[data-os-edicao]').textContent = '';
+    ed.card.querySelectorAll('[data-rapida]').forEach(function (campo) {
+      campo.disabled = false;
+      if (campo.dataset.rapida === 'prioridade') campo.value = ed.c.prioridade;
+    });
+    ed.botao.textContent = '✎ Editar'; ed.botao.removeAttribute('aria-busy');
+    atualizarBotaoEditar(ed.card, ed.c);
+    if (ed.botao.isConnected && !ed.botao.disabled) ed.botao.focus();
+  }
+  function solicitarSaidaEdicao(continuar) {
+    var ed = editando;
+    if (!ed) { if (continuar) continuar(); return; }
+    if (ed.ocupado || ed.carregando) return;
+    if (!edicaoSuja(ed) || ed.postSalvo) { fecharEdicao(); if (continuar) continuar(); return; }
+    ed.card.open = true;
+    var caixa = $('cp-edit-descartar'); caixa.hidden = false;
+    $('cp-edit-descartar-sim').onclick = function () { fecharEdicao(); if (continuar) continuar(); };
+    $('cp-edit-continuar').onclick = function () { caixa.hidden = true; $('cp-edit-titulo').focus(); };
+    $('cp-edit-continuar').focus();
+  }
+  function abrirEdicao(botao, c) {
+    if (impedimentoEdicao(c)) return;
+    if (editando) { solicitarSaidaEdicao(function () { abrirEdicao(botao, c); }); return; }
+    var card = botao.closest('[data-os-id]');
+    if (card.querySelector('[data-rapida="status"]:disabled')) return;
+    var ed = { botao: botao, card: card, c: c, g: geracao, contexto: chat, carregando: true, ocupado: false };
+    editando = ed; card.open = true; botao.disabled = true; botao.setAttribute('aria-busy', 'true'); botao.textContent = 'Carregando…';
+    card.querySelectorAll('[data-rapida]').forEach(function (campo) { campo.disabled = true; });
+    cache.delete('/chamados/' + c.id);
+    Promise.resolve().then(function () { return GI.chamadosObter(c.id); }).then(function (r) {
+      return atual(ed.g, ed.contexto).then(function (valido) {
+        if (!valido || editando !== ed || !card.isConnected) return;
+        ed.original = r.chamado; ed.dados = GI.cockpit.dadosEdicao(r.chamado);
+        atualizarCartao(card, c, r);
+        if (!abertos(r.chamado)) { fecharEdicao(); recado('Este chamado está encerrado. Reabra antes de editar.', 'erro'); return; }
+        montarEdicao(ed);
+      });
+    }).catch(function (err) {
+      if (editando === ed) { fecharEdicao(); recado(GI.mensagemErro(err), 'erro'); }
+    }).then(function () {
+      ed.carregando = false;
+      botao.removeAttribute('aria-busy'); botao.textContent = '✎ Editar';
+    });
+  }
+  function montarEdicao(ed) {
+    var f = ed.dados;
+    function campo(k, rotulo, max, area) {
+      return '<div><label for="cp-edit-' + k + '">' + rotulo + '</label>' + (area ? '<textarea' : '<input type="text"') + ' id="cp-edit-' + k + '" maxlength="' + max + '" aria-describedby="cp-edit-' + k + '-erro"' + (k === 'titulo' ? ' required' : '') + (area ? '>' + e(f[k]) + '</textarea>' : ' value="' + e(f[k]) + '">') + '<p id="cp-edit-' + k + '-erro" role="alert" hidden></p></div>';
+    }
+    function chips(k, rotulo, mapa) {
+      return '<fieldset><legend>' + rotulo + '</legend><div class="gi-cp-chips">' + Object.keys(mapa).map(function (v) {
+        return '<button type="button" data-edit-' + k + '="' + e(v) + '" aria-pressed="' + (v === f[k]) + '">' + e(mapa[v]) + '</button>';
+      }).join('') + '</div><p id="cp-edit-' + k + '-erro" role="alert" hidden></p></fieldset>';
+    }
+    ed.card.querySelector('[data-os-edicao]').innerHTML = '<form id="cp-edit-form" class="gi-cp-form" novalidate><h2>Editar ' + e(GI.chamadoNumero(ed.c.numero)) + '</h2>' + campo('titulo', 'Título', 180) + campo('descricao', 'Descrição', 10000, true) + chips('categoria', 'Categoria', GI.CHAMADO_CATEGORIAS) + chips('prioridade', 'Urgência', GI.CHAMADO_PRIORIDADES) + '<details><summary>Mais detalhes</summary>' + campo('disponibilidade', 'Quando dá para entrar', 500) + '<label for="cp-edit-sem-cliente" class="gi-cp-check"><input type="checkbox" id="cp-edit-sem-cliente"' + (f.sem_cliente ? ' checked' : '') + '>Autoriza entrar sem o cliente</label><p id="cp-edit-sem_cliente-erro" role="alert" hidden></p>' + campo('chaves', 'Chaves / acesso', 500) + '</details><p id="cp-edit-erro" role="alert" hidden></p><div class="gi-cp-acoes"><button id="cp-edit-salvar" class="btn btn-primario" type="submit" disabled>Salvar alterações</button><button id="cp-edit-cancelar" class="btn" type="button">Cancelar</button></div><div id="cp-edit-descartar" hidden><p>Descartar as alterações?</p><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-edit-descartar-sim">Descartar</button><button type="button" class="btn" id="cp-edit-continuar">Continuar editando</button></div></div></form>';
+    function validar() {
+      var vazio = !f.titulo.trim();
+      $('cp-edit-titulo-erro').textContent = vazio ? 'Informe o título do chamado.' : '';
+      $('cp-edit-titulo-erro').hidden = !vazio;
+      $('cp-edit-titulo').setAttribute('aria-invalid', String(vazio));
+      $('cp-edit-salvar').disabled = vazio || !edicaoSuja(ed);
+    }
+    ['titulo', 'descricao', 'disponibilidade', 'chaves'].forEach(function (k) {
+      $('cp-edit-' + k).oninput = function () { f[k] = this.value; validar(); };
+    });
+    $('cp-edit-sem-cliente').onchange = function () { f.sem_cliente = this.checked; validar(); };
+    ['categoria', 'prioridade'].forEach(function (k) {
+      ed.card.querySelectorAll('[data-edit-' + k + ']').forEach(function (b) { b.onclick = function () {
+        f[k] = b.dataset[k === 'categoria' ? 'editCategoria' : 'editPrioridade'];
+        ed.card.querySelectorAll('[data-edit-' + k + ']').forEach(function (outro) { outro.setAttribute('aria-pressed', String(outro === b)); }); validar();
+      }; });
+    });
+    $('cp-edit-cancelar').onclick = function () { solicitarSaidaEdicao(); };
+    $('cp-edit-form').onsubmit = function (ev) { ev.preventDefault(); salvarEdicao(ed); };
+    validar(); $('cp-edit-titulo').focus();
+  }
+  function salvarEdicao(ed) {
+    if (editando !== ed || ed.ocupado || !ed.dados.titulo.trim() || !edicaoSuja(ed)) return;
+    var d = GI.cockpit.diffEdicao(ed.original, ed.dados);
+    if (!Object.keys(d).length) return;
+    ed.ocupado = true;
+    ed.card.querySelectorAll('#cp-edit-form button, #cp-edit-form input, #cp-edit-form textarea').forEach(function (b) { b.disabled = true; });
+    $('cp-edit-salvar').textContent = 'Salvando…'; $('cp-edit-salvar').setAttribute('aria-busy', 'true');
+    ed.card.querySelectorAll('#cp-edit-form [role="alert"]').forEach(function (p) { p.hidden = true; });
+    function reler() { cache.delete('/chamados/' + ed.c.id); return GI.chamadosObter(ed.c.id); }
+    atual(ed.g, ed.contexto).then(function (valido) {
+      if (!valido || editando !== ed) return;
+      return (ed.postSalvo ? Promise.resolve() : GI.chamadosAtualizar(ed.c.id, d)).then(function () {
+        ed.postSalvo = true; return reler();
+      }).then(function (r) {
+        if (ed.g !== geracao || editando !== ed) return;
+        atualizarCartao(ed.card, ed.c, r); fecharEdicao();
+        recado(GI.chamadoNumero(ed.c.numero) + ' salva ✓', 'sucesso');
+      });
+    }).catch(function (err) {
+      if (ed.g !== geracao || editando !== ed) return;
+      if ((err.dados || {}).erro === 'chamado_encerrado') {
+        return reler().then(function (r) { if (editando === ed) atualizarCartao(ed.card, ed.c, r); }).catch(function () {}).then(function () {
+          if (editando === ed) { fecharEdicao(); recado('Este chamado está encerrado. Reabra antes de editar.', 'erro'); }
+        });
+      }
+      var campos = (err.dados || {}).campos || {}, primeiro;
+      Object.keys(campos).forEach(function (k) {
+        var chave = k.split('.').pop(), alvo = $('cp-edit-' + chave + '-erro'), campo = $(chave === 'sem_cliente' ? 'cp-edit-sem-cliente' : 'cp-edit-' + chave);
+        if (!alvo) return;
+        var unico = {}; unico[k] = campos[k];
+        alvo.textContent = GI.mensagemErro({ status: err.status, dados: { erro: 'dados_invalidos', campos: unico } }); alvo.hidden = false;
+        if (campo) { var detalhe = campo.closest('#cp-edit-form details'); if (detalhe) detalhe.open = true; campo.setAttribute('aria-invalid', 'true'); if (!primeiro) primeiro = campo; }
+      });
+      $('cp-edit-erro').textContent = ed.postSalvo ? 'Alterações salvas. Não foi possível atualizar o cartão. Tente de novo para consultar.' : GI.mensagemErro(err);
+      $('cp-edit-erro').hidden = false;
+      ed.focoErro = primeiro;
+    }).then(function () {
+      ed.ocupado = false;
+      if (editando !== ed) return;
+      ed.card.querySelectorAll('#cp-edit-form button, #cp-edit-form input, #cp-edit-form textarea').forEach(function (b) { b.disabled = ed.postSalvo && b.id !== 'cp-edit-salvar' && b.id !== 'cp-edit-cancelar'; });
+      $('cp-edit-salvar').textContent = 'Tentar de novo'; $('cp-edit-salvar').removeAttribute('aria-busy');
+      if (ed.focoErro) ed.focoErro.focus();
+    });
   }
   function resumoCartao(c) {
     var conhecido = Object.hasOwn(GI.CHAMADO_STATUS, c.status), imovel = locacoes.find(function (l) { return String(l.id) === String(c.locacao_id); }) || c.imovel || {};
@@ -550,8 +700,10 @@
   function atualizarCartao(card, c, r) {
     if (r && r.chamado) Object.assign(c, r.chamado);
     atualizadoEm = Date.now(); cabecalho(); card.querySelector('summary').innerHTML = resumoCartao(c);
-    var valores = { Status: valorMapa(GI.CHAMADO_STATUS, c.status), Atendente: c.atendente && c.atendente.nome, 'Quem paga': valorMapa({ proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária' }, c.quem_paga), Visita: instante((c.visita || {}).inicio), Prazo: GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ') };
+    card.classList.toggle('gi-cp-urgente', c.prioridade === 'emergencia' && abertos(c));
+    var valores = { Categoria: valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria), Relato: c.descricao, 'Prazo de solução': instante((c.sla || {}).prazo_solucao_em), Status: valorMapa(GI.CHAMADO_STATUS, c.status), Atendente: c.atendente && c.atendente.nome, 'Quem paga': valorMapa({ proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária' }, c.quem_paga), Visita: instante((c.visita || {}).inicio), Prazo: GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ') };
     card.querySelectorAll('[data-kv]').forEach(function (linha) { if (Object.hasOwn(valores, linha.dataset.kv)) linha.lastElementChild.textContent = valores[linha.dataset.kv] || '—'; });
+    atualizarBotaoEditar(card, c);
     var statusSelect = card.querySelector('[data-rapida="status"]');
     if (statusSelect) { statusSelect.innerHTML = Object.keys(GI.statusDisponiveis(c.status)).map(function (k) { return '<option value="' + e(k) + '">' + e(GI.statusDisponiveis(c.status)[k]) + '</option>'; }).join(''); statusSelect.value = c.status; card.querySelector('[data-reabrir-ajuda]').hidden = abertos(c); }
     var trilha = card.querySelector('.gi-cp-trilha');
@@ -570,10 +722,10 @@
       if (c.atendente) mapaUsuarios[c.atendente.user_id] = c.atendente.nome;
       var sel = controles.querySelector('[data-rapida="atendente"]');
       sel.innerHTML = '<option value="">Sem atendente</option>' + Object.keys(mapaUsuarios).filter(function (n) { return id(n); }).map(function (n) { return '<option value="' + e(n) + '">' + e(mapaUsuarios[n]) + '</option>'; }).join('');
-      sel.value = atualControle('atendente'); sel.disabled = ocupado;
+      sel.value = atualControle('atendente'); sel.disabled = ocupado || !!(editando && editando.card === card);
     });
     async function gravar(k, valor, motivo) {
-      if (ocupado || !escrita() || !card.isConnected) { restaurar(); return; }
+      if (ocupado || editando && editando.card === card || !escrita() || !card.isConnected) { restaurar(); return; }
       ocupado = true; bloquear(true);
       var mensagem = controles.querySelector('[data-salvo="' + k + '"]'); mensagem.textContent = 'Salvando…';
       controles.querySelector('[data-cancelar-caixa]').hidden = true;
@@ -679,7 +831,7 @@
             var url = a.origem === 'upload' && /^image\/(jpeg|png|webp|gif)$/.test(r.mimetype) && base64(r.dados_base64) ? 'data:' + r.mimetype + ';base64,' + r.dados_base64 : a.origem !== 'upload' && r.url;
             if (!url || !/^(https?:|data:image\/)/i.test(url)) throw new Error('Foto indisponível.');
             no('imagem').textContent = ''; no('imagem').appendChild(imagem(url)); no('foto-inteira').hidden = false; no('fechar-foto').focus();
-          } catch (err) { if (valido()) recado('Não foi possível abrir a foto. ' + err.message, 'erro'); }
+          } catch (err) { if (valido()) recado('Não foi possível abrir a foto. ' + GI.mensagemErro(err), 'erro'); }
           finally { if (valido()) { b.disabled = false; b.removeAttribute('aria-busy'); } }
         };
       });
@@ -729,7 +881,7 @@
               if (!await atual(g, c) || !valido()) return;
               d = relido; observacoes();
             } catch (_) { mensagem('Nota salva. Não foi possível atualizar as observações; atualize o painel.' + (falhaEnvio ? ' Cliente não avisado: ' + falhaEnvio : ''), 'erro'); }
-          } catch (err) { mensagem((enviado === texto ? 'Aviso enviado; ' : '') + 'não foi possível salvar a nota. Tente salvar novamente. ' + err.message, 'erro'); }
+          } catch (err) { mensagem((enviado === texto ? 'Aviso enviado; ' : '') + 'não foi possível salvar a nota. Tente salvar novamente. ' + GI.mensagemErro(err), 'erro'); }
           finally { salvando = false; if (valido()) { no('salvar-nota').disabled = no('confirmar-nota').disabled = no('nota').disabled = no('avisar').disabled = false; no('salvar-nota').textContent = 'Salvar nota'; } }
         }
       }
@@ -740,9 +892,8 @@
   }
   function renderImovel() {
     var l = locacao();
-    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2>' + e(rotuloImovel(l)) + '</h2>' + kv('Código', l.imovel_codigo || 'Fora do catálogo') + kv('Endereço', l.imovel_endereco) + kv('Bairro', l.imovel_bairro) + kv('Cidade', l.imovel_cidade) + kv('Contrato', l.contrato_numero) + kv('Início', data(l.inicio)) + kv('Fim', data(l.fim)) + kv('Aluguel', moeda(l.valor_aluguel_centavos)) + (l.contatos || []).map(function (c) { return kv(papel(c.papel), c.nome) + (c.telefone ? '<button type="button" class="btn btn-texto" data-copia-texto="' + e(c.telefone) + '">' + e(c.telefone) + ' ⧉</button>' : ''); }).join('') + '<div class="gi-cp-acoes">' + [l.imovel_codigo, l.imovel_endereco].filter(Boolean).map(function (t) { return '<button type="button" class="btn" data-copia-texto="' + e(t) + '">' + e(t) + ' ⧉</button>'; }).join('') + (escrita() ? '<button type="button" class="btn" id="cp-abrir-imovel">Abrir chamado</button>' : '') + '</div></div>';
+    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2>' + e(rotuloImovel(l)) + '</h2>' + kv('Código', l.imovel_codigo || 'Fora do catálogo') + kv('Endereço', l.imovel_endereco) + kv('Bairro', l.imovel_bairro) + kv('Cidade', l.imovel_cidade) + kv('Contrato', l.contrato_numero) + kv('Início', data(l.inicio)) + kv('Fim', data(l.fim)) + kv('Aluguel', moeda(l.valor_aluguel_centavos)) + (l.contatos || []).map(function (c) { return kv(papel(c.papel), c.nome) + (c.telefone ? '<button type="button" class="btn btn-texto" data-copia-texto="' + e(c.telefone) + '">' + e(c.telefone) + ' ⧉</button>' : ''); }).join('') + '<div class="gi-cp-acoes">' + [l.imovel_codigo, l.imovel_endereco].filter(Boolean).map(function (t) { return '<button type="button" class="btn" data-copia-texto="' + e(t) + '">' + e(t) + ' ⧉</button>'; }).join('') + '</div></div>';
     document.querySelectorAll('[data-copia-texto]').forEach(function (b) { b.onclick = function () { copiarTexto(b.dataset.copiaTexto, b); }; });
-    if ($('cp-abrir-imovel')) $('cp-abrir-imovel').onclick = function () { mudarAba('novo'); };
   }
   function rascunho() {
     if (!formulario) formulario = { locacaoId: locacao() && locacao().id, titulo: '', descricao: '', categoria: 'hidraulica', prioridade: 'normal', disponibilidade: '', chaves: '', sem_cliente: false, anexos: [] };
@@ -793,7 +944,7 @@
         if (!await atual(g, c) || !$('cp-descricao')) return;
         var recebidas = msgs.filter(function (m) { return m.direction === 'in' && typeof m.text === 'string' && m.text.trim() && !m.deleted && !m.fileRef; }).sort(function (a, b) { return (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0); });
         if (recebidas.length) { f.descricao = recebidas[0].text.slice(0, 10000); $('cp-descricao').value = f.descricao; $('cp-descricao').focus(); }
-        else $('cp-ultima-recado').textContent = 'Nenhuma mensagem de texto do cliente.';
+        else $('cp-ultima-recado').textContent = 'Nenhuma mensagem do cliente nesta conversa.';
       } catch (_) { if (g === geracao && $('cp-ultima-recado')) $('cp-ultima-recado').textContent = 'Não foi possível ler as mensagens.'; }
       finally { if (botao.isConnected) botao.disabled = false; }
     };
@@ -814,37 +965,119 @@
     };
     renderFotos(); if (!fotosLidas) carregarFotos();
   }
+  function miniaturasConfirmacao(refs) {
+    return '<div class="gi-cp-miniaturas">' + refs.map(function (ref) {
+      var p = previasFotos[ref];
+      return p && p.estado === 'pronta' ? '<img src="' + e(p.url) + '" alt="Foto selecionada">' : '';
+    }).join('') + '</div>';
+  }
+  function atualizarSelecaoFotos() {
+    var f = rascunho();
+    document.querySelectorAll('[data-foto]').forEach(function (b) { b.setAttribute('aria-checked', String(f.anexos.indexOf(b.dataset.foto) >= 0)); });
+    $('cp-fotos-contador').textContent = f.anexos.length + ' foto(s) selecionada(s)';
+  }
+  function selecionarFoto(ref) {
+    var f = rascunho(), i = f.anexos.indexOf(ref);
+    if (i >= 0) { f.anexos.splice(i, 1); $('cp-fotos-aviso').textContent = ''; }
+    else if (f.anexos.length < 20) f.anexos.push(ref);
+    else $('cp-fotos-aviso').textContent = 'Máximo de 20 fotos por chamado.';
+    atualizarSelecaoFotos();
+  }
+  function previaFoto(m) {
+    var ref = String(m.fileRef);
+    if (previasFotos[ref]) return previasFotos[ref];
+    var p = { estado: 'carregando', url: '' }; previasFotos[ref] = p;
+    p.promessa = GI.filaArquivos(function () { return omni.chats.getFile(ref); }).then(function (r) {
+      if (!r || !r.url) throw new Error('Prévia indisponível');
+      var url = new URL(r.url, location.href);
+      if (!/^https?:$/.test(url.protocol) && !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(r.url)) throw new Error('Prévia indisponível');
+      p.url = url.href; p.estado = 'pronta';
+    }).catch(function () { p.estado = 'falha'; });
+    return p;
+  }
+  function desenharPrevia(b, m, p) {
+    var visual = b.querySelector('[data-previa]');
+    visual.textContent = '';
+    visual.className = p.estado === 'carregando' ? 'gi-cp-foto-visual gi-cp-esqueleto' : 'gi-cp-foto-visual';
+    b.setAttribute('aria-busy', String(p.estado === 'carregando'));
+    if (p.estado === 'pronta') {
+      var img = document.createElement('img'); img.alt = m.fileName || 'Foto da conversa';
+      img.onerror = function () { p.estado = 'falha'; if (b.isConnected) desenharPrevia(b, m, p); };
+      img.src = p.url; visual.appendChild(img);
+    } else visual.textContent = p.estado === 'falha' ? '▧ Prévia indisponível' : 'Carregando…';
+  }
+  function fecharAmpliacao() {
+    if ($('cp-foto-ampliada')) $('cp-foto-ampliada').hidden = true;
+    if (ampliacaoOrigem && ampliacaoOrigem.isConnected) ampliacaoOrigem.focus();
+    ampliacaoOrigem = null;
+  }
+  function ampliarFoto(m, botao) {
+    var p = previasFotos[String(m.fileRef)], alvo = $('cp-foto-grande');
+    ampliacaoOrigem = botao; alvo.textContent = '';
+    if (p && p.estado === 'pronta') {
+      var img = document.createElement('img'); img.alt = m.fileName || 'Foto da conversa';
+      img.onerror = function () { p.estado = 'falha'; alvo.textContent = 'Esta foto não tem prévia, mas será anexada.'; };
+      img.src = p.url; alvo.appendChild(img);
+    } else alvo.textContent = 'Esta foto não tem prévia, mas será anexada.';
+    $('cp-foto-ampliada').hidden = false; $('cp-foto-fechar').focus();
+  }
+  function adicionarFotos(inicio, fim) {
+    document.querySelector('.gi-cp-grade-fotos').insertAdjacentHTML('beforeend', fotos.slice(inicio, fim).map(function (m) {
+      var ref = String(m.fileRef), nome = m.fileName || 'Foto da conversa';
+      return '<div class="gi-cp-foto-tile"><button type="button" class="gi-cp-foto" role="checkbox" aria-checked="false" data-foto="' + e(ref) + '"><span data-previa class="gi-cp-foto-visual"></span><span class="gi-cp-foto-selo" aria-hidden="true">✓</span><span class="gi-cp-foto-legenda" title="' + e(nome) + '">' + e(nome) + '</span></button><button type="button" class="btn gi-cp-ampliar" aria-label="Ampliar foto" data-ampliar-foto="' + e(ref) + '">🔍</button></div>';
+    }).join(''));
+    var g = geracao;
+    Array.prototype.slice.call(document.querySelectorAll('[data-foto]'), inicio).forEach(function (b, i) {
+      var m = fotos[inicio + i], p = previaFoto(m);
+      desenharPrevia(b, m, p);
+      p.promessa.then(function () { if (g === geracao && b.isConnected) desenharPrevia(b, m, p); });
+      b.onclick = function () { selecionarFoto(b.dataset.foto); };
+    });
+    Array.prototype.slice.call(document.querySelectorAll('[data-ampliar-foto]'), inicio).forEach(function (b, i) { b.onclick = function () { ampliarFoto(fotos[inicio + i], b); }; });
+  }
   function renderFotos() {
     if (!$('cp-fotos')) return;
-    $('cp-fotos').innerHTML = fotos.map(function (m, i) { return '<label class="gi-cp-check"><input type="checkbox" data-foto="' + i + '"' + (rascunho().anexos.indexOf(i) >= 0 ? ' checked' : '') + '>' + e(m.fileName || 'Foto ' + (i + 1)) + '</label>'; }).join('');
-    if (!fotos.length) $('cp-fotos').textContent = fotosAviso || (fotosLidas ? 'Mostrando as últimas 50 mensagens da conversa. Nenhuma foto encontrada.' : 'Carregando fotos…');
-    document.querySelectorAll('[data-foto]').forEach(function (b) {
-      var m = fotos[Number(b.dataset.foto)], g = geracao;
-      GI.filaArquivos(function () { return omni.chats.getFile(String(m.fileRef)); }).then(function (r) {
-        if (g !== geracao || !b.isConnected || !r || !r.url) return;
-        var url = new URL(r.url, location.href);
-        if (!/^https?:$/.test(url.protocol) && !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(r.url)) return;
-        var img = document.createElement('img'); img.src = url.href; img.alt = m.fileName || 'Foto da conversa'; b.parentNode.appendChild(img);
-      }).catch(function () {});
-    });
-    document.querySelectorAll('[data-foto]').forEach(function (b) { b.onchange = function () {
-      var f = rascunho(), i = Number(b.dataset.foto); f.anexos = f.anexos.filter(function (n) { return n !== i; }); if (b.checked) f.anexos.push(i);
-    }; });
+    if (!fotos.length) { $('cp-fotos').textContent = fotosAviso || (fotosLidas ? 'Nenhuma foto de cliente encontrada nas últimas 50 mensagens.' : 'Carregando fotos…'); return; }
+    $('cp-fotos').innerHTML = '<div class="gi-cp-acoes"><button type="button" class="btn" id="cp-fotos-todas">Selecionar todas</button><button type="button" class="btn" id="cp-fotos-limpar">Limpar seleção</button></div><p id="cp-fotos-contador" aria-live="polite"></p><p id="cp-fotos-aviso" role="alert"></p><div class="gi-cp-grade-fotos"></div>' + (limiteFotos < fotos.length ? '<button type="button" class="btn" id="cp-fotos-mais">Mostrar mais fotos</button>' : '') + '<div id="cp-foto-ampliada" role="dialog" aria-label="Foto ampliada" aria-modal="true" hidden><button type="button" class="btn" id="cp-foto-fechar">Fechar</button><div id="cp-foto-grande"></div></div>';
+    adicionarFotos(0, limiteFotos);
+    $('cp-foto-fechar').onclick = fecharAmpliacao;
+    $('cp-fotos-todas').onclick = function () {
+      var f = rascunho(), excedeu = false;
+      fotos.slice(0, limiteFotos).forEach(function (m) {
+        var ref = String(m.fileRef);
+        if (f.anexos.indexOf(ref) >= 0) return;
+        if (f.anexos.length < 20) f.anexos.push(ref); else excedeu = true;
+      });
+      $('cp-fotos-aviso').textContent = excedeu ? 'Máximo de 20 fotos por chamado.' : '';
+      atualizarSelecaoFotos();
+    };
+    $('cp-fotos-limpar').onclick = function () { rascunho().anexos = []; $('cp-fotos-aviso').textContent = ''; atualizarSelecaoFotos(); };
+    if ($('cp-fotos-mais')) $('cp-fotos-mais').onclick = function () {
+      var inicio = limiteFotos;
+      limiteFotos += 12; adicionarFotos(inicio, limiteFotos); atualizarSelecaoFotos();
+      document.querySelectorAll('[data-foto]')[inicio].focus();
+      if (limiteFotos >= fotos.length) $('cp-fotos-mais').remove();
+    };
+    atualizarSelecaoFotos();
   }
   async function carregarFotos() {
     var g = geracao, c = chat;
     fotosLidas = true;
     try {
-      var r = demo() ? [] : await omni.chats.getMessages(c.id, { limit: 50 });
+      if (!leituraFotos) leituraFotos = { concluida: false, promessa: demo() ? Promise.resolve([]) : Promise.resolve().then(function () { return omni.chats.getMessages(c.id, { limit: 50 }); }) };
+      var leitura = leituraFotos, r = await leitura.promessa; leitura.concluida = true;
       if (!await atual(g, c)) return;
-      fotos = linhas(r).filter(function (m) { return m.fileRef && /^image\//.test(m.mimetype || '') && !m.deleted && !m.viewOnce; });
+      var vistos = Object.create(null);
+      fotos = linhas(r).filter(function (m) { return m.fileRef && /^image\//.test(m.mimetype || '') && !m.deleted && !m.viewOnce; }).sort(function (a, b) { return (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0); }).filter(function (m) {
+        var ref = String(m.fileRef); if (Object.hasOwn(vistos, ref)) return false; vistos[ref] = true; return true;
+      });
     } catch (_) { if (g !== geracao) return; fotosAviso = 'Fotos indisponíveis. Atualize o painel para tentar novamente.'; recado(fotosAviso, 'erro'); }
     if (g === geracao && aba === 'novo' && !confirmado) renderFotos();
   }
   function revisar() {
     confirmado = { geracao: geracao, chat: chat, locacao: locacao(), contato: contato, dados: JSON.parse(JSON.stringify(rascunho())) };
     var f = confirmado.dados;
-    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2 id="cp-confirmacao-titulo" tabindex="-1">Confirme antes de abrir</h2>' + kv('Cliente', contato.name) + '<h2 class="gi-cp-imovel-novo">' + e(rotuloImovel(locacao())) + '</h2>' + kv('Atendimento', vinculo()) + kv('Título', f.titulo) + kv('Descrição', f.descricao) + kv('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, f.categoria)) + kv('Urgência', valorMapa(GI.CHAMADO_PRIORIDADES, f.prioridade)) + kv('Fotos', f.anexos.length) + kv('Acesso', f.disponibilidade) + kv('Sem o cliente', f.sem_cliente ? 'Autorizado' : 'Não autorizado') + kv('Chaves', f.chaves) + '<p class="gi-cp-meta">O portal calcula o SLA pela prioridade configurada.</p></div><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-voltar">Voltar e editar</button><button type="button" class="btn btn-primario" id="cp-confirmar">Abrir chamado</button></div>';
+    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2 id="cp-confirmacao-titulo" tabindex="-1">Confirme antes de abrir</h2>' + kv('Cliente', contato.name) + '<h2 class="gi-cp-imovel-novo">' + e(rotuloImovel(locacao())) + '</h2>' + kv('Atendimento', vinculo()) + kv('Título', f.titulo) + kv('Descrição', f.descricao) + kv('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, f.categoria)) + kv('Urgência', valorMapa(GI.CHAMADO_PRIORIDADES, f.prioridade)) + kv('Fotos', f.anexos.length + ' foto(s)') + miniaturasConfirmacao(f.anexos) + kv('Acesso', f.disponibilidade) + kv('Sem o cliente', f.sem_cliente ? 'Autorizado' : 'Não autorizado') + kv('Chaves', f.chaves) + '<p class="gi-cp-meta">O portal calcula o SLA pela prioridade configurada.</p></div><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-voltar">Voltar e editar</button><button type="button" class="btn btn-primario" id="cp-confirmar">Abrir chamado</button></div>';
     $('cp-voltar').onclick = function () { confirmado = null; renderNovo(); $('cp-titulo').focus(); };
     $('cp-confirmar').onclick = salvar;
     if (criacaoIncerta) $('cp-confirmar').textContent = 'Conferir se abriu';
@@ -871,7 +1104,7 @@
         origem: 'atendimento', solicitante: { contato_id: id(c.contactId), nome: GI.nomeContato(plano.contato, c), telefone: GI.textoOuNull(plano.contato.phone) },
         atendente: { user_id: id(u.id), nome: String(u.name || u.id) }, atendimento: GI.atendimentoPortal(c, filasConhecidas),
         acesso: { disponibilidade: f.disponibilidade, sem_cliente: f.sem_cliente, chaves: f.chaves },
-        anexos: f.anexos.map(function (i) { var m = fotos[i]; return { file_ref: String(m.fileRef), nome: m.fileName, mimetype: m.mimetype, origem: 'atendimento' }; }) };
+        anexos: f.anexos.map(function (ref) { var m = fotos.find(function (foto) { return String(foto.fileRef) === ref; }); return { file_ref: String(m.fileRef), nome: m.fileName, mimetype: m.mimetype, origem: 'atendimento' }; }) };
       var r;
       if (demo()) { r = { chamado: Object.assign({}, d, { id: 9001, numero: 9001, status: 'novo', sla: {} }) }; chamados.unshift(r.chamado); }
       else {
@@ -900,7 +1133,7 @@
       } catch (_) { if (g === geracao) recado('Chamado aberto. Não foi possível atualizar a lista; consulte novamente.', 'erro'); }
     } catch (err) {
       if (g === geracao) {
-        recado(GI.mensagemErro(err), 'erro');
+        recado(err.criacaoAusente ? 'Não consegui falar com o servidor. O chamado não foi aberto. Confira sua conexão e tente de novo.' : GI.mensagemErro(err), 'erro');
         if ($('cp-confirmar')) {
           if (err.criacaoIncerta) {
             criacaoIncerta = operacaoCriacao;
@@ -929,7 +1162,7 @@
       } else {
         criacaoIncerta = null;
         if (botao) { botao.disabled = false; botao.textContent = 'Tentar de novo'; if (botao.id === 'cp-confirmar') botao.onclick = salvar; }
-        recado('Não encontramos o chamado. Você pode tentar abrir de novo.', 'erro');
+        recado('Não consegui falar com o servidor. O chamado não foi aberto. Confira sua conexão e tente de novo.', 'erro');
       }
     } catch (_) {
       if (g !== geracao || criacaoIncerta !== incerta) return;
@@ -961,7 +1194,7 @@
     if (copiado) { if (botao) botao.textContent = '✓ Copiado'; recado('Copiado.', 'sucesso'); }
     else recado('Selecione para copiar: ' + texto, 'info');
   }
-  function mudarAba(nova) { if (gravando || nova === 'novo' && !escrita()) return; if (nova === 'novo' && !formulario) novoSelecionado = false; aba = nova; confirmado = null; recado('', 'info'); render(); }
+  function mudarAba(nova) { if (editando) { solicitarSaidaEdicao(function () { mudarAba(nova); }); return; } if (gravando || nova === 'novo' && !escrita()) return; if (nova === 'novo' && !formulario) novoSelecionado = false; aba = nova; confirmado = null; recado('', 'info'); render(); }
   $('cp-abas').onclick = function (ev) { var b = ev.target.closest('[data-aba]'); if (b) mudarAba(b.dataset.aba); };
   $('cp-abas').onkeydown = function (ev) {
     var botoes = Array.from(document.querySelectorAll('[data-aba]')), i = botoes.indexOf(document.activeElement);
@@ -970,9 +1203,12 @@
     mudarAba(botoes[n].dataset.aba); botoes[n].focus();
   };
   document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Tab' && $('cp-foto-ampliada') && !$('cp-foto-ampliada').hidden) { ev.preventDefault(); $('cp-foto-fechar').focus(); return; }
     if (ev.key === 'Enter' && ev.target.matches('[data-cancelar-motivo]')) { ev.preventDefault(); ev.target.closest('[data-cancelar-caixa]').querySelector('[data-cancelar-confirmar]').click(); return; }
     if (ev.key === 'Enter' && ev.target.matches('[data-rapida="visita"]')) { ev.preventDefault(); ev.target.dispatchEvent(new Event('change')); }
     if (ev.key !== 'Escape' || gravando) return;
+    if ($('cp-foto-ampliada') && !$('cp-foto-ampliada').hidden) { ev.preventDefault(); fecharAmpliacao(); return; }
+    if (editando) { ev.preventDefault(); solicitarSaidaEdicao(); return; }
     ev.preventDefault();
     var aberto = document.querySelector('[data-confirmacao-nota]:not([hidden])');
     if (aberto) { aberto.querySelector('[data-voltar-nota]').click(); return; }
@@ -985,12 +1221,14 @@
     if (aberto) { aberto.open = false; aberto.querySelector('summary').focus(); }
   });
   $('cp-imovel').onchange = function () {
+    if (editando) { var sel = this, valor = this.value; this.value = locacao() ? String(locacao().id) : ''; solicitarSaidaEdicao(function () { sel.value = valor; sel.onchange(); }); return; }
     if (gravando) { this.value = locacao() ? String(locacao().id) : ''; return; }
     selecionada = locacoes.findIndex(function (l) { return String(l.id) === this.value; }, this);
     if (formulario) { formulario.locacaoId = locacao() && locacao().id; formulario.imovelIndisponivel = false; novoSelecionado = selecionada >= 0; }
     confirmado = null; cabecalho(); render();
   };
   $('cp-atualizar').onclick = function () {
+    if (editando) { solicitarSaidaEdicao(function () { $('cp-atualizar').click(); }); return; }
     if (gravando || Date.now() - ultimaAtualizacao < 5000) return;
     ultimaAtualizacao = Date.now(); this.disabled = true; this.title = 'Aguarde 5 segundos entre atualizações';
     $('cp-idade').textContent = 'Aguarde 5 segundos entre atualizações';

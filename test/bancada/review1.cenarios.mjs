@@ -49,7 +49,7 @@ export async function testarReview1(b, base) {
       };
     });
     await b.clicar('#cp-revisar');
-    await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Não encontramos o chamado'));
+    await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Não consegui falar com o servidor. O chamado não foi aberto. Confira sua conexão e tente de novo.'));
     assert.equal(await b.avaliar(() => bancada.postsReview), 1);
     await b.preencher('#cp-titulo', 'Criação liberada sintética F17');
     await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');

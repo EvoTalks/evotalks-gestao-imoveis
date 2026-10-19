@@ -78,3 +78,24 @@ body { padding: 0; font-size: 13px; background: var(--gi-bg); }
 #cp-mais-detalhes > div { margin-top: 10px; }
 #cp-resumo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .gi-cockpit [data-copia-texto] { display: block; overflow-wrap: anywhere; word-break: break-word; }
+
+/* Edição e fotos selecionáveis, com os tokens recebidos do host. */
+[data-os-edicao]:not(:empty) { border-block: 1px solid var(--gi-borda); padding-block: 12px; margin-top: 10px; }
+#cp-edit-form [role="alert"], #cp-fotos-aviso { color: var(--ext-color-error, var(--gi-pendente)); font-size: 12px; }
+#cp-edit-form details > div { margin-block: 8px; }
+.gi-cp-grade-fotos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-block: 8px; }
+.gi-cp-foto-tile { position: relative; }
+.gi-cp-foto { position: relative; width: 100%; padding: 0; overflow: hidden; border: 2px solid var(--gi-borda); border-radius: var(--gi-raio-p); background: var(--gi-campo-bg); color: var(--gi-texto); cursor: pointer; }
+.gi-cp-foto[aria-checked="true"] { border-color: var(--ext-color-primary, var(--gi-acao)); }
+.gi-cp-foto-visual { display: flex; align-items: center; justify-content: center; aspect-ratio: 4/3; width: 100%; font-size: 12px; padding: 0; }
+#cp-fotos .gi-cp-foto-visual img { max-width: 100%; max-height: none; display: block; width: 100%; height: 100%; aspect-ratio: 4/3; object-fit: cover; }
+.gi-cp-esqueleto { background: var(--ext-color-surface-alt, var(--gi-borda)); color: var(--gi-mudo); }
+.gi-cp-foto-legenda { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; text-overflow: ellipsis; text-align: left; font-size: 11px; padding: 6px; }
+.gi-cp-foto-selo { display: none; position: absolute; top: 4px; left: 4px; padding: 2px 5px; background: var(--gi-acao); color: var(--gi-acao-texto); border-radius: var(--gi-raio-p); }
+[aria-checked="true"] .gi-cp-foto-selo { display: block; }
+.gi-cockpit .gi-cp-ampliar { position: absolute; top: 4px; right: 4px; padding: 4px; background: var(--gi-surface); color: var(--gi-texto); }
+#cp-foto-ampliada { position: fixed; inset: 6px; z-index: 10; overflow: auto; background: var(--gi-surface); color: var(--gi-texto); border: 1px solid var(--gi-borda); padding: 12px; }
+#cp-foto-grande img { max-width: 100%; max-height: none; display: block; width: 100%; height: auto; margin-top: 10px; }
+.gi-cp-miniaturas { display: flex; flex-wrap: wrap; gap: 4px; }
+.gi-cp-miniaturas img { width: 48px; height: 36px; object-fit: cover; }
+@media (min-width: 440px) { .gi-cp-grade-fotos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

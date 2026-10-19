@@ -32,7 +32,7 @@ test('hotfix: erros de abertura têm frases simples sem resposta crua ou status'
   assert.match(GI.mensagemErro({ status: 422, dados: { campos: { 'atendimento.canal': 'Informe um texto.' } } }), /Canal:/);
   assert.match(GI.mensagemErro({ status: 400, dados: { campos: { titulo: '<img src=x>' } } }), /Título:/);
   for (const status of [400, 401, 403, 409, 422, 500]) assert.doesNotMatch(GI.mensagemErro({ status, message: '<img src=x>', dados: { campos: { desconhecido: 'Informe um texto.' } } }), /<img|Informe um texto|HTTP/);
-  for (const status of [undefined, 0, 502, 503, 504]) assert.match(GI.mensagemErro({ status, message: 'Failed to fetch' }), /O portal não respondeu/);
+  for (const status of [undefined, 0, 502, 503, 504]) assert.match(GI.mensagemErro({ status, message: 'Failed to fetch' }), /Não consegui falar com o servidor/);
   assert.match(GI.mensagemErro({ status: 429 }), /Limite de consultas/);
 });
 test('hotfix: portal da bancada rejeita canal/data numéricos igual ao real, sem gravar', () => {

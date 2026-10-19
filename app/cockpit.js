@@ -46,5 +46,22 @@
     while (JSON.stringify(r).length > 59000) r.shift();
     return r;
   }
-  GI.cockpit = { resumo: resumo, listar: listar, ligado: ligado, atrasado: atrasado, ler: ler, guardar: guardar };
+  function dadosEdicao(c) {
+    var a = c.acesso || {};
+    return { titulo: c.titulo || '', descricao: c.descricao || '', categoria: c.categoria || 'outros', prioridade: c.prioridade || 'normal',
+      disponibilidade: a.disponibilidade || '', chaves: a.chaves || '', sem_cliente: a.sem_cliente === true };
+  }
+  function diffEdicao(original, atual) {
+    var antes = dadosEdicao(original), d = {};
+    ['titulo', 'descricao', 'categoria', 'prioridade'].forEach(function (k) {
+      var valor = k === 'titulo' ? atual[k].trim() : atual[k];
+      if (valor !== antes[k]) d[k] = valor;
+    });
+    if (['disponibilidade', 'chaves', 'sem_cliente'].some(function (k) { return atual[k] !== antes[k]; })) {
+      // O portal substitui acesso inteiro, inclusive os valores que não mudaram.
+      d.acesso = { disponibilidade: atual.disponibilidade, chaves: atual.chaves, sem_cliente: atual.sem_cliente };
+    }
+    return d;
+  }
+  GI.cockpit = { dadosEdicao: dadosEdicao, diffEdicao: diffEdicao, resumo: resumo, listar: listar, ligado: ligado, atrasado: atrasado, ler: ler, guardar: guardar };
 })();

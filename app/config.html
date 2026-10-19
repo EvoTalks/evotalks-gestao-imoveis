@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.23.1">
+<link rel="stylesheet" href="estilo.css?v=0.24.0">
 
 <div class="gi-topo">
   <div>
@@ -99,8 +99,8 @@
   imóveis de verdade no endereço.
 </p>
 
-<script src="comum.js?v=0.23.1"></script>
-<script src="manutencao.js?v=0.23.1"></script>
+<script src="comum.js?v=0.24.0"></script>
+<script src="manutencao.js?v=0.24.0"></script>
 <script>
 (function () {
   'use strict';
@@ -109,8 +109,7 @@
   var urlTestada = '';
   var prioridades = ['emergencia', 'alta', 'normal'];
   function erroManutencao(err) {
-    var d = err.dados || {};
-    return d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : d.detalhe || err.message || 'Falha ao consultar manutenção.';
+    return GI.mensagemErro(err);
   }
   function positivo(v) { return Number.isSafeInteger(Number(v)) && Number(v) > 0; }
   function carregarManutencao() {
@@ -286,7 +285,7 @@
     }).catch(function (e) {
       b.disabled = false;
       aviso.style.color = 'var(--ext-color-error,#c62828)';
-      aviso.textContent = '✗ ' + (e.message || e);
+      aviso.textContent = '✗ ' + GI.mensagemErro(e);
       GI.ajustarAltura();
     });
   }
@@ -321,7 +320,7 @@
       GI.ajustarAltura();
     }).catch(function (e) {
       b.disabled = false;
-      el('c-revelar-aviso').textContent = 'não consegui ler: ' + (e.message || e);
+      el('c-revelar-aviso').textContent = 'não consegui ler: ' + GI.mensagemErro(e);
     });
   }
 
@@ -368,7 +367,7 @@
     }).catch(function (e) {
       el('b-testar').disabled = false;
       el('c-resultado').style.color = 'var(--ext-color-error, #c62828)';
-      el('c-resultado').textContent = '✗ ' + (e.message || e);
+      el('c-resultado').textContent = '✗ ' + GI.mensagemErro(e);
       GI.ajustarAltura();
     });
   }
@@ -390,7 +389,7 @@
       return carregar();
     }).catch(function (e) {
       el('b-salvar').disabled = false;
-      GI.aviso(e.message || String(e), 'error');
+      GI.aviso(GI.mensagemErro(e), 'error');
     });
   }
 
@@ -412,7 +411,7 @@
         GI.aviso('Campos padrão aplicados.', 'success');
       }).catch(function (e) {
         el('c-campos-padrao').textContent = '';
-        GI.aviso(e && e.message ? e.message : String(e), 'error');
+        GI.aviso(GI.mensagemErro(e), 'error');
       }).then(function () { botao.disabled = false; GI.ajustarAltura(); });
     }).catch(GI.erroFatal);
   }

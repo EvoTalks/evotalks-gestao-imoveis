@@ -89,6 +89,12 @@ export async function abrirChromium({ antesDeCarregar } = {}) {
       },
       clicar: seletor => avaliar(s => { const el = document.querySelector(s); if (!el || el.disabled) throw new Error('Botão ausente ou desabilitado: ' + s); el.click(); }, seletor),
       preencher: (seletor, valor) => avaliar((s, v) => { const el = document.querySelector(s); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }, seletor, valor),
+      tecla: async key => {
+        const teclas = { Enter: { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }, Space: { key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, Tab: { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 } };
+        if (!teclas[key]) throw new Error('Tecla não suportada: ' + key);
+        await enviar('Input.dispatchKeyEvent', { type: 'keyDown', ...teclas[key], ...(key === 'Enter' ? { text: '\r' } : key === 'Space' ? { text: ' ' } : {}) });
+        await enviar('Input.dispatchKeyEvent', { type: 'keyUp', ...teclas[key] });
+      },
       arquivos: async (seletor, files) => {
         const { root } = await enviar('DOM.getDocument');
         const { nodeId } = await enviar('DOM.querySelector', { nodeId: root.nodeId, selector: seletor });

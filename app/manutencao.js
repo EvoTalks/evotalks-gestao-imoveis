@@ -143,7 +143,7 @@
       return GI.chamadosPorContato(dados.solicitante.contato_id).then(function (r) {
         var encontrado = GI.reconciliarCriacao(r.rows || [], contexto);
         if (encontrado) return { chamado: encontrado, reconciliado: true };
-        throw err;
+        err.criacaoAusente = true; throw err;
       }, function () { err.criacaoIncerta = true; throw err; });
     });
   };

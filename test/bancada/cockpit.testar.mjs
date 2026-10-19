@@ -284,7 +284,7 @@ try {
   const postsNaoGravados = await b.avaliar(() => cenario.posts);
   await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Tentar de novo');
-  assert.match(await texto('#cp-recado'), /Não encontramos o chamado. Você pode tentar abrir de novo\./);
+  assert.match(await texto('#cp-recado'), /Não consegui falar com o servidor\. O chamado não foi aberto\. Confira sua conexão e tente de novo\./);
   assert.equal(await b.avaliar(() => cenario.posts), postsNaoGravados);
   await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
   assert.equal(await b.avaliar(() => cenario.posts), postsNaoGravados + 1, 'Tentar de novo manda um único novo POST');

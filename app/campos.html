@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.23.1">
+<link rel="stylesheet" href="estilo.css?v=0.24.0">
 
 <div class="gi-topo">
   <div>
@@ -40,7 +40,7 @@
   sugestão inicial: quem lança em cada imóvel pode trocar (IPTU anual num, parcelado em outro).
 </p>
 
-<script src="comum.js?v=0.23.1"></script>
+<script src="comum.js?v=0.24.0"></script>
 <script>
 (function () {
   'use strict';
@@ -332,7 +332,7 @@
       }
       return p.then(function () { GI.aviso('Campo "' + campo.nome + '" apagado.', 'success'); });
     }).catch(function (e) {
-      GI.aviso(e && e.message ? e.message : String(e), 'error');
+      GI.aviso(GI.mensagemErro(e), 'error');
       GI.erroFatal(e);
     });
   }

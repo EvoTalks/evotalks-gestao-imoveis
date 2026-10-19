@@ -345,6 +345,23 @@ export async function testarReal(b, origem, real) {
       assert.equal(ev.texto, 'Aviso sintético F12 com banco real'); assert.equal(ev.notificou_cliente, true);
       await b.captura('integracao-f12-edicao-rapida');
     });
+    await cenario('F24 edição inline conserva acesso no banco real, com 3 requisições', async () => {
+      const novo = await real.api('/chamados', { locacao_id: locacaoId, titulo: 'Base sintética F24', descricao: 'Antes', categoria: 'outros', prioridade: 'normal', solicitante: { contato_id: 9901, nome: 'Cliente Sintético F24' }, acesso: { disponibilidade: 'Manhã', chaves: 'Portaria', sem_cliente: true }, atendimento: { chat_id: 8801 } });
+      const n = novo.chamado.id, seletor = '[data-os-id="' + n + '"]';
+      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1'); await b.esperar(n => !!document.querySelector('[data-os-id="' + n + '"] [data-editar-os]'), n);
+      await b.avaliar(n => { document.querySelector('[data-os-id="' + n + '"]').open = true; }, n);
+      await b.esperar(n => !document.querySelector('[data-os-id="' + n + '"] [data-rapida="atendente"]').disabled, n);
+      const inicio = real.requisicoes.length;
+      await b.clicar(seletor + ' [data-editar-os]'); await b.esperar(() => !!document.querySelector('#cp-edit-titulo'));
+      await b.preencher('#cp-edit-titulo', 'Título sintético editado F24'); await b.preencher('#cp-edit-descricao', 'Descrição sintética editada F24'); await b.preencher('#cp-edit-chaves', '');
+      await b.clicar('#cp-edit-salvar'); await b.esperar(() => !document.querySelector('#cp-edit-form'));
+      assert.equal(real.requisicoes.length - inicio, 3);
+      const registro = await chamado(n);
+      assert.equal(registro.titulo, 'Título sintético editado F24'); assert.equal(registro.descricao, 'Descrição sintética editada F24');
+      assert.equal(registro.acesso_disponibilidade, 'Manhã'); assert.equal(registro.acesso_sem_cliente, true); assert.equal(registro.acesso_chaves, null);
+      assert.match(await texto(seletor + ' > summary'), /Título sintético editado F24/);
+      await b.captura('integracao-f24-edicao-inline');
+    });
     await testarLote1(b, origem, async (id, criado) => {
       const c = await chamado(id);
       assert.equal(c.atendimento_canal, 'WebChat'); assert.equal(c.atendimento_iniciado_em, null);
