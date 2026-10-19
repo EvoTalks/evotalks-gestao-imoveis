@@ -113,7 +113,7 @@ export async function testarCockpit2(b, base) {
   assert.match(await texto('#cp-conteudo'), /LOCATÁRIO.*PROPRIETÁRIO.*FIADOR/);
   await b.avaliar(() => { document.execCommand = function () { window.f12Copia = document.activeElement.value; return true; }; });
   await b.clicar('[data-copia-texto]'); assert.match(await b.avaliar(() => f12Copia), /^0+\d*$/);
-  await b.clicar('#cp-abrir-imovel'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+  await b.clicar('#cp-abrir-imovel'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
   assert.equal(await b.avaliar(() => document.querySelector('#cp-mais-detalhes').open), false);
   await b.clicar('#cp-ultima'); await b.esperar(() => document.querySelector('#cp-descricao').value.includes('Relato sintético'));
   assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), '');
@@ -174,7 +174,7 @@ export async function testarCockpit2(b, base) {
   await b.preencher(campo('prioridade'), 'normal'); await salvo('prioridade');
   await b.clicar(card + ' [data-aviso]'); await b.clicar('[data-aviso-form] button[type=submit]');
   await b.esperar(() => document.querySelector('[data-acao]').textContent.includes('Cliente avisado'));
-  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.clicar('#cp-ultima');
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.clicar('#cp-ultima');
   await b.esperar(() => document.querySelector('#cp-descricao').value.includes('sintético'));
   assert.equal(await b.avaliar(() => bancada.chamadas.length + bancada.rede.length + bancada.gravacoesStorage + cenario.tentativasRede), 0);
   assert.deepEqual(b.erros, []);

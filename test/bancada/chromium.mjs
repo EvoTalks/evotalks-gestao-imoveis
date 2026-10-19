@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, rmSync, readdirSync, writeFileSync 
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-export async function abrirChromium() {
+export async function abrirChromium({ antesDeCarregar } = {}) {
   const raiz = fileURLToPath(new URL('./', import.meta.url));
   const cache = '/srv/devhome/.cache/puppeteer/chrome';
   const candidatos = ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'];
@@ -67,6 +67,7 @@ export async function abrirChromium() {
     const { targetId } = await enviar('Target.createTarget', { url: 'about:blank' });
     ({ sessionId } = await enviar('Target.attachToTarget', { targetId, flatten: true }));
     await enviar('Runtime.enable'); await enviar('Page.enable');
+    if (antesDeCarregar) await enviar('Page.addScriptToEvaluateOnNewDocument', { source: antesDeCarregar });
     await enviar('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false });
     async function avaliar(fn, ...args) {
       const r = await enviar('Runtime.evaluate', { expression: '(' + fn.toString() + ')(...' + JSON.stringify(args) + ')', awaitPromise: true, returnByValue: true });

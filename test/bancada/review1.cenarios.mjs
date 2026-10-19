@@ -5,7 +5,7 @@ export async function testarReview1(b, base) {
   const abrirIncerta = async titulo => {
     await b.navegar(base + '?escrita=1'); await pronto();
     await b.clicar('#cp-tab-novo');
-    if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+    if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
     await b.preencher('#cp-titulo', titulo); await b.clicar('#cp-revisar');
     await b.avaliar(() => {
       bancada.salvarOriginal = document.querySelector('#cp-confirmar').onclick;
@@ -39,7 +39,7 @@ export async function testarReview1(b, base) {
     await b.avaliar(async () => { await document.querySelector('#cp-form').onsubmit(new Event('submit', { cancelable: true })); });
     assert.equal(await b.avaliar(() => bancada.postsReview), 1, 'Enter no formulário não repete POST');
     await b.clicar('#cp-tab-chamados'); await b.clicar('#cp-tab-novo');
-    if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+    if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
     assert.equal(await b.avaliar(() => document.querySelector('#cp-revisar').textContent), 'Conferir se abriu');
     await b.avaliar(() => {
       GI.chamadosPorContato = async () => ({ rows: [] });

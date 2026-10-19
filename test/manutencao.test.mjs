@@ -52,9 +52,9 @@ test('F18 criação segura usa início da operação mesmo após resposta demora
   const r = await GI.chamadosCriarSeguro(dados);
   assert.equal(r.chamado.id, 3);
 });
-test('manifest 0.23.0 declara navegação ordenada, cockpit e escrita configurável', () => {
+test('manifest 0.23.1 declara navegação ordenada, cockpit e escrita configurável', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.23.0');
+  assert.equal(m.version, '0.23.1');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');

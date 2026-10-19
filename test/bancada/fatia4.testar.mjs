@@ -3,7 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.23.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.23.1');
 
 const servidor = criarServidor();
 // O contrato legado de configuração é independente do simulador de manutenção.
@@ -23,6 +23,14 @@ const prova = texto => process.stdout.write('OK ' + texto + '\n');
 try {
   b = await abrirChromium();
   await b.navegar(origem + '/app/chamados.html');
+  await b.avaliar(() => {
+    const gravar = omni.storage.set;
+    bancada.marcasEscritaF19 = 0;
+    omni.storage.set = (chave, valor) => {
+      if (chave === 'gi-ultima-escrita') bancada.marcasEscritaF19++;
+      return gravar(chave, valor);
+    };
+  });
   await b.esperar(() => !!document.querySelector('[data-editar="4"]'));
   await b.clicar('[data-editar="4"]');
   await b.esperar(() => !!document.querySelector('#c-orc-nome'));
@@ -208,7 +216,8 @@ try {
   assert.equal(await b.avaliar(() => bancada.mensagens.length), enviados);
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.aprovacao.enviada_em, null);
-  assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
+  assert.ok(await b.avaliar(() => bancada.marcasEscritaF19 > 0), 'gravações notificam os cockpits montados');
+  assert.equal(await b.avaliar(() => bancada.gravacoesStorage - bancada.marcasEscritaF19), 0, 'só a marca pode ir ao storage; dados de manutenção continuam no portal');
   await fechar();
   prova('forbidden explícito; revalidação impede envio a chat encerrado; falha no registro após envio permite repetir sem duplicação');
 

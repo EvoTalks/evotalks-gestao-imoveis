@@ -110,7 +110,7 @@ export async function testarResidencias(b, origem) {
   assert.deepEqual(payload, { imovel_codigo: 'DEMO-001', imovel: { titulo: 'Apartamento Demonstração Alfa', tipo: 'Apartamento', cidade: 'Cidade Fictícia', bairro: 'Bairro Exemplo' }, contrato_numero: 'DEMO-INVALIDO-CONTRATO', contatos: [{ contato_id: 9905, nome: 'Contato Sem Residência Demonstração', telefone: '00000000005', papel: 'locatario' }] });
   assert.match(await texto(b, '#cp-conteudo'), /Apartamento Demonstração Alfa/);
   assert.match(await texto(b, '#cp-vincular-residencia'), /Vincular outra residência/);
-  await navegar('escrita=1'); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
+  await navegar('escrita=1'); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
   prova('atendente vincula catálogo com confirmação, uma releitura por recurso e até 4 consultas; Novo disponível; 18 capturas sem overflow');
 
   await navegar('perfil=supervisor'); await b.clicar('#cp-vincular-residencia'); await b.clicar('#cp-r-fora');
