@@ -17,10 +17,10 @@
     return (v === undefined || v === null || v === '') ? padrao : v;
   };
   /* Uma lista por documento/sessão, compartilhada por todas as telas. */
-  var nomeResolvido = '', cacheUsuarios = null, leituraUsuarios = null;
+  var nomeResolvido = '', cacheUsuarios = null, ordemUsuarios = [], leituraUsuarios = null;
   GI.nomeDoUsuario = function (u) {
     u = u || {};
-    var nome = String(u.name || '').trim(), chave = String(u.id || u.user_id || '');
+    var nome = String(u.name || u.fullname || '').trim(), chave = String(u.id || u.user_id || '');
     return nome || (cacheUsuarios && cacheUsuarios[chave]) || ('Usuário' + (chave ? ' ' + chave : ' desconhecido'));
   };
   GI.usuario = function () { return nomeResolvido || GI.nomeDoUsuario(ctx && ctx.user); };
@@ -28,16 +28,20 @@
     if (cacheUsuarios) return Promise.resolve(cacheUsuarios);
     if (leituraUsuarios) return leituraUsuarios;
     leituraUsuarios = Promise.resolve().then(function () {
-      return global.omni && omni.data && omni.data.request ? omni.data.request('users?limit=500', 'GET') : [];
+      return global.omni && omni.users && typeof omni.users.list === 'function' ? omni.users.list() : [];
     }).then(function (r) {
       var mapa = Object.create(null);
+      ordemUsuarios = [];
       GI.lista(r).forEach(function (u) {
-        var nome = u && String(u.name || '').trim();
-        if (u && u.id !== undefined && nome) mapa[String(u.id)] = nome;
+        var nome = u && String(u.name || u.fullname || '').trim();
+        if (u && u.id !== undefined && nome) { mapa[String(u.id)] = nome; ordemUsuarios.push(u.id); }
       });
       cacheUsuarios = mapa; return mapa;
-    }).catch(function () { cacheUsuarios = {}; return cacheUsuarios; });
+    }).catch(function () { ordemUsuarios = []; cacheUsuarios = {}; return cacheUsuarios; });
     return leituraUsuarios;
+  };
+  GI.usuariosOrdenados = function () {
+    return GI.usuarios().then(function () { return ordemUsuarios.slice(); });
   };
 
   /* A plataforma conserva o contato do chat; esta preferência só é da extensão. */
