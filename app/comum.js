@@ -16,34 +16,81 @@
     var v = ctx && ctx.config ? ctx.config[chave] : undefined;
     return (v === undefined || v === null || v === '') ? padrao : v;
   };
-  /* Quem está gravando. O contexto nem sempre traz `user.name` — e quando não
-     traz, o que ia para o histórico era o ID, que não diz nada a ninguém. Por
-     isso o nome é resolvido na abertura da tela, contra a lista de usuários da
-     instância, e só cai no ID se essa consulta não responder. */
-  var nomeResolvido = '';
-
-  GI.usuario = function () {
-    if (nomeResolvido) return nomeResolvido;
-    return (ctx && ctx.user) ? (ctx.user.name || ctx.user.id) : 'desconhecido';
+  /* Uma lista por documento/sessão, compartilhada por todas as telas. */
+  var nomeResolvido = '', cacheUsuarios = null, leituraUsuarios = null;
+  GI.nomeDoUsuario = function (u) {
+    u = u || {};
+    var nome = String(u.name || '').trim(), chave = String(u.id || u.user_id || '');
+    return nome || (cacheUsuarios && cacheUsuarios[chave]) || ('Usuário' + (chave ? ' ' + chave : ' desconhecido'));
   };
-
-  var cacheUsuarios = null;
-
-  /** Mapa id → nome dos usuários da instância. Falha vira mapa vazio. */
+  GI.usuario = function () { return nomeResolvido || GI.nomeDoUsuario(ctx && ctx.user); };
   GI.usuarios = function () {
     if (cacheUsuarios) return Promise.resolve(cacheUsuarios);
-    if (!global.omni || !omni.data || !omni.data.request) return Promise.resolve({});
-    return Promise.resolve(omni.data.request('users?limit=500', 'GET'))
-      .then(function (r) {
-        var mapa = {};
-        GI.lista(r).forEach(function (u) {
-          var nome = u && (u.name || u.username || u.login || u.email);
-          if (u && u.id !== undefined && nome) mapa[String(u.id)] = String(nome);
+    if (leituraUsuarios) return leituraUsuarios;
+    leituraUsuarios = Promise.resolve().then(function () {
+      return global.omni && omni.data && omni.data.request ? omni.data.request('users?limit=500', 'GET') : [];
+    }).then(function (r) {
+      var mapa = Object.create(null);
+      GI.lista(r).forEach(function (u) {
+        var nome = u && String(u.name || '').trim();
+        if (u && u.id !== undefined && nome) mapa[String(u.id)] = nome;
+      });
+      cacheUsuarios = mapa; return mapa;
+    }).catch(function () { cacheUsuarios = {}; return cacheUsuarios; });
+    return leituraUsuarios;
+  };
+
+  /* A plataforma conserva o contato do chat; esta preferência só é da extensão. */
+  var pessoas = Object.create(null);
+  var pessoasPendentes = Object.create(null);
+  function podarPessoas() {
+    Object.keys(pessoas).forEach(function (k) {
+      var p = pessoas[k], idade = p && Date.now() - Number(p.em);
+      if (!GI.id(k) || !p || !GI.id(p.contactId) || !Number.isFinite(idade) || idade < 0 || idade > 7 * 86400000) delete pessoas[k];
+    });
+  }
+  GI.pessoas = {
+    ler: function (semStorage) {
+      if (semStorage) return Promise.resolve();
+      return Promise.resolve().then(function () { return omni.storage.get('gi-pessoa-v1'); }).then(function (r) {
+        var atuais = Object.create(null);
+        Object.keys(r || {}).forEach(function (k) {
+          var p = r[k];
+          if (p && GI.id(p.contactId)) atuais[k] = { contactId: GI.id(p.contactId), nome: String(p.nome || ''), em: p.em };
         });
-        cacheUsuarios = mapa;
-        return mapa;
-      })
-      .catch(function () { cacheUsuarios = {}; return cacheUsuarios; });
+        Object.keys(pessoasPendentes).forEach(function (k) {
+          if (Object.hasOwn(pessoas, k)) atuais[k] = pessoas[k];
+          else delete atuais[k];
+        });
+        pessoas = atuais;
+        podarPessoas();
+      }).catch(function () {});
+    },
+    obter: function (c) { podarPessoas(); return c && pessoas[String(c.id)] || null; },
+    escolher: function (c, p, semStorage) {
+      return GI.pessoas.ler(semStorage).then(function () {
+        if (!c || !GI.id(c.id)) return;
+        if (p && GI.id(p.id)) pessoas[String(c.id)] = { contactId: GI.id(p.id), nome: GI.nomeContato(p), em: Date.now() };
+        else delete pessoas[String(c.id)];
+        podarPessoas();
+        if (!semStorage) return Promise.resolve().then(function () { return omni.storage.set('gi-pessoa-v1', pessoas); }).then(function () {
+          delete pessoasPendentes[String(c.id)];
+        }).catch(function () { pessoasPendentes[String(c.id)] = true; });
+      });
+    }
+  };
+  GI.contatoEfetivo = function (c) { var p = GI.pessoas.obter(c); return p ? p.contactId : GI.id(c && c.contactId); };
+  GI.telefoneDiscreto = function (v) {
+    var telefone = String(v || ''), digitos = telefone.replace(/\D/g, '');
+    if (/^55\d{10,11}$/.test(digitos)) digitos = digitos.slice(2);
+    if (/^\(\d{2}\) \d ••••-\d{4}$/.test(telefone) && telefone === telefone.trim()) return telefone;
+    if (digitos.length >= 10) return '(' + digitos.slice(0, 2) + ') ' + (digitos.length >= 11 ? digitos.charAt(2) + ' ' : '') + '••••-' + digitos.slice(-4);
+    return digitos ? '••••' + (digitos.length > 4 ? '-' + digitos.slice(-4) : '') : '';
+  };
+  GI.mascaraCpf = function (v) {
+    var texto = String(v || ''), d = texto.replace(/\D/g, '');
+    if (/^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto)) return texto;
+    return d.length === 11 ? '***.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-**' : '—';
   };
 
   /** Troca o ID pelo nome quando der; devolve o valor original quando não. */
@@ -70,10 +117,10 @@
         .then(function () {
           // O nome de quem grava é decidido ANTES de qualquer escrita — senão
           // o primeiro registro do dia sai com ID e o resto com nome.
-          if (ctx && ctx.user && ctx.user.name) { nomeResolvido = String(ctx.user.name); return null; }
+          if (ctx && ctx.user && String(ctx.user.name || '').trim()) { nomeResolvido = GI.nomeDoUsuario(ctx.user); return null; }
           if (!ctx || !ctx.user || ctx.user.id === undefined) return null;
           return GI.usuarios().then(function (mapa) {
-            nomeResolvido = mapa[String(ctx.user.id)] || '';
+            nomeResolvido = GI.nomeDoUsuario(ctx.user);
           });
         })
         .then(function () { return GI.definirModo(); })
@@ -154,9 +201,11 @@
   GI.textoOuNull = function (v) { return typeof v !== 'string' && typeof v !== 'number' || typeof v === 'number' && !Number.isFinite(v) || String(v).trim() === '' ? null : String(v); };
   GI.nomeContato = function (pessoa, chat) {
     pessoa = pessoa || {}; chat = chat || {};
-    var valores = [pessoa.name, chat.contact && chat.contact.name, pessoa.phone, chat.contact && chat.contact.phone];
+    var contatoId = GI.id(pessoa.id) || GI.contatoEfetivo(chat), outro = contatoId && contatoId !== GI.id(chat.contactId);
+    var reserva = outro ? {} : chat.contact || {};
+    var valores = [pessoa.name, reserva.name, pessoa.phone, reserva.phone];
     for (var i = 0; i < valores.length; i++) if (GI.textoOuNull(valores[i])) return String(valores[i]).trim();
-    return 'Contato ' + (GI.id(pessoa.id || chat.contactId) || 'sem identificação');
+    return 'Contato ' + (outro && GI.id(chat.contactId) ? '#' : '') + (contatoId || 'sem identificação');
   };
   GI.dataDoChat = function (v) {
     if (typeof v === 'number') {

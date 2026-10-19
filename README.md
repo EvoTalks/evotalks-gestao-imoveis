@@ -506,8 +506,10 @@ Exceções e decisões preservadas:
 - A barra segue Imóveis · Locados · Chamados · Campos · Histórico · Configurações.
   Prestadores continua acessível pelo menu do host, sem aba na barra.
 - Contagens e prazos vêm do contrato do portal. Sem gênero no SDK, a tela usa
-  Locatário/cliente; a ação existente é Vincular outra residência. Editar, Mais
-  ações e Usar última mensagem do cliente continuam disponíveis.
+  Locatário/cliente. Na 0.25.0 o cabeçalho trazia Vincular outra residência; desde
+  a 0.25.1 o link do cabeçalho é Não é esta pessoa? e Vincular outra residência
+  fica na aba Imóvel e no menu Mais ações. Editar, Mais ações e Usar última
+  mensagem do cliente continuam disponíveis.
 - O portal aceita fotos, sem vídeo. Os tiles do fixture têm nomes, sem bytes.
   O desenho não fornece os outros 1751 imóveis, as definições dos 11 campos,
   uma meta contratual de três cotações ou contagens de serviços dos prestadores.
@@ -525,3 +527,15 @@ e a fase fracionária original. `--variantes` valida os quatro estados em
 O desenho não cobre vazios, falhas, carregamento, demonstração, edição inline,
 filtros extras, muitos chamados, múltiplas residências ou miniaturas carregadas;
 as bancadas verificam esses estados preservando os componentes e tokens.
+
+### Pessoa do atendimento e atendente (0.25.1)
+
+No cockpit, **Não é esta pessoa?** permite buscar por nome, telefone, e-mail ou CPF e escolher a pessoa usada na extensão. A busca começa em três caracteres, aguarda 400 ms e mostra até oito opções com telefone e CPF mascarados. O contato original do atendimento permanece na plataforma. **Vendo como** informa a escolha e permite voltar ao contato original; a preferência fica por atendimento em `gi-pessoa-v1`, expira em sete dias e funciona na sessão quando o storage está indisponível.
+
+Duas abas escolhendo pessoas no mesmo milissegundo podem perder uma das escolhas.
+
+Locações, chamados, resumo, cache, releitura automática, solicitante da nova O.S. e o diálogo de gestão usam a pessoa escolhida. O vínculo ao atendimento continua sendo o chat original. **Vincular outra residência** está na aba Imóvel, no estado sem residência e no menu Mais ações dos cartões. O cabeçalho do Novo conserva o desenho sem esse link de troca de pessoa.
+
+`GI.nomeDoUsuario` centraliza o nome do atendente: nome da sessão, nome da lista de usuários pelo id ou `Usuário <id>`. A lista comum é compartilhada e consultada uma vez por documento. Demonstração usa apenas pessoas sintéticas e não lê nem grava preferências no host.
+
+Regressões específicas: `node --test test/pessoa.test.mjs` e `node test/bancada/pessoa.testar.mjs`.

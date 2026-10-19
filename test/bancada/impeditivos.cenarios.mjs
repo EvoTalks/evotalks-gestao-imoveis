@@ -169,6 +169,8 @@ export async function testarImpeditivos(b, origem, real) {
   if (real) alvo = (await real.api('/locacoes', { imovel_codigo: 'DEMO-002', imovel: { titulo: 'Casa Sintética F14' }, contrato_numero: 'F14-CONFLITO', contatos: [{ contato_id: 9901, nome: 'Locatário Sintético', papel: 'locatario' }, { contato_id: 9903, nome: 'Proprietário Sintético', papel: 'proprietario' }, { contato_id: 9904, nome: 'Fiador Sintético', papel: 'fiador' }] })).locacao;
   else alvo = (await api('/locacoes/1')).locacao;
   await abrir('chat=8806&escrita=0');
+  await b.esperar(() => document.querySelector('#cp-nome').textContent !== 'Contato do atendimento');
+  if (await b.avaliar(() => !document.querySelector('#cp-abas').hidden)) await b.clicar('#cp-tab-imovel');
   await b.esperar(() => !document.querySelector('#cp-vincular-residencia').hidden);
   await b.clicar('#cp-vincular-residencia'); await b.preencher('#cp-r-busca', 'DEMO-002');
   await b.esperar(() => !!document.querySelector('[data-residencia]'));

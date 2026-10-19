@@ -28,7 +28,7 @@
   window.fetch = localFetch;
   var armazenamento = {}, assinantes = {};
   if (params.get('sdk') === 'hostil') ctx.user.name = 'Agente “Sintético” 😀';
-  ctx.contribution = { params: params.has('chamado') && !params.has('semparams') ? { chamadoId: params.get('chamado'), contatoId: params.get('contato') || (params.has('lote1') ? 9913 : 9901) } : {} };
+  ctx.contribution = { params: params.has('chamado') && !params.has('semparams') ? { chamadoId: params.get('chamado'), chatId: params.get('targetchat'), contatoId: params.get('contato') || (params.has('lote1') ? 9913 : 9901) } : {} };
   if (params.has('alvo')) armazenamento['gi-os-alvo'] = { chamadoId: Number(params.get('alvo')), contatoId: 9901, em: Date.now() - Number(params.get('idade') || 0) };
   var contatos = [
     { id: 9901, name: 'Locatário Demonstração Um', phone: '00000000001', document: '00000000000', email: 'um@example.invalid' },
@@ -38,6 +38,7 @@
   ];
   contatos.push({ id: 9905, name: 'Contato Sem Residência Demonstração', phone: '00000000005', document: '00000000000' });
   var usuarios = [ctx.user, { id: 9998, name: 'Agente Demonstração Dois', type: 2 }, { id: 9997, name: 'Agente Demonstração Três', type: 2 }];
+  if (params.has('semnome')) ctx.user = Object.assign({}, ctx.user, { name: '' });
   var chats = [8801, 8802, 8803, 8804].map(function (n, i) { return {
     id: n, contactId: i === 3 ? null : 9901 + i, userId: i === 2 ? 9998 : 9999, queueId: i === 2 ? 92 : 91,
     status: 'active', sessionLocked: false, channel: 0, protocol: 'DEMO-P' + n,
@@ -67,7 +68,7 @@
     on: function (nome, fn) { (assinantes[nome] || (assinantes[nome] = [])).push(fn); return function () { window.omni.off(nome, fn); }; },
     off: function (nome, fn) { assinantes[nome] = fn ? (assinantes[nome] || []).filter(function (f) { return f !== fn; }) : []; },
     queues: { list: function () { return window.bancada.falharLista ? falhar('rate_limit', 'Limite de consultas.') : Promise.resolve([{ id: 91, name: 'Fila Um' }, { id: 92, name: 'Fila Dois' }, { id: 93, name: 'Fila Supervisor' }]); } },
-    users: { list: function () { return Promise.resolve(copia(usuarios)); } },
+    users: { list: function () { return params.has('semusuarios') ? falhar('indisponivel', 'Lista indisponível.') : Promise.resolve(copia(usuarios)); } },
     chats: {
       getSelected: function () { return Promise.resolve(copia(chat(selecionado) || null)); },
       get: function (n) { return chat(n) ? Promise.resolve(copia(chat(n))) : falhar('not_found', 'Atendimento não encontrado.'); },
@@ -130,7 +131,7 @@
     } },
     contacts: {
       get: function (n) { var c = contatos.filter(function (c) { return c.id === Number(n); })[0]; return c ? Promise.resolve(copia(c)) : falhar('not_found', 'Contato não encontrado.'); },
-      search: function (termo, opts) { window.bancada.buscaLimite = opts && opts.limit; return Promise.resolve(copia(contatos.filter(function (c) { return normalizar(c.name + ' ' + c.phone + ' ' + (c.email || '')).indexOf(normalizar(termo)) !== -1; }))); }
+      search: function (termo, opts) { window.bancada.buscaLimite = opts && opts.limit; return Promise.resolve(copia(contatos.filter(function (c) { return normalizar(c.name + ' ' + c.phone + ' ' + (c.email || '') + ' ' + (c.document || '')).indexOf(normalizar(termo)) !== -1; }))); }
     },
     data: { request: function (recurso, verbo, payload) {
       if (recurso === 'contacts/getItemChatsHistory') {
@@ -145,18 +146,18 @@
         })));
       }
       if (params.has('lote1') && recurso.indexOf('products?') === 0 && /Numérico/.test(decodeURIComponent(recurso))) return Promise.resolve([{ id: 9199, internalcode: 999999, name: 'Imóvel Numérico Sintético', category: 'Casa > Cidade Sintética > Bairro Sintético', brand: 'DEMONSTRACAO' }]);
-      if (recurso.indexOf('users') === 0) return Promise.resolve(copia(usuarios));
+      if (recurso.indexOf('users') === 0) return params.has('semusuarios') ? falhar('indisponivel', 'Lista indisponível.') : Promise.resolve(copia(usuarios));
       if (!/^(products|users)(\?|$)/.test(recurso)) return Promise.reject(new Error('Recurso não simulado.'));
       return localFetch('/bancada/sdk/' + recurso).then(function (r) { return r.json(); });
     } },
     storage: { get: function (k) {
       if (params.has('semstorage')) return falhar('indisponivel', 'Storage indisponível.');
-      var valor = Object.hasOwn(armazenamento, k) ? armazenamento[k] : (k === 'gi-os-alvo' || k === 'gi-cockpit-snapshots-v1' && params.has('persistir')) ? JSON.parse(sessionStorage.getItem(k) || 'null') : undefined;
+      var valor = Object.hasOwn(armazenamento, k) ? armazenamento[k] : (k === 'gi-os-alvo' || k === 'gi-pessoa-v1' || k === 'gi-cockpit-snapshots-v1' && params.has('persistir')) ? JSON.parse(sessionStorage.getItem(k) || 'null') : undefined;
       return Promise.resolve(valor);
     }, set: function (k, v) {
       if (params.has('semstorage')) return falhar('indisponivel', 'Storage indisponível.');
       window.bancada.gravacoesStorage++; armazenamento[k] = v;
-      if (k === 'gi-os-alvo' || k === 'gi-cockpit-snapshots-v1' && params.has('persistir')) sessionStorage.setItem(k, JSON.stringify(v));
+      if (k === 'gi-os-alvo' || k === 'gi-pessoa-v1' || k === 'gi-cockpit-snapshots-v1' && params.has('persistir')) sessionStorage.setItem(k, JSON.stringify(v));
       return Promise.resolve();
     }, remove: function (k) {
       if (params.has('semstorage')) return falhar('indisponivel', 'Storage indisponível.');
@@ -176,6 +177,7 @@
       var query = new URLSearchParams(location.search);
       if (dados && dados.chamadoId) query.set('chamado', dados.chamadoId);
       if (dados && dados.contatoId) query.set('contato', dados.contatoId);
+      if (dados && dados.chatId) query.set('targetchat', dados.chatId);
       location.href = '/app/' + telas[id] + '.html?' + query.toString();
       return Promise.resolve();
     } }

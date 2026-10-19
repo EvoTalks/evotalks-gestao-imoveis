@@ -39,7 +39,7 @@ export async function abrirExtensao(q, tamanho) {
         await b.clicar('[data-filtro="todos"]');
         await b.esperar(() => document.querySelectorAll('[data-chamado]').length === 3);
         await b.avaliar(() => document.querySelectorAll('[data-os-id]').forEach(c => { c.open = c.dataset.osId === '1042'; }));
-        motivos.push('Portal sem gênero nem ação do host para trocar contato; Editar e Mais ações preservados.');
+        motivos.push('Portal sem gênero; pessoa escolhida só na extensão por atendimento; Editar e Mais ações preservados.');
       } else {
         await b.clicar('#cp-tab-novo'); await b.esperar(() => !!document.querySelector('#cp-descricao'));
         await b.clicar('[data-categoria="eletrica"]'); await b.clicar('[data-prioridade="normal"]');
