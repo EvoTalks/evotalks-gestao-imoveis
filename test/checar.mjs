@@ -29,9 +29,9 @@ function auditarEstilosEVisibilidade() {
   const restritos = ['gi-locados', 'gi-chamados', 'gi-prestadores'];
   const semRestricao = ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'];
   for (const id of restritos) {
-    const tipos = porId.get(id)?.visibility?.userTypes;
-    if (!Array.isArray(tipos) || tipos.length !== 1 || tipos[0] !== 0) {
-      erros++; process.stderr.write('manifest.json: ' + id + ' deve restringir userTypes exatamente a [0].\n');
+    const visibilidade = porId.get(id)?.visibility;
+    if (JSON.stringify(visibilidade?.userIds) !== '[1,515,528,531]' || Object.hasOwn(visibilidade || {}, 'userTypes')) {
+      erros++; process.stderr.write('manifest.json: ' + id + ' deve restringir userIds exatamente a [1,515,528,531], sem userTypes.\n');
     }
   }
   const cockpit = porId.get('gi-cockpit')?.visibility?.userTypes;

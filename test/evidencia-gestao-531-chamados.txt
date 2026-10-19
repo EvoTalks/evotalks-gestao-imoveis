@@ -1,0 +1,34 @@
+OK F10 histórico ordenado e deduplicado, cache, encerrado gravado com metadados, texto hostil escapado
+OK F10 listas vazias por perfil, fallback do SDK, falha total e Tentar de novo recuperam a consulta
+OK F10 25 atendimentos em páginas locais 10/20/25, uma consulta e nenhuma busca de mensagens no histórico
+OK F10 contato trocado durante histórico pendente não mistura listas
+OK F6: itens 2, 4, 9–11: Salvar para dados, status imediato independente, recusa preserva rascunho e lista atualizada, Mais opções fechado
+OK F6: itens 5 e 8: vínculo imediato, aviso habilitado apenas com chat aberto, texto/chat exatos, sent:false, forbidden e retry sem duplicação
+OK F6: item 7: orçamento só com nome e descrição, sem valor, nome salvo/reutilizado nas sugestões, escolher direto e remover em dois cliques
+OK F6: itens 5 e 12: lista das filas, histórico, vazio, vínculo legado por protocolo e tentativa após falha
+OK F6: itens 1, 12 e 13: faixa abre aprovação; protocolo, última mensagem, prestador e descrição hostis permanecem texto
+OK F6: cancelamento confirmado e reabertura imediata pelo select, resumo atualizado, claro/escuro 260/300/334/390 px, capturas e zero exceções
+OK fotos: PNG e JPEG, redução real 1600 px, fundo branco, SVG disfarçado, gigante, nome hostil e remoção
+OK fotos: chat + pasta coexistem; upload sequencial, bloqueio de clique/Escape e falha 500 retomada em edição sem duplicar chamado
+OK fotos: cota bloqueia o upload antes da rede, mantém pendentes e libera repetição idempotente após 60s; status preserva fotos
+OK fotos: editar acrescenta foto, recupera bytes do portal e exibe prévias em 390 px e tema escuro
+OK fotos: concluir pelo select e enviar fotos pelo Salvar; falha parcial permite repetir upload sem reabrir nem perder fotos
+OK fotos: limites 10 por seleção e 20 pendentes, sem perda silenciosa; sem portal botão bloqueado e zero uploads
+OK F7 cota real: 5 requisições ao abrir; 0 arquivos; clique duplo = 1 arquivo
+OK F7: 20 fotos: zero arquivos ao abrir, miniaturas e clique duplo com uma requisição
+OK F7: cancelar pelo campo opcional sem prompt e alternar a visibilidade
+OK F7: orçamentos limitam a cota e preservam prioridade, nota e status; dados inválidos preservam os textos
+OK F7: Salvar reúne nota e dados; 422 antes do orçamento preserva nota e descrição
+OK F7: aprovação e envio aplicam dados e nota; texto do proprietário usa o título salvo
+OK F7: falha da nota ao concluir preserva texto e fotos na retomada
+OK F7: Fechar, X e Escape confirmam descarte; cancelar preserva e envia fotos
+OK F8: lista grava com uma requisição, atualiza prazo/resumo e preserva os nós das linhas
+OK F8: 409 pendente/encerrado e 422 visita restauram select; concluído reabre em Triagem
+OK F8: modal grava independente dos rascunhos, atualiza selo/prazo/linha, oferece decisão e orçamento funciona após recusa
+OK F8: cancelamento inline na lista e modal: Voltar não grava, confirmar envia motivo escapado
+OK F8: clique repetido não duplica e várias linhas gravam em fila, máximo de uma requisição ativa
+OK F8: aprovação recusada restaura select e oferece Registrar decisão no modal
+OK F8: concluído/cancelado abrem e fecham foto inteira com um clique/uma requisição; adicionar permanece bloqueado
+OK F8: falha na releitura após gravação recarrega a lista e recupera o estado real
+OK F8: 390 px claro/escuro, status hostil seguro, sem portal/demonstração desabilitados com zero requisições de manutenção
+OK paginação 27 resultados; sem portal e demonstração bloqueiam escrita; zero exceções

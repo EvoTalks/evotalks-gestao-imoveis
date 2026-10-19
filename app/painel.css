@@ -57,8 +57,17 @@ body { padding: 0; font-size: 13px; background: var(--gi-bg); }
 .gi-cp-check input { flex-shrink: 0; margin-top: 2px; }
 .gi-cockpit h2 { font-size: 15px; margin: 0 0 8px; }
 .gi-cp-sucesso { border-left: 3px solid var(--gi-ok) !important; }
-#cp-recado { color: var(--gi-mudo); font-size: 12px; }
-#cp-recado:empty { display: none; }
+.gi-cp-recado { --cp-recado-cor: var(--ext-color-info, var(--gi-acao)); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 7px; padding: 10px; border: 1px solid var(--cp-recado-cor); border-radius: var(--gi-raio-p); background: var(--gi-surface); color: var(--gi-texto); font-size: 12px; }
+.gi-cp-recado::before { content: '…'; font-weight: 700; color: var(--cp-recado-cor); }
+.gi-cp-recado--sucesso { --cp-recado-cor: var(--ext-color-success, var(--gi-ok)); }
+.gi-cp-recado--sucesso::before { content: '✓'; }
+.gi-cp-recado--erro { --cp-recado-cor: var(--ext-color-error, var(--gi-erro)); }
+.gi-cp-recado--erro::before { content: '!'; }
+.gi-cp-recado:focus { outline: 2px solid var(--cp-recado-cor); outline-offset: 2px; }
+#cp-recado-fechar { border: 0; padding: 0 3px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+#cp-recado-fechar::after { content: '×'; font-size: 18px; line-height: 1; }
+.gi-cp-campo-erro { color: var(--ext-color-error, var(--gi-erro)); font-size: 12px; margin-top: 4px !important; }
+.gi-cp-form [aria-invalid="true"] { border-color: var(--ext-color-error, var(--gi-erro)) !important; }
 .state { text-align: center; color: var(--gi-mudo); line-height: 1.5; padding: 20px 12px !important; }
 /* Em 260 px, preserve palavras nos controles e empilhe ações quando necessário. */
 .gi-cp-tabs button { overflow-wrap: normal; padding-inline: 2px; }

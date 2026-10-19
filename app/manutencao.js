@@ -119,6 +119,43 @@
     // Compatibilidade com atendimentos e vínculos antigos que já trazem o rótulo.
     return Object.keys(rotulos).some(function (k) { return rotulos[k] === origem; }) ? origem : 'Atendimento';
   };
+  GI.atendimentoPortal = function (chat) {
+    function texto(v) { return typeof v === 'string' ? v.trim() || null : typeof v === 'number' && Number.isFinite(v) ? String(v) : null; }
+    var inicio = chat.startedAt;
+    var data = typeof inicio === 'number' || typeof inicio === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(inicio) ? new Date(inicio) : null;
+    return { chat_id: chat.id, protocolo: texto(chat.protocol), canal: GI.canalAtendimento(chat.channel),
+      fila: texto(chat.queueId), iniciado_em: data && Number.isFinite(data.getTime()) ? data.toISOString() : null };
+  };
+  GI.erroAbrirChamado = function (err) {
+    if (err.status === 429) return 'Limite de consultas atingido. Aguarde cerca de um minuto e tente novamente.';
+    if (!err.status || [502, 503, 504].indexOf(err.status) >= 0) return 'O portal não respondeu. Tente de novo em instantes.';
+    var mensagens = { titulo: 'Informe o título do chamado.', descricao: 'Revise a descrição do chamado.',
+      categoria: 'Selecione a categoria do chamado.', prioridade: 'Selecione a urgência do chamado.',
+      locacao_id: 'A residência não pôde ser lida. Atualize o painel e tente de novo.',
+      'solicitante.nome': 'O nome do solicitante não pôde ser lido. Atualize o painel e tente de novo.',
+      'solicitante.contato_id': 'O contato não pôde ser lido. Atualize o painel e tente de novo.',
+      'solicitante.telefone': 'O telefone do solicitante não pôde ser lido. Atualize o painel e tente de novo.',
+      solicitante: 'O solicitante não pôde ser lido. Atualize o painel e tente de novo.',
+      atendente: 'O atendente não pôde ser lido. Atualize o painel e tente de novo.',
+      'atendente.nome': 'O nome do atendente não pôde ser lido. Atualize o painel e tente de novo.',
+      'atendente.user_id': 'O atendente não pôde ser lido. Atualize o painel e tente de novo.',
+      atendimento: 'O atendimento não pôde ser lido. Atualize o painel e tente de novo.',
+      'atendimento.canal': 'O canal do atendimento não pôde ser lido. Atualize o painel e tente de novo.',
+      'atendimento.iniciado_em': 'O início do atendimento não pôde ser lido. Atualize o painel e tente de novo.',
+      'atendimento.protocolo': 'O protocolo do atendimento não pôde ser lido. Atualize o painel e tente de novo.',
+      'atendimento.fila': 'A fila do atendimento não pôde ser lida. Atualize o painel e tente de novo.',
+      'atendimento.chat_id': 'O atendimento não pôde ser lido. Atualize o painel e tente de novo.',
+      acesso: 'Revise os dados de acesso ao imóvel.', 'acesso.disponibilidade': 'Revise quando é possível entrar no imóvel.',
+      'acesso.chaves': 'Revise as informações das chaves.', 'acesso.sem_cliente': 'Revise a autorização para entrar sem o cliente.',
+      anexos: 'Revise as fotos selecionadas.', origem: 'A origem do chamado não pôde ser lida. Atualize o painel e tente de novo.' };
+    if ((err.status === 400 || err.status === 422) && err.dados && err.dados.campos) {
+      var campos = Object.keys(err.dados.campos);
+      if (campos.length && campos.every(function (k) { return Object.hasOwn(mensagens, k); })) {
+        return campos.map(function (k) { return mensagens[k]; }).join(' ');
+      }
+    }
+    return 'Não foi possível abrir o chamado. Confira os dados e tente de novo.';
+  };
   GI.atendimentoTexto = function (a) {
     if (!a) return 'Nenhum atendimento vinculado';
     var chat = Number.isSafeInteger(Number(a.chat_id)) && Number(a.chat_id) > 0;

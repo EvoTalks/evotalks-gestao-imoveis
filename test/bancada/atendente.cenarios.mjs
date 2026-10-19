@@ -13,6 +13,9 @@ export async function testarAtendente(b, origem, chamadoId, verificarNota) {
     assert.equal(await b.avaliar(() => bancada.mensagens.length), 0, 'aviso exige confirmação');
     await b.clicar('[data-confirmar-nota]');
     await b.esperar(() => document.querySelector('[data-recado-nota]').textContent.includes('Nota salva') && !document.querySelector('[data-salvar-nota]').disabled);
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').textContent), 'Nota salva e cliente avisado.');
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'status');
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').previousElementSibling.tagName), 'HEADER');
     assert.deepEqual(await b.avaliar(() => bancada.mensagens), [{ chatId: 8801, payload: { text: nota } }]);
     assert.equal(await b.avaliar(() => window.__xss), undefined);
     assert.equal(await b.avaliar(() => document.querySelectorAll('[data-observacoes] img').length), 0);
@@ -36,6 +39,8 @@ export async function testarRecusasAtendente(b, origem) {
   await b.preencher('[data-nota]', 'Nota preservada sem janela'); await b.clicar('[data-avisar]');
   await b.clicar('[data-salvar-nota]'); await b.clicar('[data-confirmar-nota]');
   await b.esperar(() => document.querySelector('[data-recado-nota]').textContent.includes('24 horas'));
+  assert.match(await b.avaliar(() => document.querySelector('#cp-recado').textContent), /Cliente não avisado/);
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'alert');
   let d = await b.avaliar(async () => GI.chamadosObter(1));
   assert.equal(d.eventos.at(-1).texto, 'Nota preservada sem janela'); assert.equal(d.eventos.at(-1).notificou_cliente, false);
   assert.equal(await b.avaliar(() => bancada.mensagens.length), 0);

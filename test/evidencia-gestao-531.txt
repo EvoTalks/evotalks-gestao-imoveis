@@ -1,0 +1,60 @@
+Complemento H2: versão 0.22.1 preservada. Testes finais executados em 19/10/2026.
+
+$ node --test test/*.test.mjs
+  ...
+1..60
+# tests 85
+# suites 0
+# pass 85
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12829.899974
+exit_code=0
+
+$ node test/checar.mjs
+Sintaxe: 40 arquivos JS, 5 scripts inline, 0 erros.
+exit_code=0
+
+$ node test/bancada/testar.mjs
+OK dado hostil (título, nome, telefone, contrato, data e prazo) vira texto, nunca elemento
+OK tema escuro e modal estreito sem overflow da página; zero exceções no navegador
+Bancada: todos os fluxos passaram. Capturas em test/bancada/capturas/.
+exit_code=0
+
+$ node test/bancada/chamados.testar.mjs
+OK F8: falha na releitura após gravação recarrega a lista e recupera o estado real
+OK F8: 390 px claro/escuro, status hostil seguro, sem portal/demonstração desabilitados com zero requisições de manutenção
+OK paginação 27 resultados; sem portal e demonstração bloqueiam escrita; zero exceções
+exit_code=0
+
+$ node test/bancada/fatia4.testar.mjs
+OK lookup de aprovação constructor usa fallback e eventos constructor/__proto__ não expõem protótipos
+OK dado hostil em nome, telefone, e-mail, observação, aprovação, orçamento, prazo, valor e data permanece texto; configuração inválida bloqueada
+OK capturas claro/escuro e 390 px; sem portal e demonstração: zero escrita/storage/rede; zero exceções no Chromium
+exit_code=0
+
+$ node test/bancada/cockpit.testar.mjs
+OK demonstração: ciclo completo sintético com zero tentativas de rede
+OK dado hostil permanece texto; sem storage, sem exceções no Chromium
+Cockpit: todas as provas passaram. Capturas em test/bancada/capturas/cockpit-*.png
+exit_code=0
+
+$ PORTAL_DIR=/srv/devhome/dev-marco-souza/.worktrees/gestao-imoveis-portal-fotos node test/integracao/real.mjs
+OK real F10 cockpit vincula catálogo e avulso ao contato sem locação: 9/30 requisições; 8 cliques; banco conferido
+OK real j: cada cenário respeitou no máximo 30 requisições por minuto; zero exceções no Chromium.
+Integração real: todos os cenários de ouro passaram.
+exit_code=0
+
+RED: node --test test/comum.test.mjs test/manutencao.test.mjs test/checar.test.mjs
+exit_code=1 (helper ausente, manifest antigo e verificador antigo). Ver evidencia-gestao-531-red.txt.
+RED: node test/bancada/cockpit.testar.mjs
+exit_code=1: AssertionError: botão de locação: ?usuario=531&perfil=agente; false !== true.
+
+$ git diff --check
+exit_code=0
+
+git add: exit_code=128
+fatal: Unable to create index.lock: Read-only file system
+Sem commit, push, PR ou merge. Alterações no working tree.

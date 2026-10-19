@@ -1,0 +1,11 @@
+OK lista, resumo, busca sem acento e avisos de vigência
+OK edição preserva os vínculos de proprietário e fiador
+OK cadastro fora do catálogo vincula contato; 422 mantém campos; aluguel em centavos
+OK candidato fora do espelho usa snapshot e desaparece da faixa após cadastro
+OK catálogo nativo + uma leitura do mapa, filtro local, aluguel preenchido e acesso à locação
+OK encerramento com motivo preserva histórico e devolve situação Disponível
+OK 409 preserva o contato selecionado e mantém o modal aberto
+OK modo local e portal fora desabilitam ações, exibem aviso e não gravam storage
+OK dado hostil (título, nome, telefone, contrato, data e prazo) vira texto, nunca elemento
+OK tema escuro e modal estreito sem overflow da página; zero exceções no navegador
+Bancada: todos os fluxos passaram. Capturas em test/bancada/capturas/.

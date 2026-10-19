@@ -45,7 +45,13 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if ('origem' in d && !['atendimento', 'gestao', 'ia'].includes(d.origem)) campos.origem = 'Origem inválida.';
     if ((novo || 'solicitante' in d) && (!texto(d.solicitante?.nome) || d.solicitante.contato_id != null && !positivo(d.solicitante.contato_id))) campos.solicitante = 'Informe o solicitante.';
     if ('locacao_id' in d && !positivo(d.locacao_id) || novo && !locacao(d.locacao_id)) campos.locacao_id = 'Locação inválida.';
-    if (d.atendimento != null && ((d.atendimento.chat_id == null ? !texto(d.atendimento.protocolo) : !positivo(d.atendimento.chat_id)) || d.atendimento.iniciado_em != null && !iso(d.atendimento.iniciado_em))) campos.atendimento = 'Atendimento inválido.';
+    if (d.atendimento != null) {
+      if (d.atendimento.chat_id == null ? !texto(d.atendimento.protocolo) : !positivo(d.atendimento.chat_id)) campos.atendimento = 'Atendimento inválido.';
+      for (const k of ['canal', 'iniciado_em', 'protocolo', 'fila']) {
+        if (d.atendimento[k] != null && typeof d.atendimento[k] !== 'string') campos['atendimento.' + k] = 'Informe um texto.';
+      }
+      if (typeof d.atendimento.iniciado_em === 'string' && d.atendimento.iniciado_em && !iso(d.atendimento.iniciado_em)) campos['atendimento.iniciado_em'] = 'Informe uma data válida.';
+    }
     if (d.atendente != null && (!positivo(d.atendente.user_id) || !texto(d.atendente.nome))) campos.atendente = 'Atendente inválido.';
     if (d.acesso != null && (typeof d.acesso !== 'object' || 'sem_cliente' in d.acesso && typeof d.acesso.sem_cliente !== 'boolean')) campos.acesso = 'Acesso inválido.';
     if (d.quem_paga != null && !['proprietario', 'inquilino', 'imobiliaria'].includes(d.quem_paga)) campos.quem_paga = 'Pagador inválido.';

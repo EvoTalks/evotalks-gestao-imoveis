@@ -189,7 +189,7 @@ export async function testarReal(b, origem, real) {
       await b.captura('integracao-h-cancelado'); await fechar();
     });
     await cenario('i atendente abre chamado do chat e vê na gestão', async () => {
-      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1');
+      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1&numerico=1');
       await b.esperar(() => !!document.querySelector('[data-chamado]'));
       assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), false);
       assert.match(await texto('#cp-conteudo'), /Reparo Sintético Integração/);
@@ -202,6 +202,11 @@ export async function testarReal(b, origem, real) {
       const c = (await sql("SELECT * FROM chamados WHERE titulo='Cockpit Sintético Integração'"))[0];
       assert.equal(c.atendimento_chat_id, 8801); assert.equal(c.solicitante_contato_id, 9901); assert.equal(c.origem, 'atendimento');
       assert.equal(c.atendente_user_id, 9999);
+      assert.match(c.atendimento_canal, /^(Atendimento|WebChat)$/);
+      assert.equal(new Date(c.atendimento_iniciado_em).toISOString(), '2025-10-09T08:53:20.000Z');
+      assert.equal(await texto('#cp-recado'), 'OS-' + c.numero + ' aberta ✓');
+      assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'status');
+      assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').previousElementSibling.tagName), 'HEADER');
       await b.esperar(() => bancada.chamadas.filter(c => c.caminho.includes('/contatos/9901/chamados')).length >= 2);
       await navegar('chamados'); await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Cockpit Sintético Integração'));
       await b.captura('integracao-i-cockpit-na-gestao');

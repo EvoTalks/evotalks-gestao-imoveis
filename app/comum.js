@@ -5,6 +5,8 @@
   'use strict';
 
   var GI = {};
+  // TEMPORÁRIO (teste do Marco, 19/10/2026): remover junto com userIds do manifest
+  GI.GESTORES_EXTRA = [531];
   var ctx = null;
 
   /* ---------------------------------------------------------------- contexto */
@@ -895,9 +897,12 @@
   /* -------------------------------------------------------------- navegação */
 
   function telaDeGestao(id) { return ['gi-locados', 'gi-chamados', 'gi-prestadores'].indexOf(id) >= 0; }
-  function administrador() { var c = GI.ctx(); return !!(c && c.user && c.user.type === 0); }
+  GI.gestor = function () {
+    var c = GI.ctx(), u = c && c.user;
+    return !!(u && (u.type === 0 || GI.GESTORES_EXTRA.indexOf(Number(u.id)) !== -1));
+  };
   GI.abrirTela = function (contributionId) {
-    if (telaDeGestao(contributionId) && !administrador()) { GI.aviso('Esta tela é exclusiva do administrador.', 'info'); return; }
+    if (telaDeGestao(contributionId) && !GI.gestor()) { GI.aviso('Esta tela é exclusiva do administrador.', 'info'); return; }
     try {
       var r = omni.ui.openContribution(contributionId);
       if (r && r.catch) r.catch(function () { GI.aviso('Abra pelo menu Gerenciamento de Imóveis.', 'info'); });
@@ -933,7 +938,7 @@
       { id: 'gi-historico', nome: 'Histórico' },
       { id: 'gi-config', nome: 'Configurações' }
     ];
-    return '<nav class="gi-nav">' + telas.filter(function (t) { return !telaDeGestao(t.id) || administrador(); }).map(function (t) {
+    return '<nav class="gi-nav">' + telas.filter(function (t) { return !telaDeGestao(t.id) || GI.gestor(); }).map(function (t) {
       return t.id === ativo
         ? '<span class="gi-nav-item gi-nav-ativo">' + t.nome + '</span>'
         : '<button type="button" class="gi-nav-item" data-tela="' + t.id + '">' + t.nome + '</button>';

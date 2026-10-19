@@ -1,5 +1,6 @@
 /* Bancada do cockpit: SDK simulado, portal real da bancada e Chromium sem dependências. */
 import { testarResidencias } from './vinculos.cenarios.mjs';
+import { testarGestores } from './gestores.cenarios.mjs';
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
 import { testarAtendente, testarRecusasAtendente } from './atendente.cenarios.mjs';
@@ -9,6 +10,15 @@ import { abrirChromium } from './chromium.mjs';
 function instrumentar() {
   const params = new URLSearchParams(location.search);
   window.cenario = { tipo: params.get('cenario'), alturas: [], tentativasRede: 0, posts: 0 };
+  // Apenas o relógio da faixa: não interfere em debounce, rede ou resize.
+  const agendar = window.setTimeout, cancelar = window.clearTimeout;
+  const timers = new Map(); let proximoTimer = -1, agora = 0;
+  window.setTimeout = function (fn, ms, ...args) {
+    if (ms !== 8000) return agendar(fn, ms, ...args);
+    const id = proximoTimer--; timers.set(id, { em: agora + ms, fn }); return id;
+  };
+  window.clearTimeout = function (id) { timers.delete(id); cancelar(id); };
+  cenario.avancar = ms => { agora += ms; for (const [id, t] of timers) if (t.em <= agora) { timers.delete(id); t.fn(); } };
   const assinar = omni.on, assinantes = {};
   omni.on = function (nome, fn) { (assinantes[nome] ||= []).push(fn); return assinar(nome, fn); };
   cenario.emitir = (nome, d) => (assinantes[nome] || []).forEach(fn => fn(d));
@@ -20,6 +30,11 @@ function instrumentar() {
     if (op.method === 'POST') {
       cenario.posts++;
       if (cenario.tipo === 'recusar') return { status: 422, body: '{"erro":"dados_invalidos","campos":{"titulo":"Título recusado na bancada"}}' };
+      if (cenario.tipo === 'canal422') return { status: 422, body: JSON.stringify({ erro: 'dados_invalidos', campos: { 'atendimento.canal': 'Informe um texto.' } }) };
+      if (cenario.tipo === 'falha500') return { status: 500, body: '{"erro":"falha_interna"}' };
+      if (cenario.tipo === 'rede') throw new Error('Failed to fetch');
+      if (cenario.tipo === 'postrate') return { status: 429, body: '{"erro":"rate_limit"}' };
+      if (cenario.tipo === 'postlento') await new Promise(r => { cenario.liberarPost = r; });
       if (cenario.tipo === 'semreleitura') cenario.tipo = 'erro';
     }
     if (op.url.includes('/contatos/')) {
@@ -71,6 +86,7 @@ let b;
 const prova = t => process.stdout.write('OK ' + t + '\n');
 try {
   b = await abrirChromium();
+  await testarGestores(b, base.replace('/app/painel.html', ''));
   const pronto = () => b.esperar(() => document.querySelector('#cp-nome')?.textContent.includes('Demonstração') && !!document.querySelector('[data-chamado]'));
   const texto = s => b.avaliar(s => document.querySelector(s)?.textContent || '', s);
   const semOverflow = async () => assert.ok(await b.avaliar(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll('#gi-cockpit *')].every(el => el.scrollWidth <= el.clientWidth + 1 || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')), 'sem rolagem horizontal, inclusive dentro dos cartões');
@@ -80,6 +96,104 @@ try {
     await b.viewport(...tamanho);
     await b.captura('cockpit-' + nome);
   };
+  async function topo(tipo) {
+    assert.deepEqual(await b.avaliar(() => {
+      const faixa = document.querySelector('#cp-recado'), r = faixa.getBoundingClientRect();
+      return { topo: faixa.previousElementSibling.matches('header') && faixa.nextElementSibling.id === 'cp-abas',
+        visivel: !faixa.hidden && r.top >= 0 && r.bottom <= innerHeight, role: faixa.getAttribute('role') };
+    }), { topo: true, visivel: true, role: tipo });
+  }
+  const falhasHotfix = [];
+  async function hotfix(nome, fn) {
+    try { await fn(); prova('hotfix ' + nome); }
+    catch (err) { falhasHotfix.push(nome + ': ' + err.message); }
+  }
+  async function novo(parametros = '') {
+    await b.navegar(base + '?escrita=1' + parametros); await pronto();
+    await b.clicar('#cp-tab-novo'); await b.esperar(() => !!document.querySelector('[data-foto]'));
+  }
+  await hotfix('título vazio tem erro junto ao campo, foco e nenhuma requisição', async () => {
+    await novo(); const antes = await b.avaliar(() => bancada.chamadas.length);
+    await b.clicar('#cp-revisar');
+    assert.equal(await texto('#cp-titulo-erro'), 'Informe o título do chamado.');
+    assert.deepEqual(await b.avaliar(() => [document.activeElement.id, document.querySelector('#cp-titulo').getAttribute('aria-invalid')]), ['cp-titulo', 'true']);
+    assert.equal(await b.avaliar(() => bancada.chamadas.length), antes);
+    await b.preencher('#cp-titulo', 'Reparo sintético');
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo-erro').hidden), true);
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').hasAttribute('aria-invalid')), false);
+  });
+  for (const invalido of [false, true]) await hotfix('canal numérico e início ' + (invalido ? 'inválido' : 'numérico'), async () => {
+    await novo('&numerico=1' + (invalido ? '&inicioInvalido=1' : ''));
+    assert.match(await texto('#cp-vinculo'), /Atendimento|WebChat/);
+    assert.doesNotMatch(await texto('#cp-vinculo'), /\b26\b/);
+    await b.preencher('#cp-titulo', 'Hotfix sintético'); await b.clicar('#cp-revisar');
+    assert.doesNotMatch(await texto('#cp-conteudo'), /\b26\b/);
+    await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
+    const enviado = await b.avaliar(() => JSON.parse(bancada.chamadas.find(r => r.method === 'POST').body).atendimento);
+    assert.match(enviado.canal, /^(WebChat|Atendimento)$/);
+    assert.equal(enviado.iniciado_em, invalido ? null : '2025-10-09T08:53:20.000Z');
+    await topo('status'); assert.match(await texto('#cp-recado'), /OS-\d+ aberta ✓/);
+    assert.equal(await b.avaliar(() => document.activeElement.closest('#cp-sucesso')?.id), 'cp-sucesso');
+    await b.avaliar(() => cenario.avancar(7999)); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), false);
+    await b.avaliar(() => cenario.avancar(1)); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true);
+  });
+  for (const [tipo, frase] of [['canal422', 'O canal do atendimento não pôde ser lido. Atualize o painel e tente de novo.'], ['falha500', 'Não foi possível abrir o chamado. Confira os dados e tente de novo.'], ['rede', 'O portal não respondeu. Tente de novo em instantes.'], ['postrate', 'Limite de consultas atingido. Aguarde cerca de um minuto e tente novamente.']]) {
+    await hotfix(tipo + ' mantém dados, faixa no topo, erro persistente e retry', async () => {
+      await novo('&cenario=' + tipo); await b.preencher('#cp-titulo', 'Preservar hotfix'); await b.preencher('#cp-descricao', 'Descrição sintética'); await b.clicar('[data-foto]');
+      await b.clicar('#cp-revisar'); await b.avaliar(() => scrollTo(0, document.body.scrollHeight)); await b.clicar('#cp-confirmar');
+      await b.esperar(() => !document.querySelector('#cp-confirmar').disabled);
+      assert.equal(await texto('#cp-recado'), frase); await topo('alert');
+      assert.equal(await texto('#cp-confirmar'), 'Tentar de novo');
+      assert.equal(await b.avaliar(() => document.activeElement.id), 'cp-recado');
+      await b.avaliar(() => cenario.avancar(80000)); assert.equal(await texto('#cp-recado'), frase);
+      await b.clicar('#cp-recado-fechar'); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true);
+      await b.clicar('#cp-voltar');
+      assert.deepEqual(await b.avaliar(() => [document.querySelector('#cp-titulo').value, document.querySelector('#cp-descricao').value, document.querySelector('[data-foto]').checked]), ['Preservar hotfix', 'Descrição sintética', true]);
+      if (tipo !== 'postrate') {
+        await b.clicar('#cp-revisar'); await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-confirmar');
+        await b.esperar(() => !!document.querySelector('#cp-sucesso')); assert.match(await texto('#cp-recado'), /OS-\d+ aberta ✓/);
+      }
+    });
+  }
+  await hotfix('botão informa abertura em andamento e impede duplo envio', async () => {
+    await novo('&cenario=postlento'); await b.preencher('#cp-titulo', 'Espera sintética'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+    await b.esperar(() => !!cenario.liberarPost);
+    assert.equal(await texto('#cp-confirmar'), 'Abrindo chamado…');
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), true);
+    await b.avaliar(() => { document.querySelector('#cp-confirmar').click(); cenario.tipo = ''; cenario.liberarPost(); });
+    await b.esperar(() => !!document.querySelector('#cp-sucesso')); assert.equal(await b.avaliar(() => cenario.posts), 1);
+  });
+  for (const tema of ['claro', 'escuro']) for (const largura of [260, 300, 334]) await hotfix('faixas ' + largura + 'px ' + tema, async () => {
+    await b.viewport(largura, 650); await novo('&tema=' + tema + '&cenario=canal422');
+    await b.preencher('#cp-titulo', 'Captura sintética'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+    await b.esperar(() => !document.querySelector('#cp-confirmar').disabled); await topo('alert'); await capturar('hotfix-' + largura + '-' + tema + '-erro');
+    await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
+    await topo('status'); await capturar('hotfix-' + largura + '-' + tema + '-sucesso');
+  });
+  await hotfix('nota usa faixa do topo e erro hostil permanece texto', async () => {
+    await b.navegar(base + '?escrita=1'); await pronto();
+    await b.clicar('[data-detalhes="1"]'); await b.esperar(() => !!document.querySelector('[data-nota]'));
+    await b.avaliar(() => { cenario.nota = GI.chamadosNota; GI.chamadosNota = async () => { throw new Error('<img src=x onerror="window.__xss=1">'); }; });
+    await b.preencher('[data-nota]', 'Nota sintética'); await b.clicar('[data-salvar-nota]');
+    await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('<img'));
+    await topo('alert');
+    assert.equal(await b.avaliar(() => document.querySelectorAll('#cp-recado img').length), 0);
+    assert.equal(await b.avaliar(() => window.__xss), undefined);
+    await b.avaliar(() => { GI.chamadosNota = cenario.nota; }); await b.clicar('[data-salvar-nota]');
+    await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Nota salva para a equipe.' && !document.querySelector('[data-salvar-nota]').disabled);
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'status');
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').previousElementSibling.tagName), 'HEADER');
+    await b.avaliar(() => cenario.avancar(8000)); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true);
+    await b.preencher('[data-nota]', 'Outra nota sintética'); await b.clicar('[data-salvar-nota]');
+    await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Nota salva para a equipe.' && !document.querySelector('[data-salvar-nota]').disabled);
+    await b.avaliar(() => { GI.chamadosNota = async () => { throw new Error('Falha sintética posterior'); }; });
+    await b.preencher('[data-nota]', 'Preservar nota'); await b.clicar('[data-salvar-nota]');
+    await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Falha sintética posterior'));
+    await b.avaliar(() => cenario.avancar(8000));
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), false, 'timer do sucesso anterior não apaga o erro seguinte');
+    await b.clicar('#cp-tab-imovel'); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true, 'outra ação limpa o erro');
+  });
+  assert.deepEqual(falhasHotfix, [], 'regressões hotfix');
   await testarResidencias(b, base.replace('/app/painel.html', ''));
   await testarAtendente(b, base.replace('/app/painel.html', ''), 1, async (id, texto) => {
     const d = await b.avaliar(async id => GI.chamadosObter(id), id);
@@ -206,7 +320,7 @@ try {
   await b.clicar('#cp-revisar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
   await b.clicar('#cp-confirmar');
-  await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Título recusado'));
+  await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Informe o título do chamado.'));
   await b.clicar('#cp-voltar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), 'Preservar no erro');
   await b.avaliar(() => { cenario.tipo = 'semreleitura'; });

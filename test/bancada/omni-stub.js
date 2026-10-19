@@ -40,6 +40,8 @@
     status: 'active', sessionLocked: false, channel: 'WhatsApp', protocol: 'DEMO-P' + n,
     startedAt: '2026-10-17T12:00:00.000Z', contact: contatos[i], unread: 0
   }; });
+  if (params.has('numerico')) { chats[0].channel = 26; chats[0].startedAt = params.has('inicioInvalido') ? 'inválido' : 1760000000000; }
+  if (params.has('usuario')) ctx.user.id = Number(params.get('usuario'));
   if (params.get('perfil') === 'admin') ctx.user.type = 0;
   if (params.get('perfil') === 'supervisor') ctx.user.type = 1;
   chats.push({ id: 8805, contactId: 9901, userId: 9998, queueId: 93, status: 'active', channel: 'WhatsApp', protocol: 'DEMO-SUPERVISOR', startedAt: '2026-10-18T12:00:00.000Z' });
