@@ -23,7 +23,7 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.21.1, config e contribuições
+manifest.json          identidade 0.22.0, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
@@ -67,7 +67,7 @@ das buscas da assistente enquanto a locação está ativa e o devolve ao encerra
 da locação sobrevive à saída do anúncio do feed. As locações encerradas ficam disponíveis
 para consulta pelo filtro de contrato, sem edição ou exclusão.
 
-## Chamados e manutenção (0.21.1)
+## Chamados e manutenção (0.22.0)
 
 As contribuições **Locados**, **Chamados** e **Prestadores** são exclusivas do
 administrador (`userTypes: [0]`). O cockpit **Manutenção** está disponível para
@@ -91,13 +91,17 @@ Fotos enviadas podem ser ampliadas inclusive em chamados encerrados; adicionar f
 continua bloqueado nesses chamados.
 
 No novo chamado, busque o cliente; uma única locação já vem selecionada. **Escolher atendimento**
-lista as conversas abertas do cliente acessíveis ao usuário, incluindo todas as filas
-para supervisor ou administrador. Um único atendimento já vem escolhido. Em edição,
+lista o histórico do contato, incluindo atendimentos encerrados, unido aos abertos
+acessíveis ao usuário (filas adicionais para supervisor e administrador), do mais recente
+ao mais antigo. Os canais seguem as constantes `omni.queueTypes` do host; uma origem
+desconhecida aparece como Atendimento. Mostra dez por vez e **Mostrar mais** acrescenta dez sem nova consulta. Quando há somente um atendimento e ele está aberto, já vem
+escolhido. Em edição,
 um único atendimento aberto sem vínculo é oferecido no topo com **Vincular este**.
 Um clique grava o vínculo; **Tirar vínculo** só aparece com vínculo e **Abrir atendimento**
 só com conversa aberta. **Escolher atendimento** aguarda a seleção do cliente.
-Um vínculo manual só por protocolo é identificado como sem conversa vinculada. A plataforma não lista encerrados:
-nesses casos, use **Informar protocolo ou número do atendimento**.
+Vínculos antigos só por protocolo continuam identificados como sem conversa vinculada.
+A escolha usa exclusivamente a lista, sem digitar número ou protocolo. A falha do histórico
+mostra os abertos com aviso; falha total oferece **Tentar de novo**.
 
 **Orçamentos** aceita nome livre do prestador, valor opcional e descrição livre
 (serviço, prazo e condições). O portal guarda o nome automaticamente e o reutiliza nas
@@ -271,3 +275,16 @@ O cockpit atende tipos 0, 1 e 2. Locados, Chamados e Prestadores continuam apena
 para administrador. O atendente consulta dados, fotos e observações no cockpit,
 abre chamado vinculado ao chat e registra notas/avisos quando a escrita está
 habilitada; não recebe atalhos da gestão. A escrita continua desligada por padrão.
+
+## Vínculos no cockpit (0.22.0)
+
+Atendente, supervisor e administrador podem **Vincular residência** ao contato da
+conversa. Busque por código, título ou bairro (300 ms, até oito resultados), ou use
+**Não está no catálogo**. Só o título é obrigatório fora do catálogo; contrato é opcional.
+A confirmação mostra imóvel e contato antes do POST, sempre como locatário.
+Com locação existente, **Vincular outra residência** mantém a consulta no mesmo cockpit.
+Demonstração e portal ausente/indisponível desabilitam o vínculo. Uma releitura recusada
+após gravar não repete o POST. Locados, Chamados e Prestadores seguem só para administrador.
+
+Regressões: `test/vinculos.test.mjs`, cenários F10 nas bancadas de chamados e cockpit,
+e integração com histórico encerrado e criação de locação no PGlite do portal real.

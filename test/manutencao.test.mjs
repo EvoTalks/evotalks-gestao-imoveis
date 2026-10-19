@@ -14,9 +14,9 @@ function carregar() {
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
-test('manifest 0.21.1 declara navegação ordenada, cockpit e escrita opt-in', () => {
+test('manifest 0.22.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.21.1');
+  assert.equal(m.version, '0.22.0');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
@@ -264,7 +264,7 @@ test('Chromium: páginas esqueleto, SDK, navegação, escrita desligada e demons
     assert.equal(await b.avaliar(async () => (await omni.chats.getSelected()).id), 8802);
     assert.equal(await b.avaliar(async () => (await omni.contacts.get(9902)).name), 'Locatário Demonstração Dois');
     assert.equal(await b.avaliar(async () => (await omni.users.list()).length), 3);
-    assert.equal(await b.avaliar(async () => (await omni.chats.listMine()).length), 3);
+    assert.equal(await b.avaliar(async () => (await omni.chats.listMine()).length), 4);
     assert.equal(await b.avaliar(async () => { try { await omni.chats.listByQueue(91); } catch (e) { return e.code; } }), 'forbidden');
     assert.equal(await b.avaliar(async () => {
       const user = await omni.session.getUser(); user.type = 1;

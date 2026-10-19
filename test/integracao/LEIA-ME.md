@@ -54,28 +54,15 @@ escolher e remover orçamento têm contagem própria: no máximo três requisiç
 exatamente uma releitura do chamado, sem POST vazio nem GET da lista. A aprovação
 registra os padrões “Proprietário” e “WhatsApp” sem campos redundantes.
 
-## Fricções
+## Vínculos 0.22.0
 
-Leitura das capturas de gestão e cockpit, incluindo as seis combinações de tema e
-largura. As quantidades abaixo descrevem o roteiro mínimo a partir da tela aberta;
-seleções de cliente/imóvel continuam exigindo a digitação e a escolha do resultado.
-
-| Fluxo observado | Fricção e correção sugerida |
-|---|---|
-| Atendente abre chamado: Novo → Revisar → Abrir, 3 cliques | Corrigido na 0.21.1: caixa repetida removida; resumo e confirmação explícita permanecem. |
-| Atendente avisa o cliente: Fotos e observações → Avisar → Salvar → Confirmar, 4 cliques (mais 1 se o chamado estiver recolhido) | Nota e mensagem compartilham a mesma área. Avaliar ações separadas “Nota interna” e “Avisar cliente”, mantendo confirmação de envio. |
-| Cadastro por candidata: Candidatas → imóvel → contato → Salvar, 4 cliques | O candidato precisa de um locatário selecionado. Sugerir iniciar o cadastro pelo contato quando ele já estiver conhecido. |
-| Novo chamado na gestão | Corrigido: locação única selecionada automaticamente; escolher atendimento aguarda o cliente. Na edição sem vínculo, um único chat aberto oferece “Vincular este” no topo. |
-| Aprovação e visita | Decisão reduzida a Aprovado/Recusado e observação opcional. Orçamentos atualizam o modal com uma releitura e a linha pela resposta; lista inteira só ao fechar após gravação. Com vários blocos pendentes, “Salvar dados pendentes” preserva a cotação antes da operação de até três requisições. |
-| Aprovação e visita em “Mais opções” | A faixa “Registrar decisão” leva à seção, mas a visita continua exigindo abrir as opções e rolar. Avaliar seção própria de agendamento quando a decisão estiver aprovada. |
-| Cadastro do orçamento | Só o nome do prestador é obrigatório; valor e descrição são opcionais. Nenhum campo obrigatório redundante encontrado aqui. Dois nomes com caixa/acento diferentes geram um único prestador. |
-| Cockpit estreito com muitas observações | A leitura é vertical e longa, especialmente após ampliar a foto. Avaliar últimas notas primeiro e expansão do restante; manter acesso a todo o histórico. Sem rolagem horizontal nas capturas. |
-| Rascunho de nota ao trocar aba/chat | O rascunho não é persistido. Avaliar guardar rascunhos por chat/chamado ou avisar antes de sair. Nunca reaproveitar texto no contato seguinte. |
-| Fotos e observações carregadas sob demanda | Exigem um clique adicional, mas evitam uma consulta por chamado na abertura do cockpit. Há mensagem de carregamento, erro com nova tentativa e respeito à cota. |
-| Configuração desligada | Atendente só consulta, e Novo explica que a abertura está desligada. Para habilitar é necessária a configuração pelo administrador; não há atalho para gestão no perfil do atendente. |
-| Cabeçalho e Imóveis | A chave para marcar como locado também é exclusiva do administrador; Situação e filtro continuam para todos. Corrigido: os atalhos internos de Locados, Chamados e Prestadores também somem para atendente/supervisor; `GI.abrirTela` recusa abrir essas contribuições nesses perfis. |
-| Texto técnico e orientação impossível | Corrigidos na 0.21.1: erros sem prefixo de status; protocolo manual indica “sem conversa vinculada”; ações de vínculo só quando aplicáveis. Também corrigidos: “SLA” aparece como “Prazo”; ausência de locação orienta pedir cadastro ao administrador; fotos não mandam o atendente para gestão; atalhos da gestão somem também após criar o chamado. |
-| Espera de cota e envio recusado | A cota informa aguardar cerca de um minuto. A janela encerrada salva a nota para a equipe e informa que o cliente não foi avisado. Falha no registro após envio permite repetir sem duplicar a mensagem. |
+Atendimentos são escolhidos no histórico do contato, incluindo encerrados, com
+paginação local, cache e fallback para os abertos do SDK. Vínculos legados por
+protocolo continuam legíveis. A integração escolhe um encerrado e confere seus
+metadados no banco real antes de retornar ao aberto usado nas provas de mensagens.
+O cockpit vincula imóvel de catálogo e avulso ao contato, sempre como locatário,
+sem alterar o portal. As bancadas cobrem erros, rede bloqueada, troca de contato,
+idempotência após releitura recusada e capturas 260/300/334 px claro/escuro.
 
 Permissões são exercitadas com `getPermissions()` simulado: agente e supervisor
 consultam/abrem no cockpit, administrador mantém seu atalho. O manifest reserva
@@ -98,5 +85,5 @@ PORTAL_DIR=/caminho/gestao-imoveis-portal-fotos node test/integracao/real.mjs
 SQL real, ausência do portal com aviso e paridade da escolha idempotente, do bloqueio
 do valor escolhido, da alçada depois da escolha e da alteração vazia.
 `test/integracao-proxy.test.mjs` prova encaminhamento sem reescrita e preservação
-dos estáticos/SDK. A saída literal consolidada da 0.21.1 está em `../evidencia-f9.txt`;
-`evidencia.txt` preserva a rodada anterior.
+dos estáticos/SDK. A saída literal consolidada da 0.22.0 está em `../evidencia-f10.txt`.
+`../evidencia-f9.txt` e `evidencia.txt` preservam as rodadas anteriores.

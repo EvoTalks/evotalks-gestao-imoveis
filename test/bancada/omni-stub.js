@@ -33,6 +33,7 @@
     { id: 9903, name: 'Proprietário Demonstração', phone: '00000000000', document: '00000000000' },
     { id: 9904, name: 'Fiador Demonstração', phone: '00000000000', document: '00000000000' }
   ];
+  contatos.push({ id: 9905, name: 'Contato Sem Residência Demonstração', phone: '00000000005', document: '00000000000' });
   var usuarios = [ctx.user, { id: 9998, name: 'Agente Demonstração Dois', type: 2 }, { id: 9997, name: 'Agente Demonstração Três', type: 2 }];
   var chats = [8801, 8802, 8803, 8804].map(function (n, i) { return {
     id: n, contactId: i === 3 ? null : 9901 + i, userId: i === 2 ? 9998 : 9999, queueId: i === 2 ? 92 : 91,
@@ -42,6 +43,7 @@
   if (params.get('perfil') === 'admin') ctx.user.type = 0;
   if (params.get('perfil') === 'supervisor') ctx.user.type = 1;
   chats.push({ id: 8805, contactId: 9901, userId: 9998, queueId: 93, status: 'active', channel: 'WhatsApp', protocol: 'DEMO-SUPERVISOR', startedAt: '2026-10-18T12:00:00.000Z' });
+  chats.push({ id: 8806, contactId: 9905, userId: 9999, queueId: 91, status: 'active', channel: 'WhatsApp', protocol: '', startedAt: '2026-10-17T12:00:00.000Z' });
   var selecionado = params.has('chat') ? Number(params.get('chat')) : 8801;
   function copia(v) { return JSON.parse(JSON.stringify(v)); }
   function normalizar(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
@@ -53,6 +55,7 @@
   }
   window.bancada = { chamadas: [], gravacoesStorage: 0, mensagens: [], eventos: [], rede: [] };
   window.omni = {
+    queueTypes: Object.freeze({ WHATSAPP: 0, TELEGRAM: 1, MESSENGER: 2, WEBCHAT: 3, INSTAGRAM: 4, WEBCHAT_V2: 47 }),
     on: function (nome, fn) { (assinantes[nome] || (assinantes[nome] = [])).push(fn); return function () { window.omni.off(nome, fn); }; },
     off: function (nome, fn) { assinantes[nome] = fn ? (assinantes[nome] || []).filter(function (f) { return f !== fn; }) : []; },
     queues: { list: function () { return window.bancada.falharLista ? falhar('rate_limit', 'Limite de consultas.') : Promise.resolve([{ id: 91, name: 'Fila Um' }, { id: 92, name: 'Fila Dois' }, { id: 93, name: 'Fila Supervisor' }]); } },
@@ -116,7 +119,18 @@
       get: function (n) { var c = contatos.filter(function (c) { return c.id === Number(n); })[0]; return c ? Promise.resolve(copia(c)) : falhar('not_found', 'Contato não encontrado.'); },
       search: function (termo) { return Promise.resolve(copia(contatos.filter(function (c) { return normalizar(c.name + ' ' + c.phone + ' ' + (c.email || '')).indexOf(normalizar(termo)) !== -1; }))); }
     },
-    data: { request: function (recurso) {
+    data: { request: function (recurso, verbo, payload) {
+      if (recurso === 'contacts/getItemChatsHistory') {
+        if (verbo !== 'POST' || !payload || !payload.id) return falhar('bad_args', 'Contato obrigatório.');
+        window.bancada.consultasHistorico = (window.bancada.consultasHistorico || 0) + 1;
+        if (window.bancada.falharHistorico) return falhar('teste', 'Histórico indisponível de teste.');
+        var historico = window.bancada.historico;
+        if (typeof historico === 'function') return historico(payload.id);
+        if (Array.isArray(historico)) return Promise.resolve(copia(historico));
+        return Promise.resolve(copia(chats.filter(function (c) { return c.contactId === Number(payload.id) && (ctx.user.type !== 2 || c.userId === ctx.user.id); }).map(function (c) {
+          return { id: c.id, status: 1, begintime: c.startedAt, protocol: c.protocol, origin: 0, qname: c.queueId === 93 ? 'Fila Supervisor' : 'Fila Um', queueId: c.queueId };
+        })));
+      }
       if (recurso.indexOf('users') === 0) return Promise.resolve(copia(usuarios));
       if (!/^(products|users)(\?|$)/.test(recurso)) return Promise.reject(new Error('Recurso não simulado.'));
       return localFetch('/bancada/sdk/' + recurso).then(function (r) { return r.json(); });

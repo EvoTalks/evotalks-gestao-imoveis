@@ -207,16 +207,13 @@
   }
   function atendimentoTexto(a) { return GI.atendimentoTexto(a); }
   function seletorAtendimento() {
-    return '<div id="c-atendimentos" class="gi-lista-atend"></div><p id="c-atendimento-aviso" class="gi-ajuda" aria-live="polite"></p>' +
-      '<button type="button" class="btn btn-slim" id="c-informar">Informar protocolo ou número do atendimento</button>' +
-      '<div id="c-manual" class="gi-grade-modal" hidden>' + campo('chat-id', 'Número do atendimento', '', 'number', 'min="1" step="1"') +
-      campo('protocolo', 'Protocolo', '') + '<p class="gi-ajuda">A plataforma não lista atendimentos encerrados. Para vinculá-los, informe o protocolo ou número.</p>' +
-      '<button class="btn btn-slim" type="button" id="c-vincular-manual">Vincular atendimento informado</button></div>';
+    return '<div id="c-atendimentos" class="gi-lista-atend"></div><p id="c-atendimento-aviso" class="gi-ajuda" aria-live="polite"></p>';
   }
   function formulario(detalhe, restantes, avisoInicial, rascunhoNota) {
     var c = detalhe && detalhe.chamado || {}, editando = !!c.id, fechado = terminal(c), acesso = c.acesso || {};
     var contato = editando ? { id: c.solicitante.contato_id, name: c.solicitante.nome, phone: c.solicitante.telefone } : null;
     var usuariosCarregados = false, locacoes = [], usuarios = c.atendente ? [{ id: c.atendente.user_id, name: c.atendente.nome }] : [], atendimentos = [];
+    var consultaAtendimentos = null, limiteAtendimentos = 10;
     var selecionado = c.atendimento || null, modoAtendimento = selecionado ? 'atual' : 'nenhum';
     var caixa, no, mudou = false, ocupado = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = rascunhoNota && rascunhoNota.enviado || null;
     var pendentes = restantes || [], retomada = null, fotosInteiras = {}, notaConfirmada = rascunhoNota && rascunhoNota.confirmada || null;
@@ -472,12 +469,6 @@
       });
     }
     function atendimentoEscolhido() {
-      if (modoAtendimento === 'manual') {
-        var n = idValido(no('chat-id').value);
-        var protocolo = no('protocolo').value.trim();
-        if (!n && !protocolo) throw new Error('Informe o protocolo ou o número do atendimento.');
-        return { chat_id: n, protocolo: protocolo || null, canal: null, fila: null, iniciado_em: null };
-      }
       return selecionado;
     }
     function atualizarAviso() {
@@ -490,7 +481,7 @@
       return sdk('chats', 'get', [a.chat_id]).then(function (chat) {
         if (!caixa.isConnected || v !== versaoAviso) return;
         no('abrir-atendimento').hidden = !chatAberto(chat, contato.id);
-        avisoAberto = chatAberto(chat, contato.id) && /whatsapp/i.test(chat.channel || '');
+        avisoAberto = chatAberto(chat, contato.id) && /whatsapp/i.test(GI.canalAtendimento(chat.channel));
         no('avisar').disabled = !avisoAberto;
         no('aviso-dica').textContent = avisoAberto ? '' : 'Escolha o atendimento acima para avisar o cliente.';
       }).catch(function () { /* Vínculo manual sem consulta não autoriza envio. */ });
@@ -500,7 +491,7 @@
         return (editando ? GI.chamadosAtualizar(c.id, { atendimento: a }) : Promise.resolve()).then(function (r) {
           selecionado = a; modoAtendimento = a ? 'atual' : 'nenhum';
           if (editando) { atualizarEstadoStatus(r.chamado); atualizarLinha(c); mudou = true; }
-          ++versaoFotos; anexos = []; no('fotos').textContent = ''; no('manual').hidden = true; no('confirmacao').hidden = true;
+          ++versaoFotos; anexos = []; no('fotos').textContent = ''; no('confirmacao').hidden = true;
           no('vinculo').textContent = atendimentoTexto(a); no('escolha-atendimento').hidden = true;
           atualizarBotoesAtendimento();
           return atualizarAviso();
@@ -514,52 +505,69 @@
         no('abrir-atendimento').disabled = ocupado || !idValido(selecionado && selecionado.chat_id);
         if (!selecionado) no('abrir-atendimento').hidden = true;
       }
-      var unico = editando && !selecionado && atendimentos.length === 1 ? atendimentos[0] : null;
+      var abertos = atendimentos.filter(function (a) { return a.vivo; });
+      var unico = editando && !selecionado && abertos.length === 1 ? abertos[0] : null;
       no('atendimento-unico').hidden = !unico;
       no('atendimento-unico').innerHTML = unico ? e(atendimentoTexto(unico)) + ' <button class="btn btn-slim" type="button" id="c-vincular-unico">Vincular este</button>' : '';
       if (unico) no('vincular-unico').onclick = function () { aplicarAtendimento({ chat_id: unico.chat_id, protocolo: unico.protocolo, canal: unico.canal, fila: unico.fila, iniciado_em: unico.iniciado_em }); };
     }
     function redesenharAtendimentos() {
       atualizarBotoesAtendimento();
-      no('atendimentos').innerHTML = atendimentos.length ? atendimentos.map(function (a, i) {
-        return '<button class="gi-atend" type="button" data-atendimento="' + i + '"><span class="gi-atend__corpo"><strong>' + e(atendimentoTexto(a)) +
-          '</strong><span class="gi-ajuda">' + e(a.fila || '') + '</span><span class="gi-ultima-mensagem">' + e(a.ultima || 'Sem mensagem disponível') + '</span></span></button>';
-      }).join('') : '<p>' + (contato ? 'Este cliente não tem atendimento aberto agora.' : 'Escolha o cliente para consultar os atendimentos.') + '</p>';
+      var admin = GI.ctx() && GI.ctx().user && GI.ctx().user.type === 0;
+      no('atendimentos').innerHTML = atendimentos.length ? atendimentos.slice(0, limiteAtendimentos).map(function (a, i) {
+        return '<button class="gi-atend" type="button" data-atendimento="' + i + '"><span class="gi-atend__corpo"><strong>' + e(data(a.iniciado_em)) + ' · ' + e(a.canal || 'Atendimento') + ' · ' + e(a.fila || 'Sem fila') +
+          '</strong><span class="gi-ajuda"><span class="gi-chip">' + (a.vivo ? 'Aberto' : 'Encerrado') + '</span>' + (a.motivo && !a.vivo ? ' · ' + e(a.motivo) : '') + (a.protocolo ? ' · <small>' + e(a.protocolo) + '</small>' : '') + '</span>' +
+          (a.vivo && a.ultima ? '<span class="gi-ultima-mensagem">' + e(a.ultima) + '</span>' : '') + '</span></button>';
+      }).join('') + (atendimentos.length > limiteAtendimentos ? '<button type="button" class="btn btn-slim" id="c-mais-atendimentos">Mostrar mais</button>' : '') :
+        '<p>' + (contato ? admin ? 'Este cliente ainda não tem atendimento.' : 'Nenhum atendimento deste cliente nas suas filas.' : 'Escolha o cliente para consultar os atendimentos.') + '</p>';
+      if (no('mais-atendimentos')) no('mais-atendimentos').onclick = function () { limiteAtendimentos += 10; redesenharAtendimentos(); };
       no('atendimentos').querySelectorAll('[data-atendimento]').forEach(function (b) { b.onclick = function () {
         var a = atendimentos[Number(b.dataset.atendimento)];
         aplicarAtendimento({ chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em });
       }; });
     }
-    function carregarAtendimentos(contatoId, versao) {
-      no('atendimentos').textContent = 'Buscando atendimentos…';
-      return Promise.allSettled([sdk('chats', 'listMine'), sdk('session', 'getPermissions')]).then(function (rs) {
-        var perm = rs[1].status === 'fulfilled' && rs[1].value || {}, falhou = rs.some(function (r) { return r.status === 'rejected'; });
-        return (perm.isAdmin || perm.isSupervisor ? sdk('queues', 'list').catch(function () { falhou = true; return []; }) : Promise.resolve([])).then(function (filas) {
-          return Promise.allSettled(filas.map(function (f) { return sdk('chats', 'listByQueue', [Number(f.id)]); })).then(function (fs) {
-            if (versao !== versaoContato || !caixa.isConnected) return;
-            atendimentos = GI.mesclarAtendimentos([rs[0].status === 'fulfilled' ? rs[0].value : []].concat(fs.map(function (r) {
-              if (r.status === 'rejected') { falhou = true; return []; } return r.value;
-            })), contatoId, filas);
-            return Promise.allSettled(atendimentos.map(function (a) {
-              return sdk('chats', 'getMessages', [a.chat_id, { limit: 1 }]).then(function (msgs) { a.ultima = msgs[0] && (msgs[0].text || msgs[0].fileName) || ''; });
-            })).then(function () {
-              if (versao !== versaoContato || !caixa.isConnected) return;
-              redesenharAtendimentos();
-              no('atendimento-aviso').textContent = falhou ? 'Não foi possível listar todos os atendimentos. Informe o protocolo ou número abaixo.' : '';
-              if (!editando && atendimentos.length === 1 && !selecionado && modoAtendimento === 'nenhum') {
-                var a = atendimentos[0]; selecionado = { chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em };
-                modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado); atualizarBotoesAtendimento();
-              }
+    function carregarAtendimentos(contatoId, versao, tentar) {
+      if (!tentar && consultaAtendimentos && consultaAtendimentos.contatoId === contatoId && consultaAtendimentos.versao === versao) return consultaAtendimentos.promessa;
+      var consulta = { contatoId: contatoId, versao: versao };
+      consultaAtendimentos = consulta; limiteAtendimentos = 10;
+      no('atendimentos').textContent = 'Buscando atendimentos…'; no('atendimento-aviso').textContent = '';
+      consulta.promessa = Promise.allSettled([
+        sdk('data', 'request', ['contacts/getItemChatsHistory', 'POST', { id: contatoId }]),
+        Promise.allSettled([sdk('chats', 'listMine'), sdk('session', 'getPermissions')]).then(function (rs) {
+          var perm = rs[1].status === 'fulfilled' && rs[1].value || {};
+          return (perm.isAdmin || perm.isSupervisor ? sdk('queues', 'list').catch(function () { return []; }) : Promise.resolve([])).then(function (filas) {
+            return Promise.allSettled(filas.map(function (f) { return sdk('chats', 'listByQueue', [Number(f.id)]); })).then(function (fs) {
+              var sucessos = [rs[0]].concat(fs).filter(function (r) { return r.status === 'fulfilled'; });
+              if (!sucessos.length) throw new Error('Listagem indisponível');
+              var abertos = GI.mesclarAtendimentos(sucessos.map(function (r) { return r.value; }), contatoId, filas);
+              return Promise.allSettled(abertos.map(function (a) {
+                return sdk('chats', 'getMessages', [a.chat_id, { limit: 1 }]).then(function (msgs) { a.ultima = msgs[0] && (msgs[0].text || msgs[0].fileName) || ''; });
+              })).then(function () { return abertos; });
             });
           });
-        });
+        })
+      ]).then(function (rs) {
+        if (versao !== versaoContato || consultaAtendimentos !== consulta || !caixa.isConnected) return;
+        var historico = rs[0].status === 'fulfilled', sdkOk = rs[1].status === 'fulfilled';
+        if (!historico && !sdkOk) {
+          no('atendimentos').innerHTML = '<p>Não foi possível listar os atendimentos deste cliente. Tente de novo.</p><button type="button" class="btn btn-slim" id="c-tentar-atendimentos">Tentar de novo</button>';
+          no('tentar-atendimentos').onclick = function () { carregarAtendimentos(contatoId, versao, true); }; return;
+        }
+        atendimentos = GI.unirHistoricoAtendimentos(historico ? GI.lista(rs[0].value) : [], sdkOk ? rs[1].value : []);
+        redesenharAtendimentos();
+        no('atendimento-aviso').textContent = historico ? '' : 'Não foi possível carregar o histórico completo deste cliente.';
+        if (!editando && atendimentos.length === 1 && atendimentos[0].vivo && !selecionado && modoAtendimento === 'nenhum') {
+          var a = atendimentos[0]; selecionado = { chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em };
+          modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado); atualizarBotoesAtendimento();
+        }
       });
+      return consulta.promessa;
     }
     function escolherContato(p) {
       contato = p; no('cliente').value = p.name; no('contatos').textContent = '';
       var v = ++versaoContato;
       selecionado = null; no('vinculo').textContent = atendimentoTexto(null); modoAtendimento = 'nenhum'; atendimentos = []; redesenharAtendimentos();
-      no('manual').hidden = true; no('chat-id').value = ''; no('protocolo').value = ''; ++versaoFotos; anexos = []; no('fotos').textContent = '';
+      ++versaoFotos; anexos = []; no('fotos').textContent = '';
       no('locacao').disabled = true; no('locacao').innerHTML = '<option value="">carregando…</option>';
       GI.chamarPortal('/contatos/' + encodeURIComponent(p.id) + '/locacoes').then(function (r) {
         if (v !== versaoContato || !caixa.isConnected) return;
@@ -686,7 +694,7 @@
     function buscarFotos() {
       var a;
       try { a = atendimentoEscolhido(); } catch (err) { mensagem(erro(err)); return; }
-      if (!a || !idValido(a.chat_id) || modoAtendimento === 'manual') { mensagem('Selecione um atendimento consultado no EvoTalks para buscar as fotos.'); return; }
+      if (!a || !idValido(a.chat_id)) { mensagem('Selecione um atendimento consultado no EvoTalks para buscar as fotos.'); return; }
       var v = ++versaoFotos; no('fotos').textContent = 'buscando fotos…';
       sdk('chats', 'getMessages', [a.chat_id, { limit: 50 }]).then(function (msgs) {
         if (v !== versaoFotos || !caixa.isConnected) return;
@@ -709,7 +717,7 @@
         if (!avisar || enviado === chave) return;
         if (!a || !idValido(a.chat_id)) throw new Error('Vincule um atendimento WhatsApp e salve o chamado antes de avisar o cliente.');
         return sdk('chats', 'get', [a.chat_id]).then(function (chat) {
-          if (!chatAberto(chat, c.solicitante.contato_id) || !/whatsapp/i.test(chat.channel || '')) throw new Error('O atendimento não está aberto para este cliente. Escolha outro atendimento antes de enviar.');
+          if (!chatAberto(chat, c.solicitante.contato_id) || !/whatsapp/i.test(GI.canalAtendimento(chat.channel))) throw new Error('O atendimento não está aberto para este cliente. Escolha outro atendimento antes de enviar.');
           return sdk('chats', 'sendMessage', [a.chat_id, { text: texto }]);
         }).then(function (r) { if (!r || r.sent !== true) throw new Error('Envio não confirmado. A nota não foi registrada como enviada.'); enviado = chave; }).catch(function (err) {
           if (err.code === 'forbidden') throw new Error('Envio não permitido: a janela de 24 horas pode estar encerrada ou faltar permissão. A nota foi mantida. Desmarque o aviso para salvar só internamente.');
@@ -810,11 +818,6 @@
           if (contato) carregarAtendimentos(contato.id, versaoContato).catch(function (err) { mensagem(erro(err)); });
         };
         no('tirar-vinculo').onclick = function () { aplicarAtendimento(null); };
-        no('informar').onclick = function () { no('manual').hidden = !no('manual').hidden; };
-        no('vincular-manual').onclick = function () {
-          modoAtendimento = 'manual';
-          try { var a = atendimentoEscolhido(); aplicarAtendimento(a); } catch (err) { mensagem(erro(err)); }
-        };
         no('carregar-fotos').onclick = buscarFotos;
         no('buscar-pasta').onclick = function () { if (portalParaFotos() && !ocupado) no('pasta').click(); };
         no('pasta').onchange = escolherFotos;

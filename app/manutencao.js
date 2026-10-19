@@ -86,17 +86,45 @@
     listas.forEach(function (lista) { (Array.isArray(lista) ? lista : []).forEach(function (a) {
       if (!GI.chatAberto(a, contatoId) || rows.some(function (r) { return r.chat_id === Number(a.id); })) return;
       var fila = (filas || []).find(function (f) { return Number(f.id) === Number(a.queueId); });
-      rows.push({ chat_id: Number(a.id), protocolo: a.protocol || null, canal: a.channel || null,
-        fila: fila && fila.name || (a.queueId ? 'Fila ' + a.queueId : null), iniciado_em: a.startedAt || null, vivo: true, ultima: '' });
+      var inicio = a.startedAt;
+      if (typeof inicio === 'number') inicio = Number.isFinite(new Date(inicio).getTime()) ? new Date(inicio).toISOString() : null;
+      rows.push({ chat_id: Number(a.id), protocolo: a.protocol || null, canal: GI.canalAtendimento(a.channel),
+        fila: fila && fila.name || (a.queueId ? 'Fila ' + a.queueId : null), iniciado_em: inicio || null, vivo: true, ultima: '' });
     }); });
     return rows;
+  };
+  GI.unirHistoricoAtendimentos = function (historico, abertos) {
+    var mapa = Object.create(null);
+    (abertos || []).forEach(function (a) { mapa[a.chat_id] = Object.assign({}, a); });
+    (historico || []).forEach(function (a) {
+      var n = Number(a.id);
+      if (!Number.isSafeInteger(n) || n <= 0) return;
+      var anterior = mapa[n] || {};
+      mapa[n] = { chat_id: n, protocolo: a.protocol || null, canal: GI.canalAtendimento(a.origin),
+        fila: a.qname || anterior.fila || null, iniciado_em: a.begintime || anterior.iniciado_em || null,
+        vivo: Number(a.status) === 1, motivo: a.endreason || '', ultima: anterior.ultima || '' };
+    });
+    return Object.keys(mapa).map(function (k) { return mapa[k]; }).sort(function (a, b) {
+      return (Date.parse(b.iniciado_em) || 0) - (Date.parse(a.iniciado_em) || 0) || b.chat_id - a.chat_id;
+    });
+  };
+  GI.canalAtendimento = function (origem) {
+    // Os números pertencem ao host; não deduzir o canal pelo número da origem.
+    var tipos = window.omni && window.omni.queueTypes || {};
+    var rotulos = { WHATSAPP: 'WhatsApp', WABA: 'WhatsApp', TELEGRAM: 'Telegram', MESSENGER: 'Messenger',
+      FACEBOOK: 'Messenger', WEBCHAT: 'WebChat', INSTAGRAM: 'Instagram', EMAIL: 'E-mail', SMS: 'SMS' };
+    var nome = Object.keys(tipos).find(function (k) { return tipos[k] != null && String(tipos[k]) === String(origem); });
+    var chave = nome && nome.split('_')[0];
+    if (Object.hasOwn(rotulos, chave)) return rotulos[chave];
+    // Compatibilidade com atendimentos e vínculos antigos que já trazem o rótulo.
+    return Object.keys(rotulos).some(function (k) { return rotulos[k] === origem; }) ? origem : 'Atendimento';
   };
   GI.atendimentoTexto = function (a) {
     if (!a) return 'Nenhum atendimento vinculado';
     var chat = Number.isSafeInteger(Number(a.chat_id)) && Number(a.chat_id) > 0;
     if (!chat) return 'Protocolo ' + (a.protocolo || 'informado') + ' · sem conversa vinculada';
     var partes = ['#' + Number(a.chat_id)];
-    if (a.canal) partes.push(a.canal);
+    if (a.canal != null && a.canal !== '') partes.push(typeof a.canal === 'number' ? GI.canalAtendimento(a.canal) : a.canal);
     if (a.protocolo) partes.push(a.protocolo);
     if (typeof a.iniciado_em === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(a.iniciado_em) && Number.isFinite(Date.parse(a.iniciado_em))) partes.push(GI.dataHora(a.iniciado_em));
     return partes.join(' · ');

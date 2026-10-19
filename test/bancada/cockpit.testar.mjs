@@ -1,4 +1,5 @@
 /* Bancada do cockpit: SDK simulado, portal real da bancada e Chromium sem dependências. */
+import { testarResidencias } from './vinculos.cenarios.mjs';
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
 import { testarAtendente, testarRecusasAtendente } from './atendente.cenarios.mjs';
@@ -79,6 +80,7 @@ try {
     await b.viewport(...tamanho);
     await b.captura('cockpit-' + nome);
   };
+  await testarResidencias(b, base.replace('/app/painel.html', ''));
   await testarAtendente(b, base.replace('/app/painel.html', ''), 1, async (id, texto) => {
     const d = await b.avaliar(async id => GI.chamadosObter(id), id);
     assert.equal(d.eventos.at(-1).texto, texto);
@@ -137,7 +139,7 @@ try {
       await b.esperar(() => bancada.chamadas.filter(c => c.caminho.includes('/contatos/9901/chamados')).length >= 2);
       await capturar(largura + '-' + tema + '-sucesso');
 
-      for (const [cenario, esperado] of [['carregando', 'Carregando'], ['vazio', 'Nenhum imóvel'], ['semchamados', 'Nenhum chamado'], ['erro', 'Portal indisponível'], ['rate', 'Limite de consultas']]) {
+      for (const [cenario, esperado] of [['carregando', 'Carregando'], ['vazio', 'Este contato ainda não tem residência vinculada.'], ['semchamados', 'Nenhum chamado'], ['erro', 'Portal indisponível'], ['rate', 'Limite de consultas']]) {
         await b.navegar(base + q + '&cenario=' + cenario);
         await b.esperar(t => document.querySelector('#cp-conteudo')?.textContent.includes(t), esperado);
         await capturar(largura + '-' + tema + '-' + cenario);
