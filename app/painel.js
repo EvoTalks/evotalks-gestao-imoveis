@@ -320,15 +320,14 @@
   function revisar() {
     confirmado = { geracao: geracao, chat: chat, locacao: locacao(), contato: contato, dados: JSON.parse(JSON.stringify(rascunho())) };
     var f = confirmado.dados;
-    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2 id="cp-confirmacao-titulo" tabindex="-1">Confirme antes de abrir</h2>' + kv('Cliente', contato.name) + kv('Imóvel', locacao().imovel_titulo) + kv('Atendimento', vinculo()) + kv('Título', f.titulo) + kv('Descrição', f.descricao) + kv('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, f.categoria)) + kv('Urgência', valorMapa(GI.CHAMADO_PRIORIDADES, f.prioridade)) + kv('Fotos', f.anexos.length) + kv('Acesso', f.disponibilidade) + kv('Sem o cliente', f.sem_cliente ? 'Autorizado' : 'Não autorizado') + kv('Chaves', f.chaves) + '<p class="gi-cp-meta">O portal calcula o SLA pela prioridade configurada.</p><label class="gi-cp-check"><input type="checkbox" id="cp-conferi">Conferi os dados com o cliente</label></div><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-voltar">Voltar e editar</button><button type="button" class="btn btn-primario" id="cp-confirmar" disabled>Abrir chamado</button></div>';
-    $('cp-conferi').onchange = function () { $('cp-confirmar').disabled = !this.checked; };
+    $('cp-conteudo').innerHTML = '<div class="gi-cartao"><h2 id="cp-confirmacao-titulo" tabindex="-1">Confirme antes de abrir</h2>' + kv('Cliente', contato.name) + kv('Imóvel', locacao().imovel_titulo) + kv('Atendimento', vinculo()) + kv('Título', f.titulo) + kv('Descrição', f.descricao) + kv('Categoria', valorMapa(GI.CHAMADO_CATEGORIAS, f.categoria)) + kv('Urgência', valorMapa(GI.CHAMADO_PRIORIDADES, f.prioridade)) + kv('Fotos', f.anexos.length) + kv('Acesso', f.disponibilidade) + kv('Sem o cliente', f.sem_cliente ? 'Autorizado' : 'Não autorizado') + kv('Chaves', f.chaves) + '<p class="gi-cp-meta">O portal calcula o SLA pela prioridade configurada.</p></div><div class="gi-cp-acoes"><button type="button" class="btn" id="cp-voltar">Voltar e editar</button><button type="button" class="btn btn-primario" id="cp-confirmar">Abrir chamado</button></div>';
     $('cp-voltar').onclick = function () { confirmado = null; renderNovo(); $('cp-titulo').focus(); };
     $('cp-confirmar').onclick = salvar;
     $('cp-confirmacao-titulo').focus();
   }
   async function salvar() {
     var plano = confirmado;
-    if (!plano || gravando || !escrita() || !$('cp-conferi').checked) return;
+    if (!plano || gravando || !escrita()) return;
     gravando = true; $('cp-confirmar').disabled = true; $('cp-voltar').disabled = true; recado('Abrindo chamado…');
     var g = plano.geracao, c = plano.chat, f = plano.dados;
     try {

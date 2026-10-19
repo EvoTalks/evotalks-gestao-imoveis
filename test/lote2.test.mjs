@@ -75,7 +75,7 @@ test('lote 2: regressões no navegador', async t => {
     await t.test('18c: troca silenciosa antes do POST reabilita confirmação', async () => {
       await cockpit('?escrita=1');
       await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Reparo sintético');
-      await b.clicar('#cp-revisar'); await b.clicar('#cp-conferi');
+      await b.clicar('#cp-revisar');
       await b.avaliar(() => { omni.session.getUser = async () => { omni.chats.getSelected = async () => ({ id: 8802, contactId: 9902 }); return { id: 9999 }; }; });
       await b.clicar('#cp-confirmar');
       await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('O atendimento mudou; revise de novo.'));

@@ -125,7 +125,7 @@ try {
       await capturar(largura + '-' + tema + '-confirmacao');
       await b.clicar('#cp-voltar');
       assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Relato de teste sintético.');
-      await b.clicar('#cp-revisar'); await b.clicar('#cp-conferi'); await b.clicar('#cp-confirmar');
+      await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
       await b.esperar(() => document.querySelector('#cp-sucesso')?.textContent.includes('aberta'));
       assert.equal(await b.avaliar(() => document.querySelector('#cp-ver-gestao')), null);
       const criacao = await b.avaliar(() => JSON.parse(bancada.chamadas.find(c => c.method === 'POST').body));
@@ -202,20 +202,20 @@ try {
   await b.navegar(base + '?escrita=1&cenario=recusar'); await pronto();
   await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Preservar no erro');
   await b.clicar('#cp-revisar');
-  assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), true);
-  await b.clicar('#cp-conferi'); await b.clicar('#cp-confirmar');
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
+  await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Título recusado'));
   await b.clicar('#cp-voltar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), 'Preservar no erro');
   await b.avaliar(() => { cenario.tipo = 'semreleitura'; });
-  await b.clicar('#cp-revisar'); await b.clicar('#cp-conferi'); await b.clicar('#cp-confirmar');
+  await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Chamado aberto'));
   assert.equal(await b.avaliar(() => !!document.querySelector('#cp-confirmar')), false);
   prova('422 preserva formulário; releitura recusada após POST mantém sucesso e evita nova gravação');
 
   await b.navegar(base + '?escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Não abrir no chat errado');
-  await b.clicar('#cp-revisar'); await b.clicar('#cp-conferi');
+  await b.clicar('#cp-revisar');
   await b.avaliar(async () => {
     const user = omni.session.getUser;
     omni.session.getUser = async () => { await omni.chats.select(8802); return user(); };
@@ -235,7 +235,7 @@ try {
 
   await b.navegar(base + '?demonstracao=1&escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Chamado sintético');
-  await b.clicar('#cp-revisar'); await b.clicar('#cp-conferi'); await b.clicar('#cp-confirmar');
+  await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => !!document.querySelector('#cp-sucesso'));
   assert.equal(await b.avaliar(() => cenario.tentativasRede), 0);
   assert.equal(await b.avaliar(() => bancada.rede.length + bancada.chamadas.length), 0);

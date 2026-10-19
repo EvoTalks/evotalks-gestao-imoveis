@@ -60,7 +60,7 @@ try {
   await b.esperar(() => document.querySelector('#gi-candidatas').hidden);
   prova('candidato fora do espelho usa snapshot e desaparece da faixa após cadastro');
 
-  await b.navegar(origem + '/app/imoveis.html');
+  await b.navegar(origem + '/app/imoveis.html?perfil=admin');
   await aguardarLista('Apartamento Demonstração Alfa');
   assert.match(await texto('#gi-corpo'), /Disponível/); assert.match(await texto('#gi-corpo'), /Locado/);
   assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/locacoes/mapa')).length), 1);
@@ -90,7 +90,7 @@ try {
   assert.equal(encerrada.locacao.motivo_encerramento, 'Encerramento Demonstração');
   assert.ok(encerrada.historico.some(h => h.acao === 'encerrou'));
   await b.captura('05-encerradas');
-  await b.navegar(origem + '/app/imoveis.html'); await aguardarLista('Apartamento Demonstração Alfa');
+  await b.navegar(origem + '/app/imoveis.html?perfil=admin'); await aguardarLista('Apartamento Demonstração Alfa');
   assert.equal(await b.avaliar(() => document.querySelector('[data-locacao="DEMO-001"]').title), 'Marcar como locado');
   prova('encerramento com motivo preserva histórico e devolve situação Disponível');
 
@@ -110,7 +110,7 @@ try {
   assert.match(await texto('#gi-sem-portal'), /Locados exigem o portal conectado/);
   assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
   await b.captura('06-sem-portal');
-  await b.navegar(origem + '/app/imoveis.html?modo=local'); await aguardarLista('Apartamento Demonstração Alfa');
+  await b.navegar(origem + '/app/imoveis.html?modo=local&perfil=admin'); await aguardarLista('Apartamento Demonstração Alfa');
   assert.ok(await b.avaliar(() => [...document.querySelectorAll('[data-locacao]')].every(b => b.disabled)));
   await b.navegar(origem + '/app/locados.html?modo=fora'); await b.esperar(() => document.querySelector('#b-novo').disabled);
   prova('modo local e portal fora desabilitam ações, exibem aviso e não gravam storage');

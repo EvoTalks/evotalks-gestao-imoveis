@@ -76,6 +76,17 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
       prestador: null, visita: { inicio: null, fim: null }, aprovacao: { status: 'nao_necessaria', enviada_em: null, resposta_em: null, por: null, canal: null, observacao: null } };
     prazos(c); chamados.push(c); evento(c, 'criou', autor); adicionarAnexos(c, d.anexos || [], autor); return c;
   }
+  function avaliarAlcada(c, autor, novaReferencia = false) {
+    const escolhido = (orcamentos[c.id] || []).find(o => o.escolhido);
+    const valor = escolhido?.valor_centavos ?? c.valor_estimado_centavos;
+    const necessaria = c.quem_paga === 'proprietario' && valor > config.alcada_centavos;
+    const status = necessaria ? (novaReferencia || c.aprovacao.status === 'nao_necessaria' ? 'pendente' : c.aprovacao.status) : 'nao_necessaria';
+    if (novaReferencia || status !== c.aprovacao.status) {
+      c.aprovacao = { status, enviada_em: null, resposta_em: null, por: null, canal: null, observacao: null };
+      evento(c, 'aprovacao', autor, { status });
+    }
+    if (status === 'pendente' && ['agendado', 'execucao'].includes(c.status)) mudarStatus(c, 'aprovacao', 'alçada excedida após alteração', autor);
+  }
   function mudarStatus(c, status, motivo, autor) {
     if (!STATUS.includes(status)) erro(422, 'dados_invalidos', { status: 'Status inválido.' });
     if (!aberto(c) && status !== 'triagem') erro(409, 'chamado_encerrado');
@@ -230,11 +241,15 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if (acao === 'anexos') return resposta({ ok: true, anexos: adicionarAnexos(c, d.anexos, autor) });
     if (!aberto(c)) erro(409, 'chamado_encerrado');
     if (!acao) {
+      if ('valor_estimado_centavos' in d && (orcamentos[c.id] || []).some(o => o.escolhido)) erro(422, 'dados_invalidos', { valor_estimado_centavos: 'Definido pelo orçamento escolhido.' });
       validarChamado(d, false);
+      const alterados = editaveis.filter(k => k in d && JSON.stringify(c[k]) !== JSON.stringify(d[k]));
+      if (!alterados.length) return resposta({ ok: true, chamado: objeto(c) });
       const anterior = JSON.stringify(c.atendimento);
-      for (const k of editaveis) if (k in d) c[k] = copia(d[k]);
-      if ('prioridade' in d) prazos(c);
-      evento(c, 'atualizou', autor, { campos: editaveis.filter(k => k in d) });
+      for (const k of alterados) c[k] = copia(d[k]);
+      if (alterados.includes('prioridade')) prazos(c);
+      if (alterados.includes('quem_paga') || alterados.includes('valor_estimado_centavos')) avaliarAlcada(c, autor, alterados.includes('quem_paga') || c.aprovacao.status !== 'recusada');
+      evento(c, 'atualizou', autor, { campos: alterados });
       if (anterior !== JSON.stringify(c.atendimento)) evento(c, 'vinculou_atendimento', autor, { atendimento: c.atendimento });
     }
     if (acao === 'prestador') {
@@ -252,16 +267,15 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
         const o = arr.find(o => o.id === Number(cm[3]));
         if (!o) erro(404, 'nao_encontrado');
         if (cm[4] === 'apagar') {
-          if (o.escolhido && !['novo', 'triagem', 'orcamento'].includes(c.status)) erro(409, 'orcamento_escolhido');
+          if (o.escolhido && (!['novo', 'triagem', 'orcamento'].includes(c.status) || (eventos[c.id] || []).some(ev => ev.tipo === 'status' && ['aprovacao', 'agendado', 'execucao', 'concluido', 'cancelado'].includes(ev.detalhe.para)))) erro(409, 'orcamento_escolhido');
           arr.splice(arr.indexOf(o), 1);
+          if (o.escolhido) { c.valor_estimado_centavos = null; if (c.prestador?.id === o.prestador_id) c.prestador = null; avaliarAlcada(c, autor); }
         } else {
           if (o.escolhido) return resposta({ ok: true, chamado: copia(c) });
           arr.forEach(x => { x.escolhido = x.id === o.id; });
           if (o.valor_centavos != null) c.valor_estimado_centavos = o.valor_centavos;
           c.prestador = o.prestador_id ? { id: o.prestador_id, nome: o.prestador_nome } : null;
-          c.aprovacao = { status: (o.valor_centavos ?? c.valor_estimado_centavos) > config.alcada_centavos && c.quem_paga === 'proprietario' ? 'pendente' : 'nao_necessaria',
-            enviada_em: null, resposta_em: null, por: null, canal: null, observacao: null };
-          evento(c, 'aprovacao', autor, { status: c.aprovacao.status });
+          avaliarAlcada(c, autor, true);
         }
         evento(c, 'orcamento', autor, { orcamento_id: o.id, acao: cm[4] });
       } else {
@@ -280,6 +294,8 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
       }
     }
     if (acao === 'aprovacao') {
+      avaliarAlcada(c, autor);
+      if (c.aprovacao.status === 'recusada' && d.acao === 'aprovada') erro(409, 'aprovacao_recusada');
       if (c.aprovacao.status === 'nao_necessaria') erro(409, 'aprovacao_nao_necessaria');
       if (!['enviada', 'aprovada', 'recusada'].includes(d.acao)) erro(422, 'dados_invalidos', { acao: 'Ação inválida.' });
       if (d.acao === 'enviada') c.aprovacao.enviada_em = instante();

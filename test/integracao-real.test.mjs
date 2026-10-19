@@ -59,3 +59,37 @@ test('simulador e portal real: escolher novamente o orçamento atual preserva a 
     }
   } finally { await real.fechar(); }
 });
+
+test('simulador e portal real: valor escolhido bloqueado, pagador reavalia alçada e alteração vazia não cria evento', {
+  skip: !portalExiste && 'AVISO: portal real ausente; comparação pulada'
+}, async () => {
+  const { criarPortalChamados } = await import('./bancada/portal-chamados.mjs');
+  const real = await criarPortalReal();
+  try {
+    const { locacao } = await real.api('/locacoes', { imovel: { titulo: 'Imóvel Sintético F9' }, contatos: [{ nome: 'Locatário Sintético F9', papel: 'locatario' }] });
+    const falso = criarPortalChamados({ locacoes: [{ id: locacao.id, contatos: [] }], semFixtures: true });
+    const apiReal = async (rota, corpo) => {
+      const r = await fetch(real.url + '/api/ext' + rota, { method: corpo === undefined ? 'GET' : 'POST',
+        headers: { authorization: 'Bearer bancada-sintetica', 'Content-Type': 'application/json' },
+        body: corpo === undefined ? undefined : JSON.stringify(corpo) });
+      return { status: r.status, corpo: await r.json() };
+    };
+    for (const api of [apiReal, async (rota, corpo) => falso.responder(corpo === undefined ? 'GET' : 'POST', rota, undefined, corpo)]) {
+      const { corpo: { chamado: c } } = await api('/chamados', { locacao_id: locacao.id, titulo: 'Orçamento Sintético F9', categoria: 'outros', solicitante: { nome: 'Pessoa Sintética F9' } });
+      const base = '/chamados/' + c.id;
+      const { corpo: { orcamento: o } } = await api(base + '/orcamentos', { prestador_nome: 'Prestador Sintético F9', valor_centavos: 35000 });
+      await api(base + '/orcamentos/' + o.id + '/escolher', {});
+      assert.equal((await api(base, { valor_estimado_centavos: 35000 })).status, 422);
+      const atualizado = await api(base, { quem_paga: 'proprietario' });
+      assert.equal(atualizado.status, 200); assert.equal(atualizado.corpo.chamado.aprovacao.status, 'pendente');
+      assert.equal((await api(base, { prioridade: 'alta' })).status, 200);
+      const antes = (await api(base)).corpo;
+      await api(base, {}); await api(base, { prioridade: 'alta' });
+      const depois = (await api(base)).corpo;
+      assert.equal(depois.eventos.length, antes.eventos.length);
+      assert.deepEqual(depois.chamado.atualizado_em, antes.chamado.atualizado_em);
+      await api(base + '/aprovacao', { acao: 'recusada', por: 'Proprietário Sintético F9', canal: 'WhatsApp' });
+      assert.equal((await api(base + '/aprovacao', { acao: 'aprovada' })).status, 409);
+    }
+  } finally { await real.fechar(); }
+});

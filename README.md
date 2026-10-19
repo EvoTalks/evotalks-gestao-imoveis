@@ -23,7 +23,7 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.21.0, config e contribuições
+manifest.json          identidade 0.21.1, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
@@ -48,7 +48,8 @@ Sem conexão, as telas avisam e bloqueiam as ações de locação.
 A lista de **Imóveis** continua lendo o catálogo nativo (`products`). Uma leitura de
 `/locacoes/mapa` acrescenta a coluna **Situação**: Disponível ou Locado, com contrato e
 locatário. O filtro Situação vale **somente para a página atual**, assim como Estado.
-A chave abre **Marcar como locado**; nos já locados, abre a edição da locação.
+Somente o administrador vê a chave **Marcar como locado** e a edição da locação.
+Situação e seu filtro continuam disponíveis para consulta em todos os perfis.
 
 **Locados** lista e filtra por imóvel, contato, contrato, origem e vigência; mostra resumo
 e paginação. **Novo locado** permite escolher um anúncio ou informar imóvel que nunca
@@ -66,12 +67,12 @@ das buscas da assistente enquanto a locação está ativa e o devolve ao encerra
 da locação sobrevive à saída do anúncio do feed. As locações encerradas ficam disponíveis
 para consulta pelo filtro de contrato, sem edição ou exclusão.
 
-## Chamados e manutenção (0.21.0)
+## Chamados e manutenção (0.21.1)
 
-As contribuições **Locados**, **Chamados**, **Prestadores** e **Manutenção** no atendimento são
-visíveis somente para administradores (`userTypes: [0]`). Imóveis, Campos, Histórico e
-Configurações continuam herdando a visibilidade do menu. Para abrir a manutenção a supervisores
-e agentes, altere `userTypes` no manifest e publique uma nova versão.
+As contribuições **Locados**, **Chamados** e **Prestadores** são exclusivas do
+administrador (`userTypes: [0]`). O cockpit **Manutenção** está disponível para
+administradores, supervisores e atendentes (`[0,1,2]`), sem atalhos para gestão nos
+outros perfis. Imóveis, Campos, Histórico e Configurações herdam a visibilidade do menu.
 
 Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. Nenhum dado de
 manutenção é gravado em `omni.storage`. Sem portal, as telas avisam e bloqueiam ações.
@@ -82,18 +83,31 @@ o prazo e o resumo. A recusa do portal devolve o seletor ao status anterior e ex
 o motivo. Só **Cancelado** pede confirmação inline, com motivo opcional e **Voltar**.
 Chamado encerrado reabre em Triagem pelo mesmo seletor. O **Salvar** cuida dos dados
 e fotos, sem alterar status; rascunhos permanecem intactos durante a troca.
+Só os campos alterados são enviados. Sem alteração nem fotos/notas pendentes, não
+há gravação ou consulta ao salvar. Com orçamento escolhido, o valor é texto somente
+leitura e nunca entra no corpo do Salvar; quem paga e prioridade podem mudar depois
+da escolha. A recusa desse valor pelo portal orienta escolher outro orçamento.
 Fotos enviadas podem ser ampliadas inclusive em chamados encerrados; adicionar fotos
 continua bloqueado nesses chamados.
 
-No novo chamado, busque o cliente e escolha seu imóvel locado. **Escolher atendimento**
+No novo chamado, busque o cliente; uma única locação já vem selecionada. **Escolher atendimento**
 lista as conversas abertas do cliente acessíveis ao usuário, incluindo todas as filas
 para supervisor ou administrador. Um único atendimento já vem escolhido. Em edição,
-um clique grava o vínculo; **Tirar vínculo** o remove. A plataforma não lista encerrados:
+um único atendimento aberto sem vínculo é oferecido no topo com **Vincular este**.
+Um clique grava o vínculo; **Tirar vínculo** só aparece com vínculo e **Abrir atendimento**
+só com conversa aberta. **Escolher atendimento** aguarda a seleção do cliente.
+Um vínculo manual só por protocolo é identificado como sem conversa vinculada. A plataforma não lista encerrados:
 nesses casos, use **Informar protocolo ou número do atendimento**.
 
 **Orçamentos** aceita nome livre do prestador, valor opcional e descrição livre
 (serviço, prazo e condições). O portal guarda o nome automaticamente e o reutiliza nas
 sugestões. **Escolher** aplica direto; **Remover** pede um segundo clique na própria linha.
+Cada operação usa no máximo três requisições: até uma gravação pendente, a operação
+e uma releitura do chamado. A linha é atualizada pela resposta, sem reler a lista;
+a lista completa é recarregada uma vez ao fechar se houve gravação no modal.
+Se há vários blocos pendentes (dados, nota, visita ou fotos), **Salvar dados pendentes**
+os grava sem fechar nem perder a cotação digitada; a operação de orçamento pode
+ser repetida em seguida. A busca de prestadores espera 300 ms e não repete o mesmo termo.
 
 **Nota para a equipe** salva internamente sem confirmação. **Avisar o cliente no WhatsApp**
 só fica disponível com atendimento vinculado e aberto daquele cliente. **Enviar ao cliente**
@@ -105,7 +119,10 @@ tenta registrar sem reenviar.
 prestador responsável, visita, aprovação do proprietário e histórico. A faixa de aprovação
 pendente ou recusada abre a decisão nesse bloco. As regras do portal continuam valendo:
 aprovação pendente bloqueia Agendado/Em execução e Agendado exige visita.
-Registrar decisão é interno; **Enviar ao proprietário** pede revisão da mensagem,
+Registrar decisão é interno: **Aprovado**, **Recusado** e uma observação opcional.
+Envia o nome do proprietário vinculado (ou “Proprietário”) e canal “WhatsApp”.
+Uma recusa exige outra cotação antes de aprovar novamente, conforme o portal.
+**Enviar ao proprietário** pede revisão da mensagem,
 revalida o chat aberto dele e só registra envio após `sent:true`. Sem contato ou chat
 acessível, registra nota interna explicando que a mensagem não saiu. A repetição após
 falha de registro não reenvia dentro da mesma edição. Fotos não são enviadas ao proprietário.
@@ -124,7 +141,8 @@ no chamado, e novos vínculos usam os ativos.
 
 O **cockpit** consulta os chamados da locação do contato, inclusive os abertos por outra
 pessoa, e pode abrir a gestão. A escrita começa desligada (`cockpitAbreChamado: false`);
-quando habilitada, abre chamado após revisão, vinculando o atendimento atual. O modo
+quando habilitada, abre chamado após resumo e confirmação explícita, sem caixa de
+conferência repetida, vinculando o atendimento atual. O modo
 `modoDemonstracao` usa somente dados sintéticos e bloqueia rede e gravação.
 
 ## Onde os campos adicionais moram
@@ -167,6 +185,13 @@ simulado ou nota sem envio, travas de status/visita, SLA, prestadores e configur
 Inclui dados hostis que não viram elementos, portal ausente/indisponível, demonstração
 sem rede e capturas `test/bancada/capturas/fatia4-*.png` em claro, escuro e 390 px.
 
+A regressão `test/ajustes.test.mjs` cobre os itens 1–6 do contrato 0.21.1,
+contagem de requisições, leitura do valor escolhido, perfis, textos e menos cliques.
+`test/integracao/real.cenarios.mjs` repete a escolha e o Salvar de quem paga/prioridade
+contra o router e SQL reais do portal, e mede adicionar/escolher/remover (teto de três).
+Veja [test/integracao/LEIA-ME.md](test/integracao/LEIA-ME.md). A saída literal
+consolidada está em [test/evidencia-f9.txt](test/evidencia-f9.txt).
+
 ## Instalar
 
 ```
@@ -193,7 +218,7 @@ Sempre restrito a você primeiro: a entrega é **imediata** para todo usuário q
 - Decisão que criou o portal: `william-imoveis-decisoes.md`, ADR-14
 - Mecânica de extensões: vault DOCS, `Sistemas/Evotalks/Extensões/`
 
-## Fotos do computador (0.21.0)
+## Fotos do computador (0.21.1)
 
 Nos modais Novo e Editar chamado, **Buscar na pasta** adiciona fotos do computador.
 **Buscar fotos** continua consultando as últimas 50 mensagens do atendimento escolhido.

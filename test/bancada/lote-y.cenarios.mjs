@@ -64,10 +64,15 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
     assert.equal(await b.avaliar(() => window.hostilY), undefined);
     assert.equal((await dados(id)).chamado.status, 'cancelado'); assert.match((await dados(id)).chamado.motivo_cancelamento, /Motivo <img/);
   });
-  await rodar('orçamentos aplicam prioridade, nota e status; dados inválidos preservam os textos', async () => {
+  await rodar('orçamentos limitam a cota e preservam prioridade, nota e status; dados inválidos preservam os textos', async () => {
     const id = await criar(); await abrir(id);
     await b.preencher('#c-prioridade', 'alta'); await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled); await b.preencher('#c-nota', 'Nota pendente sintética');
     await b.preencher('#c-orc-nome', 'Prestador Y sintético'); await b.preencher('#c-orc-observacao', 'Descrição preservada'); await b.clicar('#c-salvar-orcamento');
+    await b.esperar(() => !document.querySelector('#c-salvar-pendentes').hidden); await esperarLivre();
+    assert.equal((await dados(id)).orcamentos.length, 0);
+    await b.clicar('#c-salvar-pendentes'); await esperarLivre();
+    assert.equal(await b.avaliar(() => document.querySelector('#c-orc-observacao').value), 'Descrição preservada');
+    await b.clicar('#c-salvar-orcamento');
     await b.esperar(() => document.querySelectorAll('[data-escolher-orcamento]').length === 1); await esperarLivre();
     let d = await dados(id); assert.equal(d.chamado.prioridade, 'alta'); assert.equal(d.chamado.status, 'triagem');
     assert.ok(d.eventos.some(ev => ev.texto === 'Nota pendente sintética'));
@@ -77,6 +82,8 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
     d = await dados(id); assert.equal(d.orcamentos.length, 1);
     assert.deepEqual(await b.avaliar(() => ['nota', 'orc-nome', 'orc-observacao'].map(id => document.querySelector('#c-' + id).value)), ['Não perder nota', 'Não perder prestador', 'Não perder descrição']);
     await b.preencher('#c-titulo', 'Título válido'); await b.preencher('#c-prioridade', 'emergencia'); await b.clicar('[data-escolher-orcamento]');
+    await b.esperar(() => !document.querySelector('#c-salvar-pendentes').hidden); await esperarLivre();
+    await b.clicar('#c-salvar-pendentes'); await esperarLivre(); await b.clicar('[data-escolher-orcamento]');
     await b.esperar(() => document.querySelector('#c-orcamentos').textContent.includes('Escolhido')); await esperarLivre();
     assert.equal((await dados(id)).chamado.prioridade, 'emergencia');
     await b.preencher('#c-prioridade', 'normal'); await b.clicar('[data-apagar-orcamento]'); await b.clicar('[data-apagar-orcamento]');
@@ -87,7 +94,7 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
     await b.preencher('#c-prioridade', 'alta'); await b.preencher('#c-nota', 'Nota junto do Salvar'); await b.clicar('.gi-modal [data-ok]');
     await b.esperar(() => !document.querySelector('.gi-modal'));
     let d = await dados(id); assert.equal(d.chamado.prioridade, 'alta'); assert.ok(d.eventos.some(ev => ev.texto === 'Nota junto do Salvar'));
-    await abrir(id); await b.preencher('#c-orc-nome', 'Prestador preservado'); await b.preencher('#c-orc-observacao', 'Descrição preservada no 422'); await b.preencher('#c-nota', 'Nota preservada no 422');
+    await abrir(id); await b.preencher('#c-titulo', 'Alteração preservada no 422'); await b.preencher('#c-orc-nome', 'Prestador preservado'); await b.preencher('#c-orc-observacao', 'Descrição preservada no 422'); await b.preencher('#c-nota', 'Nota preservada no 422');
     await b.avaliar(() => {
       const http = omni.http.request;
       omni.http.request = op => {
@@ -95,10 +102,13 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
         return http(op);
       };
     });
-    await b.clicar('#c-salvar-orcamento'); await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Título recusado sintético')); await esperarLivre();
+    await b.clicar('#c-salvar-orcamento'); await b.esperar(() => !document.querySelector('#c-salvar-pendentes').hidden); await esperarLivre();
+    await b.clicar('#c-salvar-pendentes'); await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Título recusado sintético')); await esperarLivre();
     assert.equal((await dados(id)).orcamentos.length, 0);
     assert.deepEqual(await b.avaliar(() => ['nota', 'orc-nome', 'orc-observacao'].map(id => document.querySelector('#c-' + id).value)), ['Nota preservada no 422', 'Prestador preservado', 'Descrição preservada no 422']);
-    await escolherFoto(); await b.clicar('#c-salvar-orcamento');
+    await escolherFoto(); await b.clicar('#c-salvar-pendentes'); await esperarLivre();
+    assert.deepEqual(await b.avaliar(() => ['orc-nome', 'orc-observacao'].map(id => document.querySelector('#c-' + id).value)), ['Prestador preservado', 'Descrição preservada no 422']);
+    await b.clicar('#c-salvar-orcamento');
     await b.esperar(() => document.querySelectorAll('[data-escolher-orcamento]').length === 1); await esperarLivre();
     assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes .gi-foto').length), 0);
     assert.equal(await b.avaliar(() => document.querySelectorAll('#c-fotos img').length), 1);
@@ -117,10 +127,10 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
     let d = await dados(id); assert.equal(d.chamado.prioridade, 'alta'); assert.ok(d.eventos.some(ev => ev.texto === 'Nota antes do proprietário'));
     assert.ok(d.eventos.some(ev => (ev.texto || '').includes('Título novo para o proprietário')));
     await b.preencher('#c-prioridade', 'normal'); await b.preencher('#c-nota', 'Nota antes da decisão');
-    await b.preencher('#c-aprovacao-por', 'Pessoa sintética'); await b.preencher('#c-aprovacao-canal', 'telefone'); await b.clicar('#c-aprovar');
+    await b.clicar('#c-aprovar');
     await b.esperar(() => document.querySelector('#c-aprovacao').textContent.includes('Aprovada')); await esperarLivre();
     d = await dados(id); assert.equal(d.chamado.prioridade, 'normal'); assert.ok(d.eventos.some(ev => ev.texto === 'Nota antes da decisão'));
-    await b.preencher('#c-prioridade', 'alta'); await b.preencher('#c-aprovacao-por', 'Pessoa sintética'); await b.clicar('#c-recusar');
+    await b.preencher('#c-prioridade', 'alta'); await b.clicar('#c-recusar');
     await b.esperar(() => document.querySelector('#c-aprovacao').textContent.includes('Recusada')); await esperarLivre();
     assert.equal((await dados(id)).chamado.prioridade, 'alta');
     // Recusa provoca uma transição legítima do portal, que deve aparecer no select.

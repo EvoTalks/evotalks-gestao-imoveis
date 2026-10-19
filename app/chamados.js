@@ -23,9 +23,10 @@
   }
   function erro(err) {
     var d = err.dados || {}, codigos = { locacao_encerrada: 'Esta locação foi encerrada. Escolha outra locação ativa.', chamado_encerrado: 'O chamado foi encerrado. Reabra antes de alterar.',
-      sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.', sem_visita: 'Agende a visita antes de mudar para Agendado.', aprovacao_pendente: 'A aprovação do proprietário ainda está pendente.', aprovacao_recusada: 'O proprietário recusou o orçamento. Registre uma nova decisão.' };
+      sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.', sem_visita: 'Agende a visita antes de mudar para Agendado.', aprovacao_pendente: 'A aprovação do proprietário ainda está pendente.', aprovacao_recusada: 'O proprietário recusou o orçamento. Escolha outro orçamento antes de aprovar.', aprovacao_nao_necessaria: 'Este orçamento não precisa de aprovação do proprietário.' };
     if (err.status === 429 || (err.code === 'rate_limit' || err.code === 'rate_limited')) return 'Limite de consultas atingido. Aguarde um minuto e tente novamente.';
-    return (err.status ? err.status + ' · ' : '') + (d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : valorMapa(codigos, d.erro) || d.detalhe || err.message || 'Não foi possível concluir.');
+    if (err.status === 422 && d.campos && d.campos.valor_estimado_centavos) return 'O valor vem do orçamento escolhido. Para mudar, escolha outro orçamento.';
+    return (d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : valorMapa(codigos, d.erro) || d.detalhe || err.message || 'Não foi possível concluir.');
   }
   function sdk(grupo, metodo, args) {
     return Promise.resolve().then(function () {
@@ -220,7 +221,7 @@
     var caixa, no, mudou = false, ocupado = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = rascunhoNota && rascunhoNota.enviado || null;
     var pendentes = restantes || [], retomada = null, fotosInteiras = {}, notaConfirmada = rascunhoNota && rascunhoNota.confirmada || null;
     var prestadores = [], configManutencao = null, envioProprietario = null, avisoAberto = false, versaoAviso = 0, timerPrestador, versaoPrestador = 0;
-    var corpo = '<div class="gi-form-chamado"><div id="c-mensagem" class="gi-chamado-msg" role="alert" aria-live="polite"></div>';
+    var corpo = '<div class="gi-form-chamado"><div id="c-mensagem" class="gi-chamado-msg" role="alert" aria-live="polite"></div><button type="button" class="btn btn-slim" id="c-salvar-pendentes" hidden>Salvar dados pendentes</button>';
     if (editando) corpo += '<div class="gi-modal-imovel"><div class="gi-modal-imovel-titulo">' + e(c.titulo) + '</div><div class="gi-ajuda">' +
       e(GI.chamadoNumero(c.numero)) + ' · ' + e(c.imovel && c.imovel.titulo) + ' · ' + e(c.solicitante.nome) + ' · aberto em ' + e(data(c.criado_em)) + '</div></div>' +
       '<div id="c-cabecalho-status"><span id="c-selo">' + status(c) + '</span> <span id="c-prazo" class="gi-ajuda">' + e(GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + '</span></div>' +
@@ -234,7 +235,7 @@
       '<div class="gi-secao"><strong>Atendimento</strong></div><p id="c-vinculo">' + e(atendimentoTexto(c.atendimento)) + '</p>' +
       '<div class="gi-barra"><button type="button" class="btn btn-slim" id="c-trocar">Escolher atendimento</button><button type="button" class="btn btn-slim" id="c-tirar-vinculo">Tirar vínculo</button>' +
       (editando ? '<button type="button" class="btn btn-slim" id="c-abrir-atendimento"' + (!idValido(c.atendimento && c.atendimento.chat_id) ? ' disabled' : '') + '>Abrir atendimento</button>' : '') + '</div>' +
-      '<div id="c-escolha-atendimento"' + (editando ? ' hidden' : '') + '>' + seletorAtendimento() + '</div>' +
+      '<div id="c-atendimento-unico" class="gi-aviso" hidden></div><div id="c-escolha-atendimento"' + (editando ? ' hidden' : '') + '>' + seletorAtendimento() + '</div>' +
       '</fieldset><fieldset id="c-fotos-edicao"' + (fechado ? ' disabled' : '') + '><div class="gi-secao"><strong>Fotos</strong><button class="btn btn-slim" type="button" id="c-carregar-fotos">Buscar fotos do chat</button><button class="btn btn-slim" type="button" id="c-buscar-pasta"' + (GI.modo !== 'portal' ? ' disabled title="Manutenção exige o portal conectado."' : '') + '>Buscar na pasta</button></div>' +
       '<input id="c-pasta" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>' +
       '<p class="gi-ajuda">Do computador: até 10 fotos por seleção e 20 pendentes, até 25 MB cada. Reduzidas antes de enviar ao portal.</p>' +
@@ -251,7 +252,7 @@
       campo('disponibilidade', 'Quando dá para entrar', acesso.disponibilidade) + seletor('sem-cliente', 'Entrar sem o cliente', { nao: 'Não', sim: 'Sim' }, acesso.sem_cliente ? 'sim' : 'nao') + campo('chaves', 'Onde estão as chaves', acesso.chaves) +
       '<div class="gi-campo-caixa"><label for="c-atendente">Atendente responsável</label><select id="c-atendente" disabled><option value="">Sem atendente</option></select></div>' +
       (editando ? seletor('quem-paga', 'Quem paga', { '': 'Não informado', proprietario: 'Proprietário', inquilino: 'Inquilino', imobiliaria: 'Imobiliária' }, c.quem_paga || '') +
-        campo('valor', 'Valor estimado (R$)', c.valor_estimado_centavos == null || !Number.isFinite(Number(c.valor_estimado_centavos)) ? '' : (Number(c.valor_estimado_centavos) / 100).toFixed(2), 'text', 'inputmode="decimal"') +
+        '<div id="c-valor-caixa"></div>' +
         seletor('repasse', 'Lançar no repasse', { nao: 'Não', sim: 'Sim' }, c.repasse ? 'sim' : 'nao') : '') + '</div></fieldset>' +
       (editando ? '<div id="c-visita"></div><div id="c-prestador"></div><div id="c-aprovacao"></div><div class="gi-secao"><strong>Histórico</strong></div><ul id="c-historico" class="gi-historico"></ul><p id="c-ultima" class="gi-ajuda">Última alteração: ' + e(data(c.atualizado_em)) + '</p>' : '') + '</details>' +
       '<div id="c-confirmacao" class="gi-confirmacao" hidden><strong>Confirmar envio</strong><p id="c-confirmacao-texto"></p><div class="gi-barra"><button class="btn" type="button" id="c-voltar">Voltar</button><button class="btn btn-primario" type="button" id="c-confirmar-acao">Enviar</button></div></div></div>';
@@ -267,6 +268,7 @@
       return Promise.resolve().then(fn).catch(function (err) { mensagem(erro(err)); if (propagar) throw err; }).finally(function () {
         ocupado = false; botoes.concat(campos).forEach(function (b) { b.disabled = false; });
         if (editando) { no('avisar').disabled = !avisoAberto; bloquearStatus(c.id, !!gravandoStatus[c.id]); }
+        atualizarBotoesAtendimento();
       });
     }
     function historico(eventos) {
@@ -290,16 +292,17 @@
       return GI.chamadosObter(c.id).then(function (r) {
         if (!caixa.isConnected) return;
         detalhe = r; mudou = true; atualizarEstadoStatus(r.chamado);
-        no('valor').value = c.valor_estimado_centavos == null || !Number.isFinite(Number(c.valor_estimado_centavos)) ? '' : (Number(c.valor_estimado_centavos) / 100).toFixed(2);
+        desenharValor();
         historico(r.eventos || []); no('ultima').textContent = 'Última alteração: ' + data(c.atualizado_em);
-        desenharFatia4(); return carregar();
+        desenharFatia4(); fotosSalvas(); atualizarLinha(c);
       }).catch(function (err) { throw new Error('Operação registrada; não repita sem consultar o chamado. A releitura falhou. ' + erro(err)); });
     }
-    function acaoFatia4(fn) {
-      if (!confirmarNotaPendente(function () { acaoFatia4(fn); })) return;
+    function acaoFatia4(fn, orcamento) {
+      if (!confirmarNotaPendente(function () { acaoFatia4(fn, orcamento); })) return;
       return guardado(function () {
         if (fechado) throw new Error('Reabra o chamado antes de alterar.');
-        return aplicarPendentes().then(fn).then(function () { mudou = true; return atualizarFatia4(); });
+        clearTimeout(timerPrestador); ++versaoPrestador;
+        return aplicarPendentes({ semReleitura: true, orcamento: orcamento }).then(fn).then(function () { mudou = true; return atualizarFatia4(); });
       });
     }
     function opcoesPrestadores(atual, vazio) {
@@ -332,6 +335,11 @@
       });
       desenharFaixaAprovacao(); desenharPendentes();
     }
+    function orcamentoEscolhido() { return (detalhe.orcamentos || []).some(function (o) { return o.escolhido; }); }
+    function desenharValor() {
+      no('valor-caixa').innerHTML = orcamentoEscolhido() ? '<label>Valor estimado</label><p id="c-valor">' + e(moeda(c.valor_estimado_centavos)) + ' · definido pelo orçamento escolhido</p>' :
+        campo('valor', 'Valor estimado (R$)', c.valor_estimado_centavos == null || !Number.isFinite(Number(c.valor_estimado_centavos)) ? '' : (Number(c.valor_estimado_centavos) / 100).toFixed(2), 'text', 'inputmode="decimal"');
+    }
     function desenharFatia4() {
       clearTimeout(timerPrestador); ++versaoPrestador;
       var orcamentos = detalhe.orcamentos || [], ap = c.aprovacao || { status: 'nao_necessaria' }, visita = c.visita || {};
@@ -354,15 +362,19 @@
         '<fieldset class="gi-fatia4"' + (fechado || ap.status === 'nao_necessaria' ? ' disabled' : '') + '><div class="gi-grade-modal">' +
         '<div class="gi-campo-caixa"><label for="c-proprietario">Proprietário da locação</label><select id="c-proprietario">' +
         ((detalhe.locacao && detalhe.locacao.contatos || []).filter(function (p) { return p.papel === 'proprietario'; }).map(function (p, i) { return '<option value="' + i + '">' + e(p.nome) + (idValido(p.contato_id) ? '' : ' (sem vínculo)') + '</option>'; }).join('') || '<option value="">Sem proprietário cadastrado</option>') + '</select></div>' +
-        campo('aprovacao-por', 'Quem respondeu', ap.por) + campo('aprovacao-canal', 'Canal da resposta', ap.canal || 'telefone') + campo('aprovacao-observacao', 'Observação da resposta', '') +
-        '</div><div class="gi-barra"><button class="btn btn-slim" type="button" id="c-enviar-proprietario">Enviar ao proprietário</button><button class="btn btn-slim" type="button" id="c-aprovar">Registrar aprovação</button><button class="btn btn-slim btn-perigo" type="button" id="c-recusar">Registrar recusa</button></div></fieldset>';
+        campo('aprovacao-observacao', 'Observação (opcional)', '') +
+        '</div><div class="gi-barra"><button class="btn btn-slim" type="button" id="c-enviar-proprietario">Enviar ao proprietário</button><button class="btn btn-slim" type="button" id="c-aprovar">Aprovado</button><button class="btn btn-slim btn-perigo" type="button" id="c-recusar">Recusado</button></div></fieldset>';
       no('prestador').innerHTML = '<div class="gi-secao"><strong>Prestador</strong></div><fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-grade-modal"><div class="gi-campo-caixa"><label for="c-prestador-id">Prestador responsável</label><select id="c-prestador-id">' +
         opcoesPrestadores(c.prestador && c.prestador.id, 'Sem prestador') + '</select></div></div></fieldset>';
       no('visita').innerHTML = '<div class="gi-secao"><strong>Visita</strong><span class="gi-ajuda">obrigatória antes de mudar para Agendado</span></div><fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-grade-modal">' +
         campo('visita-inicio', 'Início da visita', dataLocal(visita.inicio), 'datetime-local') + campo('visita-fim', 'Fim da visita (opcional)', dataLocal(visita.fim), 'datetime-local') +
         '</div><p class="gi-ajuda">Para remover a visita, deixe o início vazio e salve.</p></fieldset>';
+      var ultimoTermoPrestador = '';
       no('orc-nome').oninput = function () {
-        clearTimeout(timerPrestador); var termo = no('orc-nome').value.trim(), v = ++versaoPrestador;
+        var termo = no('orc-nome').value.trim();
+        if (termo === ultimoTermoPrestador) return;
+        ultimoTermoPrestador = termo;
+        clearTimeout(timerPrestador); var v = ++versaoPrestador;
         no('prestador-sugestoes').textContent = '';
         if (!termo) return;
         timerPrestador = setTimeout(function () {
@@ -380,19 +392,20 @@
         if (!nome) throw new Error('Informe o prestador do orçamento.');
         return GI.chamadosOrcamentoCriar(c.id, { prestador_nome: nome, valor_centavos: valor ? valorMonetario(valor) : null,
           observacao: no('orc-observacao').value.trim() || null });
-      }); };
+      }, true); };
       no('orcamentos').querySelectorAll('[data-escolher-orcamento]').forEach(function (b) { b.onclick = function () {
         var o = orcamentos[Number(b.dataset.escolherOrcamento)];
-        acaoFatia4(function () { return GI.chamadosOrcamentoEscolher(c.id, o.id).then(function (r) { envioProprietario = null; return r; }); });
+        acaoFatia4(function () { return GI.chamadosOrcamentoEscolher(c.id, o.id).then(function (r) { envioProprietario = null; return r; }); }, true);
       }; });
       no('orcamentos').querySelectorAll('[data-apagar-orcamento]').forEach(function (b) { b.onclick = function () {
         if (!b.dataset.confirmar) { b.dataset.confirmar = '1'; b.textContent = 'Confirmar remoção?'; return; }
         var o = orcamentos[Number(b.dataset.apagarOrcamento)];
-        acaoFatia4(function () { return GI.chamadosOrcamentoApagar(c.id, o.id); });
+        acaoFatia4(function () { return GI.chamadosOrcamentoApagar(c.id, o.id); }, true);
       }; });
       ['aprovar', 'recusar'].forEach(function (id) { no(id).onclick = function () {
-        var d = { acao: id === 'aprovar' ? 'aprovada' : 'recusada', por: no('aprovacao-por').value.trim(), canal: no('aprovacao-canal').value.trim(), observacao: no('aprovacao-observacao').value.trim() };
-        if (!d.por || !d.canal) { mensagem('Informe quem respondeu e por qual canal.'); return; }
+        var donos = (detalhe.locacao && detalhe.locacao.contatos || []).filter(function (p) { return p.papel === 'proprietario'; });
+        var dono = donos[Number(no('proprietario').value)];
+        var d = { acao: id === 'aprovar' ? 'aprovada' : 'recusada', por: dono && dono.nome || 'Proprietário', canal: 'WhatsApp', observacao: no('aprovacao-observacao').value.trim() };
         acaoFatia4(function () { return GI.chamadosAprovacao(c.id, d); });
       }; });
       no('enviar-proprietario').onclick = function prepararEnvio() {
@@ -470,12 +483,13 @@
     function atualizarAviso() {
       if (!editando) return Promise.resolve();
       var v = ++versaoAviso, a = selecionado;
-      avisoAberto = false; no('avisar').disabled = true; no('avisar').checked = false;
+      avisoAberto = false; no('abrir-atendimento').hidden = true; no('avisar').disabled = true; no('avisar').checked = false;
       no('aviso-dica').textContent = 'Escolha o atendimento acima para avisar o cliente.';
       no('salvar-nota').textContent = 'Salvar nota';
       if (!a || !idValido(a.chat_id)) return Promise.resolve();
       return sdk('chats', 'get', [a.chat_id]).then(function (chat) {
         if (!caixa.isConnected || v !== versaoAviso) return;
+        no('abrir-atendimento').hidden = !chatAberto(chat, contato.id);
         avisoAberto = chatAberto(chat, contato.id) && /whatsapp/i.test(chat.channel || '');
         no('avisar').disabled = !avisoAberto;
         no('aviso-dica').textContent = avisoAberto ? '' : 'Escolha o atendimento acima para avisar o cliente.';
@@ -483,17 +497,30 @@
     }
     function aplicarAtendimento(a) {
       return guardado(function () {
-        return (editando ? GI.chamadosAtualizar(c.id, { atendimento: a }) : Promise.resolve()).then(function () {
+        return (editando ? GI.chamadosAtualizar(c.id, { atendimento: a }) : Promise.resolve()).then(function (r) {
           selecionado = a; modoAtendimento = a ? 'atual' : 'nenhum';
-          if (editando) { c.atendimento = a; mudou = true; }
+          if (editando) { atualizarEstadoStatus(r.chamado); atualizarLinha(c); mudou = true; }
           ++versaoFotos; anexos = []; no('fotos').textContent = ''; no('manual').hidden = true; no('confirmacao').hidden = true;
           no('vinculo').textContent = atendimentoTexto(a); no('escolha-atendimento').hidden = true;
-          if (no('abrir-atendimento')) no('abrir-atendimento').disabled = !idValido(a && a.chat_id);
-          return atualizarAviso().then(function () { if (editando) return carregar(); });
+          atualizarBotoesAtendimento();
+          return atualizarAviso();
         });
       }).then(function () { if (editando) no('avisar').disabled = !avisoAberto; });
     }
+    function atualizarBotoesAtendimento() {
+      no('trocar').disabled = !contato || fechado; no('trocar').title = contato ? '' : 'Escolha o cliente primeiro';
+      no('tirar-vinculo').hidden = !selecionado;
+      if (no('abrir-atendimento')) {
+        no('abrir-atendimento').disabled = ocupado || !idValido(selecionado && selecionado.chat_id);
+        if (!selecionado) no('abrir-atendimento').hidden = true;
+      }
+      var unico = editando && !selecionado && atendimentos.length === 1 ? atendimentos[0] : null;
+      no('atendimento-unico').hidden = !unico;
+      no('atendimento-unico').innerHTML = unico ? e(atendimentoTexto(unico)) + ' <button class="btn btn-slim" type="button" id="c-vincular-unico">Vincular este</button>' : '';
+      if (unico) no('vincular-unico').onclick = function () { aplicarAtendimento({ chat_id: unico.chat_id, protocolo: unico.protocolo, canal: unico.canal, fila: unico.fila, iniciado_em: unico.iniciado_em }); };
+    }
     function redesenharAtendimentos() {
+      atualizarBotoesAtendimento();
       no('atendimentos').innerHTML = atendimentos.length ? atendimentos.map(function (a, i) {
         return '<button class="gi-atend" type="button" data-atendimento="' + i + '"><span class="gi-atend__corpo"><strong>' + e(atendimentoTexto(a)) +
           '</strong><span class="gi-ajuda">' + e(a.fila || '') + '</span><span class="gi-ultima-mensagem">' + e(a.ultima || 'Sem mensagem disponível') + '</span></span></button>';
@@ -521,7 +548,7 @@
               no('atendimento-aviso').textContent = falhou ? 'Não foi possível listar todos os atendimentos. Informe o protocolo ou número abaixo.' : '';
               if (!editando && atendimentos.length === 1 && !selecionado && modoAtendimento === 'nenhum') {
                 var a = atendimentos[0]; selecionado = { chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em };
-                modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado);
+                modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado); atualizarBotoesAtendimento();
               }
             });
           });
@@ -540,6 +567,7 @@
         no('locacao').innerHTML = '<option value="">' + (locacoes.length ? 'Escolha o imóvel' : 'Nenhum imóvel locado para este contato') + '</option>' + locacoes.map(function (l, i) {
           return '<option value="' + i + '">' + e(l.imovel_titulo) + ' · contrato ' + e(l.contrato_numero || '—') + '</option>';
         }).join(''); no('locacao').disabled = false;
+        if (locacoes.length === 1) no('locacao').value = '0';
       }).catch(function (err) { if (v === versaoContato) { no('locacao').innerHTML = '<option value="">Falha ao consultar imóveis; selecione o cliente novamente</option>'; mensagem(erro(err)); } });
       carregarAtendimentos(p.id, v).catch(function (err) { if (v === versaoContato) mensagem(erro(err)); });
     }
@@ -553,7 +581,15 @@
         atendente: u ? { user_id: idValido(u.id), nome: u.name } : null, atendimento: atendimentoEscolhido(),
         acesso: { disponibilidade: no('disponibilidade').value.trim(), sem_cliente: no('sem-cliente').value === 'sim', chaves: no('chaves').value.trim() } };
       if (!editando) { d.locacao_id = idValido(l.id); d.origem = 'gestao'; d.solicitante = { contato_id: idValido(contato.id), nome: contato.name, telefone: contato.phone }; d.anexos = anexosSelecionados(); }
-      else { d.quem_paga = no('quem-paga').value || null; d.valor_estimado_centavos = no('valor').value.trim() === '' ? null : valorMonetario(no('valor').value.trim()); d.repasse = no('repasse').value === 'sim'; }
+      else {
+        d.quem_paga = no('quem-paga').value || null; d.repasse = no('repasse').value === 'sim';
+        if (!orcamentoEscolhido()) d.valor_estimado_centavos = no('valor').value.trim() === '' ? null : valorMonetario(no('valor').value.trim());
+        var original = { titulo: (c.titulo || '').trim(), descricao: (c.descricao || '').trim(), categoria: c.categoria, prioridade: c.prioridade,
+          atendente: c.atendente || null, atendimento: c.atendimento || null,
+          acesso: { disponibilidade: (c.acesso && c.acesso.disponibilidade || '').trim(), sem_cliente: !!(c.acesso && c.acesso.sem_cliente), chaves: (c.acesso && c.acesso.chaves || '').trim() },
+          quem_paga: c.quem_paga || null, valor_estimado_centavos: c.valor_estimado_centavos == null ? null : Number(c.valor_estimado_centavos), repasse: !!c.repasse };
+        Object.keys(d).forEach(function (k) { if (JSON.stringify(d[k]) === JSON.stringify(original[k])) delete d[k]; });
+      }
       return d;
     }
     function anexosSelecionados() {
@@ -665,7 +701,7 @@
         });
       }).catch(function (err) { if (v === versaoFotos) { fotosSalvas(); mensagem(erro(err)); } });
     }
-    function gravarNota() {
+    function gravarNota(semReleitura) {
       var texto = no('nota').value.trim(), avisar = no('avisar').checked, a = c.atendimento;
       if (!texto) return Promise.resolve();
       var chave = texto + '\n' + (a && a.chat_id);
@@ -685,7 +721,8 @@
         var semAviso = avisar && enviado !== chave;
         no('avisar').checked = false; enviado = null; notaConfirmada = null;
         no('salvar-nota').textContent = 'Salvar nota';
-        return carregar().then(function () { return GI.chamadosObter(c.id); }).then(function (r) { historico(r.eventos || []); no('ultima').textContent = 'Última alteração: ' + data(r.chamado.atualizado_em); mensagem(semAviso ? 'Nota salva sem aviso ao cliente: o envio não foi confirmado.' : 'Nota salva.'); });
+        if (semReleitura) return;
+        return GI.chamadosObter(c.id).then(function (r) { atualizarEstadoStatus(r.chamado); atualizarLinha(c); historico(r.eventos || []); no('ultima').textContent = 'Última alteração: ' + data(r.chamado.atualizado_em); mensagem(semAviso ? 'Nota salva sem aviso ao cliente: o envio não foi confirmado.' : 'Nota salva.'); });
       });
     }
     function confirmarNotaPendente(fn) {
@@ -700,7 +737,8 @@
       if (!no('nota').value.trim()) { mensagem('Escreva uma nota antes de salvar.'); return; }
       if (confirmarNotaPendente(salvarNota)) return guardado(gravarNota);
     }
-    function aplicarPendentes() {
+    function aplicarPendentes(op) {
+      op = op || {};
       if (GI.modo !== 'portal') throw new Error('Manutenção exige o portal conectado.');
       var d = fechado ? null : dados(), gravado = null;
       var visita = null, prestadorId = null;
@@ -711,23 +749,32 @@
         prestadorId = idValido(no('prestador-id').value);
       }
       var novos = editando ? anexosSelecionados() : [], fotosAlteradas = novos.length > 0 || pendentes.length > 0;
-      return (fechado ? Promise.resolve({ chamado: c }) : editando ? GI.chamadosAtualizar(c.id, d) : GI.chamadosCriar(d)).then(function (r) {
-        gravado = r.chamado; mudou = true;
+      var dadosAlterados = d && Object.keys(d).length > 0, antesVisita = c.visita || {};
+      var visitaAlterada = visita && (dataLocal(visita.inicio) !== dataLocal(antesVisita.inicio) || dataLocal(visita.fim) !== dataLocal(antesVisita.fim));
+      var prestadorAlterado = editando && !fechado && prestadorId !== idValido(c.prestador && c.prestador.id);
+      var operacoes = (dadosAlterados ? 1 : 0) + (visitaAlterada ? 1 : 0) + (prestadorAlterado ? 1 : 0) + (novos.length ? 1 : 0) + pendentes.length + (editando && no('nota').value.trim() ? 1 : 0);
+      if (op.orcamento && operacoes > 1) {
+        no('salvar-pendentes').hidden = false;
+        throw new Error('Salve os dados, fotos e notas pendentes antes de alterar os orçamentos. O orçamento digitado será mantido.');
+      }
+      return (fechado || editando && !dadosAlterados ? Promise.resolve({ chamado: c }) : editando ? GI.chamadosAtualizar(c.id, d) : GI.chamadosCriar(d)).then(function (r) {
+        gravado = r.chamado; mudou = mudou || !editando || operacoes > 0;
         return (editando && !fechado ? Promise.resolve().then(function () {
-          var antes = c.visita || {};
-          return visita.inicio !== (antes.inicio || null) || visita.fim !== (antes.fim || null) ? GI.chamadosVisita(c.id, visita) : null;
-        }).then(function () { return prestadorId !== idValido(c.prestador && c.prestador.id) ? GI.chamadosPrestador(c.id, prestadorId) : null; }) : Promise.resolve()).then(function () { if (editando) { c = gravado; return gravarNota(); } }).then(function () { return carregar(); }).then(function () {
+          return visitaAlterada ? GI.chamadosVisita(c.id, visita).then(function (r) { gravado = r.chamado; }) : null;
+        }).then(function () { return prestadorAlterado ? GI.chamadosPrestador(c.id, prestadorId).then(function (r) { gravado = r.chamado; }) : null; }) : Promise.resolve()).then(function () { if (editando) { c = gravado; return gravarNota(op.semReleitura); } }).then(function () {
           return novos.length ? GI.chamadosAnexos(gravado.id, novos) : null;
         }).then(function () {
           // Referências do chat confirmadas não voltam à seleção se uma foto local falhar.
           no('fotos').querySelectorAll('[data-foto]').forEach(function (b) { b.checked = false; });
           return enviarPendentes(gravado.id);
-        }).then(function () { return GI.chamadosObter(gravado.id); }).then(function (lido) {
-          if (editando) { detalhe = lido; c = lido.chamado; if (fotosAlteradas) fotosSalvas(); }
+        }).then(function () {
+          return op.semReleitura || editando && !operacoes ? { chamado: c } : GI.chamadosObter(gravado.id);
+        }).then(function (lido) {
+          if (editando) { if (lido.eventos) detalhe = lido; c = lido.chamado; atualizarLinha(c); if (fotosAlteradas && lido.anexos) fotosSalvas(); }
           return lido.chamado;
         });
       }).catch(function (err) {
-        return (gravado ? carregar() : Promise.resolve()).then(function () {
+        return Promise.resolve().then(function () {
           if (gravado && (!editando || terminal(gravado) && pendentes.length)) {
             // Fotos já escolhidas podem ser repetidas mesmo após encerrar pelo select.
             return GI.chamadosObter(gravado.id).catch(function () {
@@ -752,7 +799,7 @@
           preencherUsuarios();
         }).catch(function () { if (caixa.isConnected) { usuarios = []; preencherUsuarios(); mensagem('Não foi possível listar atendentes. O vínculo existente foi preservado; reabra para tentar novamente.'); } });
         function preencherUsuarios() {
-          var original = c.atendente, atual = original || GI.ctx() && GI.ctx().user;
+          var original = c.atendente, atual = editando ? original : GI.ctx() && GI.ctx().user;
           if (original && !usuarios.some(function (u) { return Number(u.id) === Number(original.user_id); })) usuarios.push({ id: original.user_id, name: original.nome });
           no('atendente').innerHTML = '<option value="">Sem atendente</option>' + usuarios.map(function (u, i) { return '<option value="' + i + '"' + (atual && Number(u.id) === Number(atual.user_id || atual.id) ? ' selected' : '') + '>' + e(u.name) + '</option>'; }).join('');
           usuariosCarregados = true; no('atendente').disabled = fechado;
@@ -772,6 +819,10 @@
         no('buscar-pasta').onclick = function () { if (portalParaFotos() && !ocupado) no('pasta').click(); };
         no('pasta').onchange = escolherFotos;
         desenharPendentes(); mensagem(avisoInicial);
+        no('salvar-pendentes').onclick = function salvarPendentes() {
+          if (!confirmarNotaPendente(salvarPendentes)) return;
+          guardado(function () { return aplicarPendentes().then(function () { no('salvar-pendentes').hidden = true; mensagem('Dados salvos. Agora adicione, escolha ou remova o orçamento.'); }); });
+        };
         no('fechar-foto').onclick = function () { no('foto-ampliada').hidden = true; };
         no('voltar-descarte').onclick = function () { no('descarte').hidden = true; };
         no('descartar').onclick = function () { pendentes = []; caixa.closest('.gi-modal').querySelector('[data-cancelar]').click(); };
@@ -796,6 +847,8 @@
             }, 400);
           };
         } else {
+          desenharValor();
+          if (contato && contato.id) carregarAtendimentos(contato.id, versaoContato).catch(function (err) { mensagem(erro(err)); });
           no('orcamentos').textContent = 'Carregando orçamentos…';
           Promise.allSettled([GI.prestadores(), GI.manutencaoConfig()]).then(function (rs) {
             if (!caixa.isConnected) return;
@@ -831,7 +884,7 @@
           if (retomada) caixa.closest('.gi-modal').querySelector('[data-cancelar]').click();
         });
       }
-    }).then(function (r) { if (atualizarModalStatus === atualizarEstadoStatus) atualizarModalStatus = null; clearTimeout(timerBusca); clearTimeout(timerPrestador); ++versaoPrestador; ++versaoAviso; ++versaoContato; ++versaoFotos; if (retomada) return formulario(retomada.detalhe, retomada.pendentes, retomada.aviso, retomada.nota); return (r || mudou) ? carregar().then(function () { return r; }) : null; });
+    }).then(function (r) { if (atualizarModalStatus === atualizarEstadoStatus) atualizarModalStatus = null; clearTimeout(timerBusca); clearTimeout(timerPrestador); ++versaoPrestador; ++versaoAviso; ++versaoContato; ++versaoFotos; if (retomada) return formulario(retomada.detalhe, retomada.pendentes, retomada.aviso, retomada.nota); return mudou ? carregar().then(function () { return r; }) : r || null; });
   }
   function abrirEdicao(id) { return GI.chamadosObter(id).then(formulario); }
   function cancelar(c) {

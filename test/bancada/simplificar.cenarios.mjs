@@ -40,7 +40,7 @@ export async function testarSimplificacao(b, origem) {
       return request(op);
     };
   });
-  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('422'));
+  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('Categoria inválida'));
   assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Simplificação sintética');
   await salvar();
   const criado = await b.avaliar(async () => (await GI.chamados({ busca: 'Simplificação sintética' })).rows[0]);
@@ -63,12 +63,12 @@ export async function testarSimplificacao(b, origem) {
   assert.equal((await b.avaliar(async id => GI.chamadosObter(id), criado.id)).chamado.status, 'triagem');
   await novo(); await b.preencher('#c-locacao', '1');
   await b.avaliar(async () => GI.locacoesEncerrar(3, 'Encerramento concorrente sintético'));
-  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('409'));
+  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('encerrad'));
   assert.equal(await b.avaliar(() => document.querySelector('#c-locacao').value), '1');
   assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Simplificação sintética'); await fechar();
   await abrir(criado.id); await b.preencher('#c-titulo', 'Edição preservada no conflito');
   await b.avaliar(async id => GI.chamadosStatus(id, 'concluido'), criado.id);
-  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('409'));
+  await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('encerrad'));
   assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Edição preservada no conflito');
   assert.equal(await b.avaliar(() => document.querySelector('#c-dados').disabled), false);
   await b.avaliar(async id => GI.chamadosStatus(id, 'triagem'), criado.id); await fechar();
@@ -109,7 +109,7 @@ export async function testarSimplificacao(b, origem) {
     omni.http.request = op => { if (op.method === 'POST' && op.url.endsWith('/notas')) { omni.http.request = request; return Promise.resolve({ status: 503, body: '{"erro":"indisponivel"}' }); } return request(op); };
   });
   await b.preencher('#c-nota', 'Aviso sem duplicar'); await b.clicar('#c-avisar'); await b.clicar('#c-salvar-nota'); await b.clicar('#c-confirmar-acao');
-  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('503'));
+  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('indisponivel'));
   const envios = await b.avaliar(() => bancada.mensagens.length); await b.clicar('#c-confirmar-acao');
   await b.esperar(() => document.querySelector('#c-nota').value === '' && !document.querySelector('#c-salvar-nota').disabled); assert.equal(await b.avaliar(() => bancada.mensagens.length), envios);
   // Chat fecha entre o check e o envio: revalida e não envia nem registra.
