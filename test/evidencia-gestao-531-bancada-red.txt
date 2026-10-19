@@ -1,0 +1,20 @@
+{"chamadas":[["GET","/api/ext/info"],["GET","/api/ext/campos?todos=1"],["GET","/api/ext/preenchidos"],["GET","/api/ext/locacoes/mapa"]]}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: botão de locação: ?usuario=531&perfil=agente
+
+false !== true
+
+    at testarGestores (file:///srv/devhome/dev-marco-souza/.worktrees/evotalks-gestao-imoveis-hotfix/test/bancada/gestores.cenarios.mjs:8:12)
+    at async file:///srv/devhome/dev-marco-souza/.worktrees/evotalks-gestao-imoveis-hotfix/test/bancada/cockpit.testar.mjs:89:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.22.1

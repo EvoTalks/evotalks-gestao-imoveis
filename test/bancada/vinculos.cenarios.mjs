@@ -13,7 +13,11 @@ export async function testarHistorico(b, origem) {
     }
     await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), chamadoId);
   };
-  const abrir = async () => { await b.clicar('[data-editar="' + chamadoId + '"]'); await b.esperar(() => !!document.querySelector('#c-trocar')); await b.clicar('#c-trocar'); await b.esperar(() => !document.querySelector('#c-atendimentos').textContent.includes('Buscando')); };
+  const abrir = async () => {
+    // Fechar o modal dispara uma releitura assíncrona que substitui as linhas.
+    await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), chamadoId);
+    await b.clicar('[data-editar="' + chamadoId + '"]'); await b.esperar(() => !!document.querySelector('#c-trocar')); await b.clicar('#c-trocar'); await b.esperar(() => !document.querySelector('#c-atendimentos').textContent.includes('Buscando'));
+  };
   const fechar = async () => { await b.clicar('.gi-modal [data-cancelar]'); await b.esperar(() => !document.querySelector('.gi-modal')); };
   await navegar();
   await b.avaliar(h => { bancada.historico = [
@@ -85,7 +89,12 @@ export async function testarResidencias(b, origem) {
     await b.clicar('#cp-vincular-residencia'); await b.preencher('#cp-r-busca', termo);
     await b.esperar(() => !!document.querySelector('[data-residencia]'));
   };
-  const confirmar = async () => { await b.clicar('#cp-r-confirmar'); await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Residência vinculada.')); };
+  const confirmar = async () => {
+    await b.clicar('#cp-r-confirmar'); await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Residência vinculada.'));
+    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').previousElementSibling.tagName), 'HEADER');
+    const recado = await b.avaliar(() => ({ texto: document.querySelector('#cp-recado').textContent, role: document.querySelector('#cp-recado').getAttribute('role') }));
+    assert.equal(recado.role, recado.texto.includes('Não foi possível atualizar') ? 'alert' : 'status');
+  };
   const capturar = async nome => {
     assert.ok(await b.avaliar(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll('#gi-cockpit *')].every(el => el.scrollWidth <= el.clientWidth + 1 || ['INPUT','TEXTAREA','SELECT'].includes(el.tagName))), nome + ': sem overflow');
     await b.captura('residencia-' + nome);

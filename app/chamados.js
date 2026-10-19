@@ -437,7 +437,7 @@
         if (rs[1].status === 'fulfilled' && rs[1].value) chats = chats.concat(rs[1].value);
         var perm = rs[2].status === 'fulfilled' && rs[2].value || {};
         var filas = Array.from(new Set(chats.map(function (a) { return idValido(a.queueId); }).filter(Boolean)));
-        return (perm.isAdmin || perm.isSupervisor ? Promise.allSettled(filas.map(function (n) { return sdk('chats', 'listByQueue', [n]); })) : Promise.resolve([])).then(function (filasRs) {
+        return (/* Permissão do SDK para listar filas, não acesso à gestão da extensão. */ perm.isAdmin || perm.isSupervisor ? Promise.allSettled(filas.map(function (n) { return sdk('chats', 'listByQueue', [n]); })) : Promise.resolve([])).then(function (filasRs) {
           filasRs.forEach(function (r) { if (r.status === 'fulfilled' && Array.isArray(r.value)) chats = chats.concat(r.value); });
           return chats.find(function (a) { return chatAberto(a, contatoId); }) || null;
         });
@@ -513,7 +513,7 @@
     }
     function redesenharAtendimentos() {
       atualizarBotoesAtendimento();
-      var admin = GI.ctx() && GI.ctx().user && GI.ctx().user.type === 0;
+      var admin = GI.gestor();
       no('atendimentos').innerHTML = atendimentos.length ? atendimentos.slice(0, limiteAtendimentos).map(function (a, i) {
         return '<button class="gi-atend" type="button" data-atendimento="' + i + '"><span class="gi-atend__corpo"><strong>' + e(data(a.iniciado_em)) + ' · ' + e(a.canal || 'Atendimento') + ' · ' + e(a.fila || 'Sem fila') +
           '</strong><span class="gi-ajuda"><span class="gi-chip">' + (a.vivo ? 'Aberto' : 'Encerrado') + '</span>' + (a.motivo && !a.vivo ? ' · ' + e(a.motivo) : '') + (a.protocolo ? ' · <small>' + e(a.protocolo) + '</small>' : '') + '</span>' +
@@ -535,7 +535,7 @@
         sdk('data', 'request', ['contacts/getItemChatsHistory', 'POST', { id: contatoId }]),
         Promise.allSettled([sdk('chats', 'listMine'), sdk('session', 'getPermissions')]).then(function (rs) {
           var perm = rs[1].status === 'fulfilled' && rs[1].value || {};
-          return (perm.isAdmin || perm.isSupervisor ? sdk('queues', 'list').catch(function () { return []; }) : Promise.resolve([])).then(function (filas) {
+          return (/* Permissão do SDK para listar filas, não acesso à gestão da extensão. */ perm.isAdmin || perm.isSupervisor ? sdk('queues', 'list').catch(function () { return []; }) : Promise.resolve([])).then(function (filas) {
             return Promise.allSettled(filas.map(function (f) { return sdk('chats', 'listByQueue', [Number(f.id)]); })).then(function (fs) {
               var sucessos = [rs[0]].concat(fs).filter(function (r) { return r.status === 'fulfilled'; });
               if (!sucessos.length) throw new Error('Listagem indisponível');

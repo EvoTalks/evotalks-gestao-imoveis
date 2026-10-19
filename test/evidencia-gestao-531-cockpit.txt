@@ -1,0 +1,41 @@
+OK gestão temporária: 531, 600, supervisor e administrador; navegação, telas, modal e cockpit
+OK hotfix título vazio tem erro junto ao campo, foco e nenhuma requisição
+OK hotfix canal numérico e início numérico
+OK hotfix canal numérico e início inválido
+OK hotfix canal422 mantém dados, faixa no topo, erro persistente e retry
+OK hotfix falha500 mantém dados, faixa no topo, erro persistente e retry
+OK hotfix rede mantém dados, faixa no topo, erro persistente e retry
+OK hotfix postrate mantém dados, faixa no topo, erro persistente e retry
+OK hotfix botão informa abertura em andamento e impede duplo envio
+OK hotfix faixas 260px claro
+OK hotfix faixas 300px claro
+OK hotfix faixas 334px claro
+OK hotfix faixas 260px escuro
+OK hotfix faixas 300px escuro
+OK hotfix faixas 334px escuro
+OK hotfix nota usa faixa do topo e erro hostil permanece texto
+OK F10 atendente vincula catálogo com confirmação, uma releitura por recurso e até 4 consultas; Novo disponível; 18 capturas sem overflow
+OK F10 supervisor vincula fora do catálogo; título obrigatório, endereço e contrato opcionais, Voltar preserva dados
+OK F10 administrador recebe orientação de conflito; 422 mostra frase do campo e mantém formulário sem criar
+OK F10 busca espera 300 ms, agrupa digitação, ignora texto inalterado e limita a oito resultados
+OK F10 releitura recusada após sucesso remove confirmação e não repete POST
+OK F10 troca rápida de chat durante busca e POST preserva o contato da operação e descarta a resposta antiga
+OK F10 texto hostil escapado; demonstração, portal ausente e indisponível bloqueiam vínculo sem requisição ou storage
+OK recusas: janela encerrada preserva nota; retry não duplica aviso; texto alterado exige revisão; detalhe atrasado descartado
+OK perfis agente/supervisor/admin; detalhes e notas com aviso confirmado no chat aberto
+OK 260 px claro: estados, imóvel, Novo, confirmação, sucesso e escrita desligada
+OK 300 px claro: estados, imóvel, Novo, confirmação, sucesso e escrita desligada
+OK 334 px claro: estados, imóvel, Novo, confirmação, sucesso e escrita desligada
+OK 260 px escuro: estados, imóvel, Novo, confirmação, sucesso e escrita desligada
+OK 300 px escuro: estados, imóvel, Novo, confirmação, sucesso e escrita desligada
+OK 334 px escuro: estados, imóvel, Novo, confirmação, sucesso e escrita desligada
+OK token de geração: resposta atrasada do chat anterior não mistura dados
+OK atualização ignora cache 60s; wrapper cresce e encolhe sem realimentação de altura
+OK resize applied:false encerra pedidos para slot fixo
+OK cota local impede ultrapassar 30 requisições por minuto
+OK 422 preserva formulário; releitura recusada após POST mantém sucesso e evita nova gravação
+OK troca de chat durante confirmação invalida a criação antes do POST
+OK destroy cancela assinatura de chat e trabalho pendente
+OK demonstração: ciclo completo sintético com zero tentativas de rede
+OK dado hostil permanece texto; sem storage, sem exceções no Chromium
+Cockpit: todas as provas passaram. Capturas em test/bancada/capturas/cockpit-*.png

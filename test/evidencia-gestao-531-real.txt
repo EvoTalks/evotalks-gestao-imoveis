@@ -1,0 +1,27 @@
+OK real a candidatas e cadastro manual em Locados: 9/30 requisições; 7 cliques; banco conferido
+OK real b chamado na gestão escolhendo chat da lista: 10/30 requisições; 7 cliques; banco conferido
+OK real c PNG e JPEG pela pasta, miniaturas e foto inteira: 8/30 requisições; 5 cliques; banco conferido
+OK real d status imediato na lista e no modal, linha e resumo: 6/30 requisições; 4 cliques; banco conferido
+OK real F9 adicionar orçamento livre: 2/3 requisições; 1 releitura; sem POST vazio nem GET da lista
+OK real F9 adicionar orçamento livre: 2/3 requisições; 1 releitura; sem POST vazio nem GET da lista
+OK real e orçamento livre e prestador reutilizado sem acento/caixa: 8/30 requisições; 3 cliques; banco conferido
+OK real F9 adicionar orçamento com valor: 3/3 requisições; 1 releitura; sem POST vazio nem GET da lista
+OK real F9 escolher orçamento: 2/3 requisições; 1 releitura; sem POST vazio nem GET da lista
+OK real F9 remover orçamento: 2/3 requisições; 1 releitura; sem POST vazio nem GET da lista
+OK real F9 orçamento escolhido, Salvar quem paga e prioridade depois da escolha: 23/30 requisições; 12 cliques; banco conferido
+OK real f alçada, aprovação, visita e conclusão: 14/30 requisições; 6 cliques; banco conferido
+OK real g nota interna e aviso no chat com texto exato: 8/30 requisições; 6 cliques; banco conferido
+OK real h cancelar com motivo: 5/30 requisições; 3 cliques; banco conferido
+OK real i atendente abre chamado do chat e vê na gestão: 8/30 requisições; 3 cliques; banco conferido
+OK real 6 perfis e notas no cockpit real: 14/30 requisições; 5 cliques; banco conferido
+OK real 6 navegação interna respeita os perfis: 12/30 requisições; 0 cliques; banco conferido
+OK real 6 troca rápida de chat sem misturar contato: 3/30 requisições; 0 cliques; banco conferido
+OK real 6 atendente 260px claro: 5/30 requisições; 3 cliques; banco conferido
+OK real 6 atendente 300px claro: 5/30 requisições; 3 cliques; banco conferido
+OK real 6 atendente 334px claro: 5/30 requisições; 3 cliques; banco conferido
+OK real 6 atendente 260px escuro: 5/30 requisições; 3 cliques; banco conferido
+OK real 6 atendente 300px escuro: 5/30 requisições; 3 cliques; banco conferido
+OK real 6 atendente 334px escuro: 5/30 requisições; 3 cliques; banco conferido
+OK real F10 cockpit vincula catálogo e avulso ao contato sem locação: 9/30 requisições; 8 cliques; banco conferido
+OK real j: cada cenário respeitou no máximo 30 requisições por minuto; zero exceções no Chromium.
+Integração real: todos os cenários de ouro passaram.

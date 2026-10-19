@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "name": "Gerenciamento de Imóveis",
   "description": "Gestão de Imóveis, Locados, Chamados e Prestadores, com campos internos, histórico de autoria e cockpit de manutenção no atendimento.",
   "author": {
@@ -87,7 +87,7 @@
           "title": "Locados",
           "icon": "icon-far-key",
           "url": "app/locados.html",
-          "visibility": { "userTypes": [0] },
+          "visibility": { "userIds": [1, 515, 528, 531] },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -97,7 +97,7 @@
           "title": "Chamados",
           "icon": "icon-far-list",
           "url": "app/chamados.html",
-          "visibility": { "userTypes": [0] },
+          "visibility": { "userIds": [1, 515, 528, 531] },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -107,7 +107,7 @@
           "title": "Prestadores",
           "icon": "icon-far-user",
           "url": "app/prestadores.html",
-          "visibility": { "userTypes": [0] },
+          "visibility": { "userIds": [1, 515, 528, 531] },
           "presentation": {
             "mode": "fullscreen"
           }

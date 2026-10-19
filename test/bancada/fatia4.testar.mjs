@@ -3,7 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.22.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.22.1');
 
 const servidor = criarServidor();
 // O contrato legado de configuração é independente do simulador de manutenção.

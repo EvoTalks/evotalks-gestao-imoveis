@@ -1,0 +1,1 @@
+Sintaxe: 40 arquivos JS, 5 scripts inline, 0 erros.

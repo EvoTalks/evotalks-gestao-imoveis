@@ -23,7 +23,7 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.22.0, config e contribuições
+manifest.json          identidade 0.22.1, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
@@ -288,3 +288,12 @@ após gravar não repete o POST. Locados, Chamados e Prestadores seguem só para
 
 Regressões: `test/vinculos.test.mjs`, cenários F10 nas bancadas de chamados e cockpit,
 e integração com histórico encerrado e criação de locação no PGlite do portal real.
+
+## Hotfix do cockpit (0.22.1)
+
+Normaliza canal e início do atendimento para o portal. Recados aparecem no topo: sucesso por 8 segundos e erro até fechar ou iniciar outra ação. Título vazio recebe erro e foco no campo; a abertura informa o resultado e permite tentar de novo preservando os dados e as fotos.
+
+
+### Liberação temporária da gestão (id 531)
+
+A versão 0.22.1 libera Locados, Chamados e Prestadores para o usuário de teste 531, além dos administradores. A decisão interna é centralizada em `GI.gestor()`, com `GI.GESTORES_EXTRA = [531]` em `app/comum.js`; o manifest permite os ids `[1, 515, 528, 531]` nesses três itens. Para desfazer, esvazie `GI.GESTORES_EXTRA` e substitua `visibility.userIds` por `visibility.userTypes: [0]` nos três itens do manifest (ajuste também as expectativas do verificador e dos testes).
