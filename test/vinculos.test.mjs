@@ -8,7 +8,12 @@ test('F10: interface só escolhe atendimento pela lista', () => {
   }
 });
 test('F10: histórico inclui encerrados, vence em metadados e preserva última do SDK', () => {
-  const GI = {}, sandbox = { GI, window: { GI, omni: { queueTypes: { WHATSAPP: 0, WEBCHAT_V2: 47 } } } };
+  const sandbox = { window: { addEventListener() {}, omni: { queueTypes: { WHATSAPP: 0, WEBCHAT_V2: 47 } } }, document: {}, URL, setTimeout };
+  vm.runInNewContext(readFileSync('app/comum.js', 'utf8'), sandbox);
+  const GI = sandbox.GI = sandbox.window.GI;
+  sandbox.window.addEventListener = function () {}; sandbox.document = {}; sandbox.URL = URL; sandbox.setTimeout = setTimeout;
+  vm.runInNewContext(readFileSync('app/comum.js', 'utf8'), sandbox); sandbox.GI = sandbox.window.GI;
+  Object.assign(GI, sandbox.GI); sandbox.GI = GI;
   vm.runInNewContext(readFileSync('app/manutencao.js', 'utf8'), sandbox);
   const rows = GI.unirHistoricoAtendimentos([
     { id: 8801, status: 1, begintime: '2026-10-18T12:00:00Z', origin: 0, protocol: '', qname: 'Fila Sintética' },

@@ -91,3 +91,31 @@ test('atendente e supervisor não recebem atalhos internos nem abrem gestão por
   for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos']) GI.abrirTela(id);
   assert.deepEqual(abertos, ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos']);
 });
+
+test('gestor libera só o id temporário e administradores, com navegação e abertura coerentes', () => {
+  const { GI, contexto } = carregar();
+  const abertos = [], avisos = [];
+  contexto.omni = contexto.window.omni = { ui: { openContribution: id => { abertos.push(id); } } };
+  GI.aviso = texto => avisos.push(texto);
+  for (const user of [{ id: 531, type: 2 }, { id: '531', type: 2 }, { id: 600, type: 0 }]) {
+    GI.ctx = () => ({ user });
+    assert.equal(GI.gestor(), true);
+    for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
+      assert.ok(GI.cabecalho('gi-imoveis').includes(id));
+      GI.abrirTela(id);
+      assert.equal(abertos.at(-1), id);
+    }
+  }
+  for (const user of [{ id: 600, type: 2 }, { id: 600, type: 1 }, {}, null]) {
+    GI.ctx = () => ({ user });
+    assert.equal(GI.gestor(), false);
+    assert.doesNotMatch(GI.cabecalho('gi-imoveis'), /gi-locados|gi-chamados|gi-prestadores/);
+    const antes = abertos.length;
+    GI.abrirTela('gi-chamados');
+    assert.equal(abertos.length, antes);
+    assert.equal(avisos.at(-1), 'Esta tela é exclusiva do administrador.');
+  }
+  GI.GESTORES_EXTRA = [];
+  GI.ctx = () => ({ user: { id: 531, type: 2 } });
+  assert.equal(GI.gestor(), false, 'desfazer a exceção revoga o acesso');
+});

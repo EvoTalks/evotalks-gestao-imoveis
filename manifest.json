@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "name": "Gerenciamento de Imóveis",
   "description": "Gestão de Imóveis, Locados, Chamados e Prestadores, com campos internos, histórico de autoria e cockpit de manutenção no atendimento.",
   "author": {
@@ -45,8 +45,8 @@
       "key": "cockpitAbreChamado",
       "label": "Permitir abrir chamado no atendimento",
       "type": "boolean",
-      "default": false,
-      "help": "Habilita a abertura de chamados pelo cockpit, sempre após confirmação. Desligado permite apenas consultar."
+      "default": true,
+      "help": "Habilita abertura e edição de chamados no cockpit. A abertura exige confirmação. Desligado mantém consulta e Gestão em diálogo."
     },
     {
       "key": "modoDemonstracao",
@@ -87,7 +87,14 @@
           "title": "Locados",
           "icon": "icon-far-key",
           "url": "app/locados.html",
-          "visibility": { "userTypes": [0] },
+          "visibility": {
+            "userIds": [
+              1,
+              515,
+              528,
+              531
+            ]
+          },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -97,7 +104,14 @@
           "title": "Chamados",
           "icon": "icon-far-list",
           "url": "app/chamados.html",
-          "visibility": { "userTypes": [0] },
+          "visibility": {
+            "userIds": [
+              1,
+              515,
+              528,
+              531
+            ]
+          },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -107,7 +121,14 @@
           "title": "Prestadores",
           "icon": "icon-far-user",
           "url": "app/prestadores.html",
-          "visibility": { "userTypes": [0] },
+          "visibility": {
+            "userIds": [
+              1,
+              515,
+              528,
+              531
+            ]
+          },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -148,7 +169,29 @@
       "url": "app/painel.html",
       "icon": "app/icone-casa.svg",
       "visibility": {
-        "userTypes": [0, 1, 2]
+        "userTypes": [
+          0,
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "id": "gi-os",
+      "type": "chatMenu",
+      "title": "Chamados de manutenção",
+      "url": "app/os.html",
+      "icon": "app/icone-casa.svg",
+      "presentation": {
+        "mode": "dialog",
+        "size": "xl"
+      },
+      "visibility": {
+        "userTypes": [
+          0,
+          1,
+          2
+        ]
       }
     }
   ],

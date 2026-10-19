@@ -146,7 +146,7 @@ export async function testarLoteY(b, origem, rodar = async (nome, fn) => { await
         return http(op);
       };
     });
-    await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('#c-mensagem')?.textContent.includes('nota_indisponivel_sintetica') && document.querySelectorAll('#c-pendentes .gi-foto').length === 1);
+    await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('#c-mensagem')?.textContent.includes('Não foi possível concluir a operação') && document.querySelectorAll('#c-pendentes .gi-foto').length === 1);
     assert.equal(await b.avaliar(() => document.querySelector('#c-nota').value), 'Nota que não pode sumir na retomada');
     await b.clicar('#c-salvar-nota'); await b.esperar(() => document.querySelector('#c-nota').value === '' && !document.querySelector('.gi-modal [data-ok]').disabled);
     await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal'));

@@ -23,7 +23,7 @@ da administração) e que precisam chegar a quem atende.
 ## Arquivos
 
 ```
-manifest.json          identidade 0.22.0, config e contribuições
+manifest.json          identidade 0.23.0, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
@@ -34,15 +34,30 @@ app/manutencao.js      contrato e transporte da manutenção, sem fallback para 
 app/chamados.html/js/css lista e modais de chamados, orçamentos, aprovação, prestador e visita
 app/prestadores.html/js  lista, cadastro/edição e ativação/desativação de prestadores
 app/painel.html/js/css   cockpit por contato e imóvel, abertura após revisão
+app/cockpit.js         resumo, filtros, ordenação e snapshot seguro de consultas
 app/config.html       catálogo e configuração de manutenção
 app/campos.html        definição dos campos
 app/historico.html     eventos de edição
 ```
 
+## Datas e navegação do SDK
+
+`startedAt` e `lastMessageAt` do SDK são segundos Unix. A referência geral
+`api-omni.md` descreve os campos sem especificar a unidade. A extensão normaliza
+números positivos menores que `1e11` como segundos, maiores como milissegundos e
+textos ISO com fuso. `GI.dataDoChat` devolve ISO ou `null`, limitado aos anos
+2000–2100. Histórico legado sem fuso passa pela adaptação UTC existente. Datas
+persistidas anteriores a 2000 não são exibidas nem regravadas no portal.
+
+O canal numérico é resolvido por `omni.queueTypes`, sem deduzir sua numeração. A
+gestão da O.S. usa `omni.ui.openContribution('gi-os', params)` para todos os perfis;
+`openHtml` não funciona nesta instalação. O segundo canal de passagem usa storage
+com validade de 60 segundos. Nenhuma tentativa de vincular contato pelo SDK é feita.
+
 ## Locações (0.18.0)
 
 **Locados exigem o portal conectado**, com `portalUrl` e `portalToken` configurados e as
-rotas `/api/ext/locacoes*` disponíveis. Locações nunca são gravadas em `omni.storage`.
+rotas `/api/ext/locacoes*` disponíveis. A gravação de locações usa somente o portal. O cockpit pode guardar um snapshot de consulta em `omni.storage` por até 10 minutos.
 Sem conexão, as telas avisam e bloqueiam as ações de locação.
 
 A lista de **Imóveis** continua lendo o catálogo nativo (`products`). Uma leitura de
@@ -67,15 +82,14 @@ das buscas da assistente enquanto a locação está ativa e o devolve ao encerra
 da locação sobrevive à saída do anúncio do feed. As locações encerradas ficam disponíveis
 para consulta pelo filtro de contrato, sem edição ou exclusão.
 
-## Chamados e manutenção (0.22.0)
+## Chamados e manutenção (0.23.0)
 
 As contribuições **Locados**, **Chamados** e **Prestadores** são exclusivas do
-administrador (`userTypes: [0]`). O cockpit **Manutenção** está disponível para
-administradores, supervisores e atendentes (`[0,1,2]`), sem atalhos para gestão nos
-outros perfis. Imóveis, Campos, Histórico e Configurações herdam a visibilidade do menu.
+administrador e, temporariamente, do usuário 531 (`userIds: [1,515,528,531]`). O cockpit **Manutenção** está disponível para
+administradores, supervisores e atendentes (`[0,1,2]`). Todos abrem a gestão da O.S.
+no diálogo `gi-os`; administrador e usuário 531 veem **Lista completa** (`gi-chamados`). Imóveis, Campos, Histórico e Configurações herdam a visibilidade do menu.
 
-Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. Nenhum dado de
-manutenção é gravado em `omni.storage`. Sem portal, as telas avisam e bloqueiam ações.
+Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. O storage guarda apenas o alvo temporário da abertura do diálogo e snapshots de consulta do cockpit (máximo 8 contatos, 10 minutos, menos de 60 mil caracteres no conjunto; sem credenciais, fotos ou arquivos). A fonte das gravações continua sendo o portal. Sem portal, as telas avisam e bloqueiam ações.
 O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.
 
 **Chamados**: escolher o status na lista ou no modal grava na hora, atualiza a linha,
@@ -144,7 +158,7 @@ pede confirmação. Não há exclusão; prestadores inativos já vinculados perm
 no chamado, e novos vínculos usam os ativos.
 
 O **cockpit** consulta os chamados da locação do contato, inclusive os abertos por outra
-pessoa, e pode abrir a gestão. A escrita começa desligada (`cockpitAbreChamado: false`);
+pessoa, e pode abrir a gestão. A escrita começa habilitada (`cockpitAbreChamado: true`);
 quando habilitada, abre chamado após resumo e confirmação explícita, sem caixa de
 conferência repetida, vinculando o atendimento atual. O modo
 `modoDemonstracao` usa somente dados sintéticos e bloqueia rede e gravação.
@@ -178,7 +192,8 @@ O recorte do catálogo vem da configuração da instalação:
 
 Sem npm install: `node test/checar.mjs`, `node --test test/*.test.mjs`,
 `node test/bancada/testar.mjs`, `node test/bancada/chamados.testar.mjs`,
-`node test/bancada/cockpit.testar.mjs` e `node test/bancada/fatia4.testar.mjs`. Uso manual e cenários em
+`node test/bancada/cockpit.testar.mjs`, `node test/bancada/fatia4.testar.mjs` e
+`node test/bancada/os.testar.mjs`. Uso manual e cenários em
 [test/bancada/LEIA-ME.md](test/bancada/LEIA-ME.md). A bancada tem portal em memória e
 SDK sintético, isolados de qualquer instância real; os PNGs gerados não são versionados.
 O teste `test/lote2.test.mjs` cobre falha de preenchidos, acordeão sem linhas neutras,
@@ -193,8 +208,7 @@ A regressão `test/ajustes.test.mjs` cobre os itens 1–6 do contrato 0.21.1,
 contagem de requisições, leitura do valor escolhido, perfis, textos e menos cliques.
 `test/integracao/real.cenarios.mjs` repete a escolha e o Salvar de quem paga/prioridade
 contra o router e SQL reais do portal, e mede adicionar/escolher/remover (teto de três).
-Veja [test/integracao/LEIA-ME.md](test/integracao/LEIA-ME.md). A saída literal
-consolidada está em [test/evidencia-f9.txt](test/evidencia-f9.txt).
+Veja [test/integracao/LEIA-ME.md](test/integracao/LEIA-ME.md). As saídas literais são entregues no resultado do nó.
 
 ## Instalar
 
@@ -272,9 +286,9 @@ sem reescrever respostas. Instruções, limites da prova e fricções observadas
 [test/integracao/LEIA-ME.md](test/integracao/LEIA-ME.md).
 
 O cockpit atende tipos 0, 1 e 2. Locados, Chamados e Prestadores continuam apenas
-para administrador. O atendente consulta dados, fotos e observações no cockpit,
+para administrador e usuário 531. O atendente consulta dados, fotos e observações no cockpit,
 abre chamado vinculado ao chat e registra notas/avisos quando a escrita está
-habilitada; não recebe atalhos da gestão. A escrita continua desligada por padrão.
+habilitada; **Gestão** abre a edição completa no diálogo para os três perfis. A escrita está habilitada por padrão.
 
 ## Vínculos no cockpit (0.22.0)
 
@@ -284,7 +298,135 @@ conversa. Busque por código, título ou bairro (300 ms, até oito resultados), 
 A confirmação mostra imóvel e contato antes do POST, sempre como locatário.
 Com locação existente, **Vincular outra residência** mantém a consulta no mesmo cockpit.
 Demonstração e portal ausente/indisponível desabilitam o vínculo. Uma releitura recusada
-após gravar não repete o POST. Locados, Chamados e Prestadores seguem só para administrador.
+após gravar não repete o POST. Locados, Chamados e Prestadores seguem para administrador e usuário 531.
 
 Regressões: `test/vinculos.test.mjs`, cenários F10 nas bancadas de chamados e cockpit,
 e integração com histórico encerrado e criação de locação no PGlite do portal real.
+
+## Gestão da O.S. no atendimento (0.23.0, Parte G)
+
+A entrada fixa **Chamados de manutenção** no menu do atendimento e o botão **Gestão**
+do cockpit abrem `gi-os` (`chatMenu`, diálogo `xl`, perfis `[0,1,2]`). A edição é inline,
+compartilhada com a gestão administrativa por `app/chamado-form.js`: status imediato,
+dados alterados, atendimento, fotos do chat/pasta, orçamentos, aprovação, notas/avisos
+e histórico. **Voltar à lista** consulta os chamados do contato selecionado; **Fechar**
+usa `omni.ui.close()`. Novo chamado já recebe esse contato e a locação única, quando existir.
+
+O alvo vem primeiro de `contribution.params.chamadoId`; o segundo canal é `gi-os-alvo`
+no storage, com `{ chamadoId, contatoId, em }`, inteiros positivos e validade de 60 s.
+A chave é removida após a leitura, inclusive quando vencida ou com params presentes.
+Sem alvo, a página lista o contato do atendimento; troca de atendimento invalida respostas
+pendentes. Sem portal, a página bloqueia gravações; demonstração usa dados sintéticos sem rede.
+
+Use `omni.ui.openContribution('gi-os', params)`. O `openHtml` não funciona nesta instalação:
+sem prefixo de versão o host recusa a URL; com prefixo o recurso retorna 404. Abrir o
+item administrativo `gi-chamados` como atendente resulta em `not_found`, pois ele continua
+restrito aos ids `[1,515,528,531]`. A visibilidade do diálogo permite os três perfis e não altera as regras
+de gravação do portal. O portal não recebeu mudanças.
+
+`test/bancada/os.testar.mjs` prova parâmetros, storage, lista/novo por contato, edição por
+atendente, erros, demonstração, isolamento e perfis; capturas `os-*.png` em 1280/390 px,
+claro/escuro. O cenário F11 da integração real confere as gravações no PGlite.
+As melhorias de usabilidade da Parte C seguem em outra etapa.
+
+
+## Cockpit 2 (0.23.0, Parte C)
+
+O cabeçalho filtra por Abertos, Atrasados, Aguardando proprietário e Emergências.
+Os chips e a busca por título/O.S. combinam os filtros; a lista mostra dez por vez,
+prioriza o vínculo com o chat atual e mantém a ordem por urgência. ⟳ ignora os caches;
+a idade da última leitura aparece junto ao resumo. Um contato já visto pinta a consulta
+anterior enquanto o portal responde; erros transitórios não viram snapshot. Qualquer
+POST invalida o snapshot daquele contato e as gravações seguem uma fila única.
+
+Quando a escrita está habilitada, o detalhe permite editar status, prioridade,
+atendente, pagador e visita, com retorno na linha e rollback em recusas. Cancelamento
+pede confirmação e motivo opcional. Cada campo custa uma requisição de gravação;
+não há releitura da lista. A nota para a equipe continua em Fotos e observações.
+Gestão abre o mesmo diálogo completo da Parte G, em todos os perfis.
+
+As ações incluem copiar protocolo/resumo em texto puro, vincular o atendimento e
+Avisar cliente, com texto editável, confirmação, checagem de chat aberto e proteção
+da janela de envio. Um aviso enviado não se repete ao tentar novamente salvar sua nota.
+A cópia usa `document.execCommand('copy')`, compatível com o iframe do host.
+
+O cartão Imóvel oferece pessoas, telefones, endereço e código para copiar, além de
+Abrir chamado; com múltiplas residências, a escolha no Novo é explícita. No Novo, Mais detalhes recolhe os campos
+secundários e Usar última mensagem do cliente sugere a descrição, editável. A categoria
+sugere apenas o placeholder do título. Após criar: Gestão, copiar resumo e voltar à lista.
+Esc volta/fecha o estado aberto; Enter confirma campos de uma linha. Claro/escuro e
+260/300/334 px são exercitados na bancada, com capturas dos novos estados.
+
+Regressões: `test/cockpit2.test.mjs`, `test/bancada/cockpit2.cenarios.mjs` (incluído no
+runner do cockpit) e cenário F12 da integração real com conferência em PGlite.
+Saídas literais são entregues no resultado do nó, sem arquivos de evidência versionados.
+
+### Lote 1 — dados, feedback e cota (0.23.0)
+
+O cockpit e o formulário compartilhado normalizam ids, nomes, telefone, canal, protocolo,
+filas e datas antes de gravar no portal. Imóveis do catálogo levam uma reserva do título,
+tipo, bairro e cidade; o cabeçalho de autoria usa texto Latin1 sem controles. Valores
+aceitam `1.500,00`, `1500,00`, `1500.00` e `R$ 1.500,00`.
+
+As ações mostram faixa de sucesso/erro e toast; no formulário, o rodapé repete o recado.
+Erros persistem até fechar ou outra ação, sucessos somem em 8 segundos. A criação cuja
+resposta se perde confere título, atendimento e criação nos últimos 3 minutos antes de
+permitir repetir. Se a conferência também falhar, consulte a lista antes de outra abertura.
+WebChat permite aviso ao cliente; janela fechada preserva a nota interna.
+
+Um snapshot fresco evita consultar o contato novamente. Na primeira consulta, a locação
+é conhecida antes de pedir chamados, evitando a chamada para contatos sem residência.
+Com existência de locação já conhecida, ambas as leituras são iniciadas em paralelo.
+A atualização manual exige intervalo de 5 segundos. A edição usa três chamadas ao portal
+(além de `/info` na abertura da contribuição); prévias do SDK usam fila de quatro.
+Antes de enviar muitas fotos, o formulário conta requisições e pede confirmação acima
+de dez pendentes. O envio mostra progresso, permite cancelar as restantes e confirma
+Fechar/Esc sem travar o formulário até terminar o lote.
+
+`test/bancada/lote1.cenarios.mjs` é compartilhado pela bancada do cockpit e pela integração
+com o portal real em memória. Também pode ser executado isoladamente com
+`node test/bancada/lote1.testar.mjs`. As provas usam somente fixtures sintéticas.
+
+
+### Lote 2 — perfis e fluxos sem impeditivos (0.23.0)
+
+`cockpitAbreChamado` tem padrão `true`. Desligado, oculta Novo, Abrir chamado e a
+edição rápida; a consulta e Gestão em diálogo continuam, com uma linha neutra sobre
+a configuração. Sem contato, o cockpit orienta o caminho Sem contato cadastrado →
+Adicionar dados a contato existente. Portal fora/local orienta conferir URL/token;
+Tentar novamente refaz `/info`. Todas as telas exibem faixa vermelha persistente
+“DEMONSTRAÇÃO · dados fictícios” quando a demonstração está ligada.
+
+Os chamados incluem todas as residências do contato, com etiqueta do imóvel e filtro
+Todas / imóvel. Título e contrato identificam a residência; no Novo, havendo mais de
+uma, é obrigatório escolher explicitamente antes de preencher e confirmar a abertura.
+Um conflito de imóvel já locado apresenta contrato e contatos atuais e oferece
+Adicionar este contato à locação, com confirmação. A extensão relê a locação e envia
+sua lista completa, acrescentando somente o locatário; preserva contrato e pessoas.
+Esse vínculo funciona mesmo com a abertura de chamados desligada.
+
+Chamados concluídos/cancelados oferecem somente o estado atual e **Reabrir (volta
+para Triagem)** no cockpit e na gestão. O retorno do portal atualiza selo e prazo;
+um 409 explica usar Reabrir e restaura o seletor. Aprovação pendente orienta
+Gestão → Aprovação e oferece Gestão na própria linha da edição rápida.
+
+`startedAt` e `lastMessageAt` do SDK são segundos Unix. `GI.dataDoChat` normaliza
+segundos, milissegundos e ISO com fuso para ISO, aceitando apenas os anos 2000–2100.
+Valores inválidos/zero e datas legadas em 1970 são desconhecidos na exibição;
+a extensão não reescreve o dado legado do portal. Veja [api-omni-nota.md](api-omni-nota.md).
+
+Regressões em `test/impeditivos.test.mjs`, `test/hotfix.test.mjs` e
+`test/bancada/impeditivos.cenarios.mjs`, compartilhadas por cockpit e integração real.
+Há 48 capturas de estados novos em 260/300/334 px claro/escuro por execução, incluindo
+reabertura, aprovação e inclusão na locação. Runner isolado:
+`node test/bancada/impeditivos.testar.mjs`.
+
+### Liberação temporária da gestão (id 531)
+
+A 0.23.0 preserva a liberação do hotfix 0.22.1: Locados, Chamados e Prestadores
+usam `visibility.userIds: [1,515,528,531]`, sem `userTypes`. A navegação e Lista
+completa usam o helper único `GI.gestor()` e `GI.GESTORES_EXTRA = [531]` em
+`app/comum.js`. O usuário 600 atendente/supervisor não ganha esse acesso. O diálogo
+`gi-os` continua disponível aos perfis `[0,1,2]`. Para revogar a exceção, esvazie
+`GI.GESTORES_EXTRA` e substitua os três filtros por `visibility.userTypes: [0]`,
+ajustando junto o verificador e os testes.

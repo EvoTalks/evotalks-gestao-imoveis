@@ -14,9 +14,9 @@ function carregar() {
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
-test('manifest 0.22.0 declara navegação ordenada, cockpit e escrita opt-in', () => {
+test('manifest 0.23.0 declara navegação ordenada, cockpit e escrita configurável', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.22.0');
+  assert.equal(m.version, '0.23.0');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
@@ -24,12 +24,12 @@ test('manifest 0.22.0 declara navegação ordenada, cockpit e escrita opt-in', (
   assert.equal(cockpit.title, 'Manutenção'); assert.equal(cockpit.presentation, undefined);
   assert.deepEqual(cockpit.visibility.userTypes, [0, 1, 2]);
   for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
-    assert.deepEqual(m.contributions[0].items.find(i => i.id === id).visibility.userTypes, [0]);
+    assert.deepEqual(m.contributions[0].items.find(i => i.id === id).visibility, { userIds: [1, 515, 528, 531] });
   }
   for (const id of ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']) {
     assert.equal(m.contributions[0].items.find(i => i.id === id).visibility, undefined);
   }
-  for (const k of ['cockpitAbreChamado', 'modoDemonstracao']) {
+  for (const k of ['modoDemonstracao']) {
     const c = m.config.find(c => c.key === k);
     assert.equal(c.type, 'boolean'); assert.equal(c.default, false); assert.ok(c.help);
   }
@@ -258,7 +258,12 @@ test('Chromium: páginas esqueleto, SDK, navegação, escrita desligada e demons
       await b.navegar(base + '/app/' + tela + '.html');
       await b.esperar(() => document.querySelector('#gi-modo').textContent.includes('Conectado'));
       assert.equal(await b.avaliar(() => GI.cfg('cockpitAbreChamado')), false);
-      assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
+      if (tela === 'painel') {
+        await b.esperar(() => !!document.querySelector('[data-chamado]'));
+        const snapshot = await b.avaliar(async () => omni.storage.get('gi-cockpit-snapshots-v1'));
+        assert.equal(snapshot.rows[0].contatoId, 9901);
+        assert.doesNotMatch(JSON.stringify(snapshot), /portalToken|bancada-sintetica|base64|anexos/);
+      } else assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
     }
     await b.navegar(base + '/app/painel.html?chat=8802&escrita=1');
     assert.equal(await b.avaliar(async () => (await omni.chats.getSelected()).id), 8802);

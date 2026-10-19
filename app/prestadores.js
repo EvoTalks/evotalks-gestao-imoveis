@@ -4,11 +4,7 @@
   var e = GI.escapar, el = function (id) { return document.getElementById(id); };
   var itens = [], pagina = 1, geracao = 0;
   function valorMapa(mapa, chave) { return Object.hasOwn(mapa, chave) ? mapa[chave] : undefined; }
-  function erro(err) {
-    var d = err.dados || {};
-    if (err.status === 429) return 'Limite de consultas atingido. Aguarde um minuto e tente Buscar novamente.';
-    return d.campos ? Object.keys(d.campos).map(function (k) { return d.campos[k]; }).join(' · ') : d.detalhe || err.message || 'Não foi possível concluir.';
-  }
+  function erro(err) { return GI.mensagemErro(err); }
   function desenhar() {
     var tamanho = Number(el('f-porpagina').value), inicio = (pagina - 1) * tamanho, rows = itens.slice(inicio, inicio + tamanho);
     el('gi-resumo').textContent = itens.length + ' ' + GI.plural(itens.length, 'prestador', 'prestadores') + ' neste filtro';

@@ -13,7 +13,7 @@ export async function testarHistorico(b, origem) {
     }
     await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), chamadoId);
   };
-  const abrir = async () => { await b.clicar('[data-editar="' + chamadoId + '"]'); await b.esperar(() => !!document.querySelector('#c-trocar')); await b.clicar('#c-trocar'); await b.esperar(() => !document.querySelector('#c-atendimentos').textContent.includes('Buscando')); };
+  const abrir = async () => { await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), chamadoId); await b.clicar('[data-editar="' + chamadoId + '"]'); await b.esperar(() => !!document.querySelector('#c-trocar')); await b.clicar('#c-trocar'); await b.esperar(() => !document.querySelector('#c-atendimentos').textContent.includes('Buscando')); };
   const fechar = async () => { await b.clicar('.gi-modal [data-cancelar]'); await b.esperar(() => !document.querySelector('.gi-modal')); };
   await navegar();
   await b.avaliar(h => { bancada.historico = [
@@ -23,7 +23,7 @@ export async function testarHistorico(b, origem) {
   await abrir();
   assert.equal(await b.avaliar(() => document.querySelectorAll('[data-atendimento]').length), 3);
   assert.match(await texto(b, '[data-atendimento="0"]'), /20\/10\/2026.*Atendimento.*Encerrado/);
-  assert.match(await texto(b, '[data-atendimento="2"]'), /Fila Histórica Sintética.*Aberto.*foto-demonstracao/);
+  assert.match(await texto(b, '[data-atendimento="1"]'), /Fila Histórica Sintética.*Aberto.*foto-demonstracao/);
   assert.equal(await b.avaliar(() => document.querySelectorAll('#c-atendimentos img, #c-atendimentos script').length), 0);
   await b.clicar('#c-trocar'); assert.equal(await b.avaliar(() => bancada.consultasHistorico), 1, 'cache enquanto o contato é o mesmo');
   await b.viewport(390, 1100); await b.captura('vinculos-historico-390');
@@ -103,14 +103,14 @@ export async function testarResidencias(b, origem) {
     await capturar(largura + '-' + tema + '-confirmacao');
   }
   await confirmar();
-  await b.esperar(() => bancada.chamadas.some(c => c.caminho.endsWith('/9905/chamados') && bancada.chamadas.filter(c => c.caminho.endsWith('/9905/chamados')).length === 2));
+  await b.esperar(() => bancada.chamadas.some(c => c.caminho.endsWith('/9905/chamados') && bancada.chamadas.filter(c => c.caminho.endsWith('/9905/chamados')).length === 1));
   const rs = await b.avaliar(n => bancada.chamadas.slice(n), inicioVinculo);
   assert.equal(rs.filter(c => c.method === 'POST').length, 1); assert.ok(rs.length <= 4, 'fluxo completo desde a busca respeita quatro requisições ao portal');
   const payload = JSON.parse(rs.find(c => c.method === 'POST').body);
-  assert.deepEqual(payload, { imovel_codigo: 'DEMO-001', contrato_numero: 'DEMO-INVALIDO-CONTRATO', contatos: [{ contato_id: 9905, nome: 'Contato Sem Residência Demonstração', telefone: '00000000005', papel: 'locatario' }] });
+  assert.deepEqual(payload, { imovel_codigo: 'DEMO-001', imovel: { titulo: 'Apartamento Demonstração Alfa', tipo: 'Apartamento', cidade: 'Cidade Fictícia', bairro: 'Bairro Exemplo' }, contrato_numero: 'DEMO-INVALIDO-CONTRATO', contatos: [{ contato_id: 9905, nome: 'Contato Sem Residência Demonstração', telefone: '00000000005', papel: 'locatario' }] });
   assert.match(await texto(b, '#cp-conteudo'), /Apartamento Demonstração Alfa/);
   assert.match(await texto(b, '#cp-vincular-residencia'), /Vincular outra residência/);
-  await navegar('escrita=1'); await b.clicar('#cp-tab-novo'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
+  await navegar('escrita=1'); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
   prova('atendente vincula catálogo com confirmação, uma releitura por recurso e até 4 consultas; Novo disponível; 18 capturas sem overflow');
 
   await navegar('perfil=supervisor'); await b.clicar('#cp-vincular-residencia'); await b.clicar('#cp-r-fora');
@@ -126,8 +126,8 @@ export async function testarResidencias(b, origem) {
   prova('supervisor vincula fora do catálogo; título obrigatório, endereço e contrato opcionais, Voltar preserva dados');
 
   await navegar('perfil=admin'); await buscar('DEMO-002'); await b.clicar('[data-residencia]'); await b.clicar('#cp-r-confirmar');
-  await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('já está locado'));
-  assert.equal(await texto(b, '#cp-recado'), 'Este imóvel já está locado para outro cliente. Peça ao administrador para incluir este contato na locação.');
+  await b.esperar(() => document.querySelector('#cp-r-confirmar')?.textContent.includes('Adicionar este contato'));
+  assert.match(await texto(b, '#cp-conteudo'), /Este imóvel já está locado/);
   assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST').length), 1);
   await navegar(); await buscar('DEMO-003'); await b.preencher('#cp-r-contrato', 'FORCAR-422'); await b.clicar('[data-residencia]'); await b.clicar('#cp-r-confirmar');
   await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Contrato recusado'));

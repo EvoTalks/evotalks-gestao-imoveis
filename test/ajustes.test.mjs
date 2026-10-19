@@ -148,7 +148,7 @@ test('F9: ajustes após o teste real, sem instância', async t => {
       assert.equal(await b.avaliar(() => document.querySelector('#c-trocar').disabled), false);
     });
     await t.test('6b: cockpit mantém resumo e confirma sem caixa repetida', async () => {
-      await navegar('painel', '?escrita=1'); await b.clicar('#cp-tab-novo');
+      await navegar('painel', '?escrita=1'); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
       await b.preencher('#cp-titulo', 'Cockpit Sintético F9'); await b.clicar('#cp-revisar');
       assert.equal(await b.avaliar(() => !!document.querySelector('#cp-conferi')), false);
       assert.match(await texto('#cp-conteudo'), /Cockpit Sintético F9/);

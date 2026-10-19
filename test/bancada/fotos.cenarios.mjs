@@ -74,8 +74,12 @@ export async function testarFotos(b, origem) {
     });
     await b.clicar('.gi-modal [data-ok]');
     await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Enviando foto'));
-    assert.equal(await b.avaliar(() => Array.from(document.querySelectorAll('.gi-modal button')).every(b => b.disabled)), true);
+    assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-ok]').disabled), true);
+    assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-cancelar]').disabled), false);
+    assert.equal(await b.avaliar(() => document.querySelector('.gi-modal-x').disabled), false);
     await b.avaliar(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+    assert.equal(await b.avaliar(() => document.querySelector('#c-descarte').hidden), false);
+    await b.clicar('#c-voltar-descarte');
     await b.esperar(() => document.querySelector('.gi-modal h2')?.textContent.startsWith('Editar chamado'));
     await pendentes(1);
     await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('1 de 2 fotos enviadas'));
@@ -92,7 +96,7 @@ export async function testarFotos(b, origem) {
     let d = await b.avaliar(async n => GI.chamadosObter(n), salvoId);
     assert.equal(d.chamado.status, 'triagem');
     assert.equal(d.anexos.length, 3); assert.equal(d.anexos.filter(a => a.origem === 'upload').length, 2);
-    prova('chat + pasta coexistem; upload sequencial, bloqueio de clique/Escape e falha 500 retomada em edição sem duplicar chamado');
+    prova('chat + pasta coexistem; upload sequencial, gravação protegida e Escape com confirmação e falha 500 retomada em edição sem duplicar chamado');
 
     await b.clicar('[data-editar="' + salvoId + '"]'); await modal();
     await b.esperar(() => document.querySelectorAll('#c-fotos img').length === 2);

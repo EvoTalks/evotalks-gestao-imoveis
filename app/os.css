@@ -1,0 +1,9 @@
+/* A edição ocupa o próprio diálogo do host, com uma só rolagem. */
+#gi-os { max-width: 1280px; overflow-wrap: anywhere; }
+.gi-form-inline .gi-modal { position: static; transform: none; width: 100%; max-width: none !important; box-shadow: none; margin-top: 12px; overflow: visible; }
+.gi-form-inline .gi-modal-corpo { max-height: none; overflow: visible; }
+.gi-form-inline .gi-modal-topo, .gi-form-inline .gi-modal-corpo, .gi-form-inline .gi-modal-rodape { padding-inline: 12px; }
+#os-lista { display: grid; gap: 10px; }
+.gi-os-cartao { display: grid; gap: 8px; width: 100%; text-align: left; white-space: normal; padding: 14px; border: 1px solid var(--gi-borda); border-radius: 8px; background: var(--gi-surface); color: var(--gi-texto); cursor: pointer; }
+.gi-os-cartao small { color: var(--gi-mudo); }
+#gi-os button:focus-visible { outline: 2px solid var(--ext-color-primary, var(--gi-texto)); outline-offset: 2px; }

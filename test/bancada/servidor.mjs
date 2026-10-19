@@ -14,7 +14,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
   const produtos = [
     { id: 9101, internalcode: 'DEMO-001', name: 'Apartamento Demonstração Alfa', category: 'Apartamento > Cidade Fictícia > Bairro Exemplo', value: 123456, brand: 'DEMONSTRACAO' },
     { id: 9102, internalcode: 'DEMO-002', name: 'Casa Demonstração Beta', category: 'Casa > Cidade Fictícia > Bairro Exemplo', value: 234500, brand: 'DEMONSTRACAO' },
-    { id: 9103, internalcode: 'DEMO-003', name: 'Sala Demonstração Gama', category: 'Sala > Cidade Fictícia > Bairro Modelo', value: 100000, brand: 'DEMONSTRACAO' }
+    { id: 9103, internalcode: 'DEMO-003', name: 'Sala Demonstração Gama', category: 'Sala > Cidade Fictícia > Bairro Modelo', value: 100000, brand: 'DEMONSTRACAO' },
   ];
   const contatos = [
     { id: 9901, name: 'Locatário Demonstração Um', phone: '00000000001', email: 'um@example.invalid' },
@@ -42,10 +42,16 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
   }
   function validar(d, nova) {
     const campos = {};
-    if (nova && !d.imovel_codigo && !d.imovel?.titulo?.trim()) campos.imovel = 'Informe o título do imóvel.';
-    if (nova && d.imovel_codigo && !produtos.some(p => p.internalcode === d.imovel_codigo) && !d.imovel?.titulo?.trim()) campos.imovel = 'Imóvel fora do espelho: informe o título.';
+    if (nova && !d.imovel_codigo && !(typeof d.imovel?.titulo === 'string' && d.imovel.titulo.trim())) campos.imovel = 'Informe o título do imóvel.';
+    if (nova && d.imovel_codigo && !produtos.some(p => p.internalcode === d.imovel_codigo) && !(typeof d.imovel?.titulo === 'string' && d.imovel.titulo.trim())) campos.imovel = 'Imóvel fora do espelho: informe o título.';
+    if (d.imovel_codigo != null && typeof d.imovel_codigo !== 'string') campos.imovel_codigo = 'Informe um texto.';
+    if (Array.isArray(d.contatos)) d.contatos.forEach((c, i) => {
+      if (typeof c.nome !== 'string' || !c.nome.trim()) campos['contatos.' + i + '.nome'] = 'Informe um nome não vazio.';
+      if (c.telefone != null && typeof c.telefone !== 'string') campos['contatos.' + i + '.telefone'] = 'Informe um texto.';
+      if (c.contato_id != null && (!Number.isSafeInteger(c.contato_id) || c.contato_id < 1)) campos['contatos.' + i + '.contato_id'] = 'Informe um identificador inteiro positivo.';
+    });
     if (!Array.isArray(d.contatos) || !d.contatos.some(c => c.papel === 'locatario')) campos.contatos = 'Informe ao menos um locatário.';
-    else if (d.contatos.some(c => !c.nome?.trim() || !['locatario', 'proprietario', 'fiador', 'outro'].includes(c.papel))) campos.contatos = 'Nome e papel do contato são obrigatórios.';
+    else if (d.contatos.some(c => !(typeof c.nome === 'string' && c.nome.trim()) || !['locatario', 'proprietario', 'fiador', 'outro'].includes(c.papel))) campos.contatos = 'Nome e papel do contato são obrigatórios.';
     if (d.inicio && d.fim && d.fim < d.inicio) campos.fim = 'O fim deve ser posterior ao início.';
     if (d.valor_aluguel_centavos != null && (!Number.isSafeInteger(d.valor_aluguel_centavos) || d.valor_aluguel_centavos < 0)) campos.valor_aluguel_centavos = 'Aluguel inválido.';
     if (d.dia_vencimento != null && (!Number.isInteger(d.dia_vencimento) || d.dia_vencimento < 1 || d.dia_vencimento > 31)) campos.dia_vencimento = 'Vencimento deve estar entre 1 e 31.';

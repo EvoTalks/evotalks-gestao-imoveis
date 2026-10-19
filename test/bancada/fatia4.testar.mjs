@@ -3,7 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.22.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.23.0');
 
 const servidor = criarServidor();
 // O contrato legado de configuração é independente do simulador de manutenção.
@@ -80,13 +80,32 @@ try {
   assert.match(await texto('#c-aprovacao'), /250,00/);
   await capturar('fatia4-01-orcamentos-aprovacao', '#c-orcamentos');
   prova('dois orçamentos pela tela; escolha única substitui anterior; centavos, repasse e alçada visíveis; aprovação pendente');
+  // Relógio de recados: mede 8 s sem esperar em tempo real nem afetar a rede.
+  await b.avaliar(() => {
+    const timer = window.setTimeout;
+    bancada.prazosRecado = [];
+    window.setTimeout = function (fn, ms) { if (ms === 8000) bancada.prazosRecado.push(ms); return timer(fn, ms === 8000 ? 20 : ms); };
+  });
   for (const destino of ['agendado', 'execucao']) {
     await b.preencher('#c-status', destino); await b.esperar(() => !document.querySelector('#c-status').disabled);
-    assert.match(await texto('#c-status-controle'), /aprovação.*pendente/);
+    assert.match(await texto('#c-status-controle'), /Aguardando o proprietário.*Gestão → Aprovação/);
+    assert.equal(await b.avaliar(() => !!document.querySelector('.gi-recado--erro')), true, 'recusa de aprovação é erro, não sucesso por causa da seta');
+    assert.equal(await b.avaliar(() => document.querySelector('.gi-recado')?.getAttribute('role')), 'alert');
+    assert.equal(await b.avaliar(() => !!document.querySelector('.gi-recado--sucesso')), false);
     assert.equal(await valor('#c-status'), 'novo');
+    await new Promise(r => setTimeout(r, 40));
+    assert.equal(await b.avaliar(() => document.querySelector('.gi-recado--erro').hidden), false, 'a recusa persiste depois dos 8 s acelerados');
+
   }
   await b.captura('fatia4-02-trava-pendente');
   prova('alçada excedida bloqueia Agendado e Em execução com 409 do portal');
+  await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled);
+  assert.equal(await b.avaliar(() => document.querySelector('.gi-recado--sucesso').getAttribute('role')), 'status');
+  assert.ok(await b.avaliar(() => bancada.prazosRecado.length > 0), 'sucesso agenda os 8000 ms');
+  await b.esperar(() => document.querySelector('.gi-recado--sucesso').hidden);
+  await b.preencher('#c-status', 'novo'); await b.esperar(() => !document.querySelector('#c-status').disabled);
+  prova('RC3 temporização: erro de aprovação continua visível após 8 s; sucesso real usa status e desaparece em 8 s');
+
 
   // Perfil sintético tem atendimento aberto do proprietário visível em sua fila.
   await b.avaliar(() => { omni.session.getPermissions = async () => ({ isSupervisor: true });

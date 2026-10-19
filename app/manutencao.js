@@ -4,6 +4,11 @@
   GI.plural = function (n, singular, plural) { return Number(n) === 1 ? singular : plural; };
   GI.CHAMADO_STATUS = { novo: 'Novo', triagem: 'Triagem', orcamento: 'Orçamento', aprovacao: 'Aprovação',
     agendado: 'Agendado', execucao: 'Em execução', concluido: 'Concluído', cancelado: 'Cancelado' };
+  GI.statusDisponiveis = function (status) {
+    if (status !== 'concluido' && status !== 'cancelado') return GI.CHAMADO_STATUS;
+    var mapa = {}; mapa[status] = GI.CHAMADO_STATUS[status]; mapa.triagem = 'Reabrir (volta para Triagem)';
+    return mapa;
+  };
   GI.CHAMADO_STATUS_CLASSES = { novo: 'gi-estado-off', triagem: 'gi-estado-off', orcamento: 'gi-estado-pendente',
     aprovacao: 'gi-estado-pendente', agendado: 'gi-estado-azul', execucao: 'gi-estado-azul', concluido: 'gi-estado-ok', cancelado: 'gi-estado-cancelado' };
   GI.CHAMADO_PRIORIDADES = { emergencia: 'Emergência', alta: 'Alta', normal: 'Normal' };
@@ -85,11 +90,7 @@
     var rows = [];
     listas.forEach(function (lista) { (Array.isArray(lista) ? lista : []).forEach(function (a) {
       if (!GI.chatAberto(a, contatoId) || rows.some(function (r) { return r.chat_id === Number(a.id); })) return;
-      var fila = (filas || []).find(function (f) { return Number(f.id) === Number(a.queueId); });
-      var inicio = a.startedAt;
-      if (typeof inicio === 'number') inicio = Number.isFinite(new Date(inicio).getTime()) ? new Date(inicio).toISOString() : null;
-      rows.push({ chat_id: Number(a.id), protocolo: a.protocol || null, canal: GI.canalAtendimento(a.channel),
-        fila: fila && fila.name || (a.queueId ? 'Fila ' + a.queueId : null), iniciado_em: inicio || null, vivo: true, ultima: '' });
+      rows.push(Object.assign(GI.atendimentoPortal(a, filas), { vivo: true, ultima: '' }));
     }); });
     return rows;
   };
@@ -100,8 +101,8 @@
       var n = Number(a.id);
       if (!Number.isSafeInteger(n) || n <= 0) return;
       var anterior = mapa[n] || {};
-      mapa[n] = { chat_id: n, protocolo: a.protocol || null, canal: GI.canalAtendimento(a.origin),
-        fila: a.qname || anterior.fila || null, iniciado_em: a.begintime || anterior.iniciado_em || null,
+      mapa[n] = { chat_id: n, protocolo: GI.textoOuNull(a.protocol), canal: GI.canalAtendimento(a.origin),
+        fila: GI.textoOuNull(a.qname) || GI.textoOuNull(anterior.fila), iniciado_em: GI.dataDoChat(typeof a.begintime === 'string' ? GI.isoPortal(a.begintime) : a.begintime) || GI.dataDoChat(anterior.iniciado_em),
         vivo: Number(a.status) === 1, motivo: a.endreason || '', ultima: anterior.ultima || '' };
     });
     return Object.keys(mapa).map(function (k) { return mapa[k]; }).sort(function (a, b) {
@@ -119,6 +120,25 @@
     // Compatibilidade com atendimentos e vínculos antigos que já trazem o rótulo.
     return Object.keys(rotulos).some(function (k) { return rotulos[k] === origem; }) ? origem : 'Atendimento';
   };
+  GI.atendimentoPortal = function (chat, filas) {
+    var fila = (filas || []).find(function (f) { return Number(f.id) === Number(chat.queueId); });
+    return { chat_id: GI.id(chat.id), protocolo: GI.textoOuNull(chat.protocol), canal: GI.canalAtendimento(chat.channel),
+      fila: GI.textoOuNull(fila && fila.name || chat.queueName) || (GI.id(chat.queueId) ? 'Fila ' + GI.id(chat.queueId) : null), iniciado_em: GI.dataDoChat(chat.startedAt) };
+  };
+  GI.chamadosCriarSeguro = function (dados) {
+    return GI.chamadosCriar(dados).catch(function (err) {
+      if (!err.semResposta || !dados.solicitante || !GI.id(dados.solicitante.contato_id)) throw err;
+      return GI.chamadosPorContato(dados.solicitante.contato_id).then(function (r) {
+        var encontrado = (r.rows || []).find(function (c) {
+          var idade = Date.now() - Date.parse(c.criado_em);
+          var mesmoAtendimento = !c.atendimento && !dados.atendimento || c.atendimento && dados.atendimento && c.atendimento.chat_id === dados.atendimento.chat_id && c.atendimento.protocolo === dados.atendimento.protocolo;
+          return c.titulo === dados.titulo && mesmoAtendimento && idade >= 0 && idade <= 180000;
+        });
+        if (encontrado) return { chamado: encontrado, reconciliado: true };
+        throw err;
+      }, function () { err.criacaoIncerta = true; throw err; });
+    });
+  };
   GI.atendimentoTexto = function (a) {
     if (!a) return 'Nenhum atendimento vinculado';
     var chat = Number.isSafeInteger(Number(a.chat_id)) && Number(a.chat_id) > 0;
@@ -126,7 +146,9 @@
     var partes = ['#' + Number(a.chat_id)];
     if (a.canal != null && a.canal !== '') partes.push(typeof a.canal === 'number' ? GI.canalAtendimento(a.canal) : a.canal);
     if (a.protocolo) partes.push(a.protocolo);
-    if (typeof a.iniciado_em === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(a.iniciado_em) && Number.isFinite(Date.parse(a.iniciado_em))) partes.push(GI.dataHora(a.iniciado_em));
+    if (a.fila) partes.push(a.fila);
+    var inicio = GI.dataDoChat(a.iniciado_em);
+    if (inicio) partes.push(GI.dataHora(inicio));
     return partes.join(' · ');
   };
   GI.chamadoTrilha = function (status) {

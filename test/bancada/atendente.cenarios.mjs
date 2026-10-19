@@ -3,7 +3,7 @@ export async function testarAtendente(b, origem, chamadoId, verificarNota) {
   for (const perfil of ['agente', 'supervisor', 'admin']) {
     await b.navegar(origem + '/app/painel.html?escrita=1&perfil=' + perfil);
     await b.esperar(() => !!document.querySelector('[data-chamado]'));
-    assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), perfil === 'admin');
+    assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true);
     if (perfil !== 'agente') continue;
     await b.clicar('[data-detalhes="' + chamadoId + '"]');
     await b.esperar(() => !!document.querySelector('[data-nota]'));
@@ -35,7 +35,7 @@ export async function testarRecusasAtendente(b, origem) {
   await b.avaliar(() => { bancada.recusarEnvio = true; });
   await b.preencher('[data-nota]', 'Nota preservada sem janela'); await b.clicar('[data-avisar]');
   await b.clicar('[data-salvar-nota]'); await b.clicar('[data-confirmar-nota]');
-  await b.esperar(() => document.querySelector('[data-recado-nota]').textContent.includes('24 horas'));
+  await b.esperar(() => document.querySelector('[data-recado-nota]').textContent.includes('24 h fechou'));
   let d = await b.avaliar(async () => GI.chamadosObter(1));
   assert.equal(d.eventos.at(-1).texto, 'Nota preservada sem janela'); assert.equal(d.eventos.at(-1).notificou_cliente, false);
   assert.equal(await b.avaliar(() => bancada.mensagens.length), 0);
