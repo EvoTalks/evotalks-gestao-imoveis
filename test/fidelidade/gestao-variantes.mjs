@@ -21,7 +21,7 @@ export async function testarGestao() {
       }
       if (quadro === 'imoveis') {
         assert.equal(await b.avaliar(() => document.querySelectorAll('[data-locacao]').length), 6);
-        assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('.gi-barra select')].map(e => e.id)), ['f-situacao','f-estado','f-porpagina']);
+        assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('.gi-barra select')].map(e => e.id)), ['f-finalidade','f-situacao','f-estado','f-porpagina']);
         assert.equal(await b.avaliar(() => document.querySelector('#b-proxima').disabled), true);
         assert.match(await b.avaliar(() => document.querySelector('#gi-origem').textContent), /6 no total/);
       }

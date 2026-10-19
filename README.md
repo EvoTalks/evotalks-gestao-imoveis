@@ -66,6 +66,8 @@ locatário. O filtro Situação vale **somente para a página atual**, assim com
 Somente o administrador vê a chave **Marcar como locado** e a edição da locação.
 Situação e seu filtro continuam disponíveis para consulta em todos os perfis.
 
+**Finalidade (0.25.3)** filtra o catálogo nativo por Locação ou Venda no servidor, mantendo busca e bairro; se o servidor não aceitar a consulta, o fallback local aplica o mesmo filtro. A finalidade vem do prefixo de `description` (`[Locacao]` ou `[Venda]`); registros sem prefixo conhecido permanecem em Todas. A linha do imóvel mostra a finalidade quando reconhecida. O seletor não é persistido.
+
 **Locados** lista e filtra por imóvel, contato, contrato, origem e vigência; mostra resumo
 e paginação. **Novo locado** permite escolher um anúncio ou informar imóvel que nunca
 esteve no catálogo (título, endereço, tipo, bairro e cidade). A faixa de candidatos lista
@@ -438,6 +440,8 @@ Patch 0.23.1: o cockpit relê silenciosamente escritas de outras telas, preserva
 0.24.0: botão Editar inline na O.S., grade de fotos selecionáveis e erros de rede legíveis com rascunho preservado. Escritas usam timeout de 30 s (leituras, 20 s); o host pode abortar antes e devolver status 0.
 
 ### Fidelidade ao desenho (0.25.0)
+
+O quadro `imoveis` incorpora o filtro Finalidade, pedido do Marco em 19/10/2026, que não existe no desenho; por isso esse recorte pode aumentar. Os outros nove recortes permanecem inalterados.
 
 `node test/fidelidade/comparar.mjs` mede os nove recortes originais e o sucesso
 suplementar contra `~/design/tela.html` **lido ao vivo** (`TELA_HTML` sobrescreve o

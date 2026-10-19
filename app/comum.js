@@ -772,7 +772,12 @@
         where.or.forEach(function (o) { o.brand = marca; });
         delete where.brand;
       }
+      if (filtros.finalidade) {
+        var prefixo = filtros.finalidade === 'locacao' ? '[Locacao]' : '[Venda]';
+        where.or.forEach(function (o) { o.description = { startsWith: prefixo }; });
+      }
     }
+    if (filtros.finalidade && !filtros.termo) where.description = { startsWith: filtros.finalidade === 'locacao' ? '[Locacao]' : '[Venda]' };
     if (filtros.bairro) where.category = { contains: filtros.bairro };
     return where;
   }
@@ -806,6 +811,7 @@
   function casaLocal(p, filtros) {
     var marca = GI.cfg('marca', '');
     if (marca && String(p.brand || '') !== marca) return false;
+    if (filtros.finalidade && GI.finalidadeDoImovel(p) !== filtros.finalidade) return false;
     if (filtros.bairro && String(p.category || '').toLowerCase().indexOf(String(filtros.bairro).toLowerCase()) === -1) return false;
     if (filtros.termo) {
       var t = String(filtros.termo).toLowerCase();
@@ -827,7 +833,9 @@
     return pedir(recurso).then(function (r) {
       var arr = GI.lista(r);
       GI.estrategiaCatalogo = 'consulta filtrada no servidor';
-      return { itens: arr, total: null, ms: Date.now() - inicio };
+      var total = null;
+      if (r && !Array.isArray(r)) total = typeof r.total === 'number' ? r.total : typeof r.count === 'number' ? r.count : null;
+      return { itens: arr, total: total, ms: Date.now() - inicio };
     }).catch(function () {
       return carregarTudoLocal().then(function (todos) {
         GI.estrategiaCatalogo = 'catálogo lido inteiro e filtrado na tela';
@@ -839,6 +847,17 @@
         };
       });
     });
+  };
+
+  GI.finalidadeDoImovel = function (p) {
+    var descricao = String(p && p.description || '');
+    var prefixo = /^\s*\[([^\]]+)\]/.exec(descricao);
+    if (!prefixo) return '';
+    var finalidade = prefixo[1].toLowerCase();
+    if (finalidade.normalize) finalidade = finalidade.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (finalidade === 'venda') return 'venda';
+    if (finalidade === 'locacao' || finalidade === 'aluguel') return 'locacao';
+    return '';
   };
 
   GI.buscarImovel = function (codigo) {

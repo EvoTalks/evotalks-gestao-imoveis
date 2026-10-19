@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.25.2">
-<link rel="stylesheet" href="chamados.css?v=0.25.2">
+<link rel="stylesheet" href="estilo.css?v=0.25.3">
+<link rel="stylesheet" href="chamados.css?v=0.25.3">
 </head>
 <body class="gi gi-gestao">
 
@@ -25,6 +25,12 @@
     <div class="gi-campo" style="flex:1 1 240px">
       <label for="f-termo">Buscar por código, título ou bairro</label>
       <input id="f-termo" type="search" placeholder="ex.: 0060, apartamento, Souza Cruz">
+    </div>
+    <div class="gi-campo">
+      <label for="f-finalidade">Finalidade</label>
+      <select id="f-finalidade">
+        <option value="">todas</option><option value="locacao">Locação</option><option value="venda">Venda</option>
+      </select>
     </div>
     <div class="gi-campo">
       <label for="f-situacao">Situação</label>
@@ -83,14 +89,14 @@
 </p>
 
 <div class="gi-aviso" id="gi-locados-aviso" hidden></div>
-<script src="comum.js?v=0.25.2"></script>
-<script src="locacao.js?v=0.25.2"></script>
+<script src="comum.js?v=0.25.3"></script>
+<script src="locacao.js?v=0.25.3"></script>
 <script>
 (function () {
   'use strict';
 
   var estado = {
-    pagina: 1, porPagina: 25, termo: '', filtroEstado: '', filtroSituacao: '',
+    pagina: 1, porPagina: 25, termo: '', finalidade: '', filtroEstado: '', filtroSituacao: '',
     itens: [], campos: [], valores: {}, preenchidos: {}, locados: null
   };
   var geracao = 0;
@@ -160,7 +166,7 @@
       return '<tr>' +
         '<td class="gi-nowrap"><strong>' + GI.escapar(GI.codigoCurto(p.internalcode)) + '</strong>' +
           '<div class="gi-ajuda">' + GI.escapar(p.internalcode) + '</div></td>' +
-        '<td>' + GI.escapar(p.name) + '<div class="gi-ajuda">' + GI.escapar(cat.tipo) + '</div></td>' +
+        '<td>' + GI.escapar(p.name) + '<div class="gi-ajuda">' + GI.escapar(cat.tipo) + (GI.finalidadeDoImovel(p) ? ' · ' + GI.escapar(GI.finalidadeDoImovel(p) === 'locacao' ? 'Locação' : 'Venda') : '') + '</div></td>' +
         '<td>' + GI.escapar(cat.bairro || cat.cidade) + '</td>' +
         '<td class="gi-direita gi-nowrap">' + GI.dinheiro(p.value) + '</td>' +
         '<td>' + (n ? '<span class="gi-chip">' + n + ' campo' + (n > 1 ? 's' : '') + '</span>' : '<span class="gi-mudo gi-pequeno">nada ainda</span>') + '</td>' +
@@ -240,7 +246,7 @@
     var atual = ++geracao;
     el('gi-corpo').innerHTML = '<tr><td colspan="8" class="gi-mudo">buscando…</td></tr>';
     return GI.buscarImoveis({
-      termo: estado.termo, pagina: estado.pagina, porPagina: estado.porPagina
+      termo: estado.termo, finalidade: estado.finalidade, pagina: estado.pagina, porPagina: estado.porPagina
     }).then(function (r) {
       if (atual !== geracao) return;
       estado.itens = r.itens;
@@ -466,13 +472,18 @@
 
     el('b-buscar').addEventListener('click', function () {
       estado.termo = el('f-termo').value.trim();
+      estado.finalidade = el('f-finalidade').value;
       estado.pagina = 1;
       carregar().catch(GI.erroFatal);
     });
     el('f-termo').addEventListener('keydown', function (e) { if (e.key === 'Enter') el('b-buscar').click(); });
+    el('f-finalidade').addEventListener('change', function () {
+      estado.finalidade = el('f-finalidade').value; estado.pagina = 1;
+      carregar().catch(GI.erroFatal);
+    });
     el('b-limpar').addEventListener('click', function () {
-      el('f-termo').value = ''; el('f-estado').value = ''; el('f-situacao').value = '';
-      estado.termo = ''; estado.filtroEstado = ''; estado.filtroSituacao = ''; estado.pagina = 1;
+      el('f-termo').value = ''; el('f-finalidade').value = ''; el('f-estado').value = ''; el('f-situacao').value = '';
+      estado.termo = ''; estado.finalidade = ''; estado.filtroEstado = ''; estado.filtroSituacao = ''; estado.pagina = 1;
       carregar().catch(GI.erroFatal);
     });
     el('f-estado').addEventListener('change', function () {
