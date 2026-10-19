@@ -293,12 +293,7 @@
         desenhar(); input.addEventListener('change', desenhar); input.insertAdjacentElement('afterend', box);
       }
       function contatoRotulo(p) {
-        var telefone = String(p.phone || ''), digitos = telefone.replace(/\D/g, '');
-        if (/^55\d{10,11}$/.test(digitos)) digitos = digitos.slice(2);
-        var mascarado = '';
-        if (/^\(\d{2}\) \d ••••-\d{4}$/.test(telefone) && telefone === telefone.trim()) mascarado = telefone;
-        else if (digitos.length >= 10) mascarado = '(' + digitos.slice(0, 2) + ') ' + (digitos.length >= 11 ? digitos.charAt(2) + ' ' : '') + '••••-' + digitos.slice(-4);
-        else if (digitos) mascarado = '••••' + (digitos.length > 4 ? '-' + digitos.slice(-4) : '');
+        var mascarado = GI.telefoneDiscreto(p.phone);
         return String(p.name || '') + (mascarado ? ' · ' + mascarado : '');
       }
       function mensagensDoAtendimento(id, renovar) {
@@ -733,7 +728,7 @@
         var titulo = editando ? no('titulo').value.trim() : GI.tituloNovoChamado(no('descricao').value, no('categoria').value); if (!titulo) throw new Error('Informe o título do chamado.');
         var u = no('atendente').value === '' ? null : usuarios[Number(no('atendente').value)];
         var d = { titulo: titulo, descricao: no('descricao').value.trim(), categoria: no('categoria').value, prioridade: no('prioridade').value,
-          atendente: u ? { user_id: idValido(u.id), nome: String(u.name || u.id) } : null, atendimento: atendimentoEscolhido(),
+          atendente: u ? { user_id: idValido(u.id), nome: GI.nomeDoUsuario(u) } : null, atendimento: atendimentoEscolhido(),
           acesso: { disponibilidade: no('disponibilidade').value.trim(), sem_cliente: no('sem-cliente').value === 'sim', chaves: no('chaves').value.trim() } };
         if (!editando) { d.locacao_id = idValido(l.id); d.origem = 'gestao'; d.solicitante = { contato_id: idValido(contato.id), nome: GI.nomeContato(contato), telefone: GI.textoOuNull(contato.phone) }; d.anexos = anexosSelecionados(); }
         else {
@@ -979,13 +974,14 @@
           caixa.querySelectorAll('form').forEach(function (f) { f.noValidate = true; });
           sdk('users', 'list').then(function (r) {
             if (!caixa.isConnected) return;
-            usuarios = (Array.isArray(r) ? r : []).filter(function (u) { return idValido(u.id) && u.name; });
+            usuarios = (Array.isArray(r) ? r : []).filter(function (u) { return idValido(u.id); }).map(function (u) { return { id: u.id, name: GI.nomeDoUsuario(u) }; });
             preencherUsuarios();
           }).catch(function () { if (caixa.isConnected) { usuarios = []; preencherUsuarios(); mensagem('Não foi possível listar atendentes. O vínculo existente foi preservado; reabra para tentar novamente.', 'erro'); } });
           function preencherUsuarios() {
             var original = c.atendente, atual = editando ? original : GI.ctx() && GI.ctx().user;
+            if (!editando && atual && idValido(atual.id) && !usuarios.some(function (u) { return Number(u.id) === Number(atual.id); })) usuarios.push({ id: atual.id, name: GI.nomeDoUsuario(atual) });
             if (original && !usuarios.some(function (u) { return Number(u.id) === Number(original.user_id); })) usuarios.push({ id: original.user_id, name: original.nome });
-            no('atendente').innerHTML = '<option value="">Sem atendente</option>' + usuarios.map(function (u, i) { return '<option value="' + i + '"' + (atual && Number(u.id) === Number(atual.user_id || atual.id) ? ' selected' : '') + '>' + e(u.name) + '</option>'; }).join('');
+            no('atendente').innerHTML = '<option value="">Sem atendente</option>' + usuarios.map(function (u, i) { return '<option value="' + i + '"' + (atual && Number(u.id) === Number(atual.user_id || atual.id) ? ' selected' : '') + '>' + e(GI.nomeDoUsuario(u)) + '</option>'; }).join('');
             usuariosCarregados = true; no('atendente').disabled = fechado;
           }
           redesenharAtendimentos();

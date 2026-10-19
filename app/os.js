@@ -56,14 +56,14 @@
     if (demo()) { desenhar(demoItens); recado('Demonstração · dados sintéticos, sem gravação.', 'info'); return Promise.resolve(); }
     if (GI.modo !== 'portal') { el('gi-sem-portal').hidden = false; return Promise.resolve(); }
     recado('Carregando chamados do contato…', 'info');
-    return omni.chats.getSelected().then(function (chat) {
+    return GI.pessoas.ler().then(function () { return omni.chats.getSelected(); }).then(function (chat) {
       if (g !== geracao) return;
       if (!chat || !id(chat.id)) { recado('Abra um atendimento para consultar os chamados.', 'info'); return; }
-      var contatoId = id(chat.contactId);
+      var contatoId = GI.contatoEfetivo(chat);
       if (!contatoId) { recado('Vincule um contato a este atendimento.', 'info'); return; }
       return Promise.all([GI.chamadosPorContato(contatoId), omni.contacts.get(contatoId)]).then(function (rs) {
         return omni.chats.getSelected().then(function (atual) {
-          if (g !== geracao || !atual || id(atual.id) !== id(chat.id) || id(atual.contactId) !== contatoId) return;
+          if (g !== geracao || !atual || id(atual.id) !== id(chat.id) || id(atual.contactId) !== id(chat.contactId) || GI.contatoEfetivo(atual) !== contatoId) return;
           contato = rs[1]; el('b-novo').disabled = false; recado('', 'info'); desenhar(rs[0].rows || []);
         });
       });
@@ -78,8 +78,12 @@
       var idade = valor && typeof valor.em === 'number' && valor.em > 0 ? Date.now() - valor.em : NaN;
       var destino = direto ? params : Number.isFinite(idade) && idade >= 0 && idade <= 60000 ? valor : null;
       if (!destino || !id(destino.chamadoId) || !id(destino.contatoId)) return null;
-      return omni.chats.getSelected().then(function (chat) {
-        return chat && id(chat.id) && id(chat.contactId) === id(destino.contatoId) ? id(destino.chamadoId) : null;
+      return GI.pessoas.ler().then(function () { return omni.chats.getSelected(); }).then(function (chat) {
+        if (!chat || !id(chat.id)) return null;
+        if (GI.contatoEfetivo(chat) === id(destino.contatoId)) return id(destino.chamadoId);
+        // Parâmetros do cockpit identificam também o chat: funcionam sem storage.
+        if (id(destino.chatId) !== id(chat.id)) return null;
+        return GI.pessoas.escolher(chat, { id: destino.contatoId, name: destino.nome }, true).then(function () { return id(destino.chamadoId); });
       });
     }).catch(function () { return null; });
   }

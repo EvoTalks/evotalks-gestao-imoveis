@@ -79,7 +79,9 @@ export async function testarHistorico(b, origem) {
 export async function testarResidencias(b, origem) {
   const navegar = async q => {
     await b.navegar(origem + '/app/painel.html?chat=8806&' + ((q || '').includes('perfil=') ? '' : 'perfil=agente&') + (q || ''));
-    await b.esperar(() => !!document.querySelector('#cp-vincular-residencia') && !document.querySelector('#cp-vincular-residencia').hidden);
+    await b.esperar(() => document.querySelector('#cp-nome').textContent !== 'Contato do atendimento' || document.querySelector('#cp-estado')?.textContent.includes('portal não respondeu'));
+    if (await b.avaliar(() => !document.querySelector('#cp-abas').hidden)) await b.clicar('#cp-tab-imovel');
+    if (!(q || '').includes('modo=')) await b.esperar(() => !document.querySelector('#cp-vincular-residencia').hidden);
   };
   const buscar = async (termo = 'DEMO-001') => {
     await b.clicar('#cp-vincular-residencia'); await b.preencher('#cp-r-busca', termo);
