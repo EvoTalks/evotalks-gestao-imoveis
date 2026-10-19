@@ -8,7 +8,7 @@ export async function testarCockpit2(b, base) {
   const salvo = k => b.esperar(k => document.querySelector('[data-chamado="0"] [data-salvo="' + k + '"]')?.textContent === '✓ salvo' && !document.querySelector('[data-chamado="0"] [data-rapida="' + k + '"]').disabled, k);
   const prova = t => process.stdout.write('OK F12 ' + t + '\n');
   await b.navegar(base + '?escrita=1'); await pronto();
-  assert.match(await texto('#cp-idade'), /atualizado há 0 min/);
+  assert.match(await texto('#cp-idade'), /atualizado às \d{2}:\d{2}/);
   assert.match(await texto(card + ' summary'), /Este atendimento/);
   await b.clicar('[data-resumo="aguardando"]');
   assert.equal(await b.avaliar(() => document.querySelectorAll('[data-chamado]').length), 1);
@@ -116,12 +116,14 @@ export async function testarCockpit2(b, base) {
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
   assert.equal(await b.avaliar(() => document.querySelector('#cp-mais-detalhes').open), false);
   await b.clicar('#cp-ultima'); await b.esperar(() => document.querySelector('#cp-descricao').value.includes('Relato sintético'));
-  assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), '');
-  await b.clicar('[data-categoria="eletrica"]'); assert.match(await b.avaliar(() => document.querySelector('#cp-titulo').placeholder), /Elétrica/);
+  assert.equal(await b.avaliar(() => !!document.querySelector('#cp-titulo')), false);
+  await b.clicar('[data-categoria="eletrica"]');
+  await b.clicar('#cp-revisar'); assert.match(await texto('[data-kv="Categoria"]'), /Elétrica/);
+  await b.clicar('#cp-voltar');
   await b.avaliar(() => { omni.chats.getMessages = async () => []; }); await b.clicar('#cp-ultima'); await b.esperar(() => document.querySelector('#cp-ultima-recado').textContent.includes('Nenhuma mensagem'));
   await b.avaliar(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
   assert.ok(await b.avaliar(() => !!document.querySelector('#cp-busca')));
-  prova('vínculo em 1 POST, pessoas e copiar telefone, novo pela residência, detalhes recolhidos, última mensagem e sugestão sem título automático');
+  prova('vínculo em 1 POST, pessoas e copiar telefone, novo pela residência, detalhes recolhidos, última mensagem, categoria e título derivado da descrição');
 
   // Dados de volume já lidos do portal: nenhum fixture real ou token.
   await b.navegar(base + '?escrita=1&persistir=1'); await pronto();
@@ -136,7 +138,7 @@ export async function testarCockpit2(b, base) {
 
   const antesDaFalha = await b.avaliar(() => sessionStorage.getItem('gi-cockpit-snapshots-v1'));
   await b.navegar(base + '?escrita=1&persistir=1&cenario=snapshot-lento'); await pronto();
-  assert.match(await texto('#cp-idade'), /atualizado há/);
+  assert.match(await texto('#cp-idade'), /atualizado às/);
   assert.equal(await b.avaliar(() => bancada.chamadas.filter(r => r.caminho.includes('/contatos/')).length), 0, 'snapshot fresco evita rede na reabertura');
   assert.equal(await b.avaliar(() => sessionStorage.getItem('gi-cockpit-snapshots-v1')), antesDaFalha);
   await b.avaliar(() => { cenario.tipo = ''; });

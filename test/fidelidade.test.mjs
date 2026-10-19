@@ -15,7 +15,10 @@ import { criarServidor } from './bancada/servidor.mjs';
 
 test('fidelidade: CLI valida quadros e limite sem reprovar a linha de base por padrão', () => {
   assert.deepEqual(argumentos([]).quadros,QUADROS);
-  assert.deepEqual(argumentos(['lista','lista','--limite','.5','--so-desenho']),{quadros:['lista'],limite:.5,soDesenho:true});
+  assert.deepEqual(argumentos(['lista','lista','--limite','.5','--so-desenho']),{quadros:['lista'],limite:.5,soDesenho:true,origemComum:true});
+  assert.equal(argumentos([]).origemComum,true);
+  assert.equal(argumentos(['--original']).origemComum,false);
+  assert.equal(argumentos(['--original','--origem-comum']).origemComum,true);
   for(const args of [['inexistente'],['--limite'],['--limite','x'],['--limite','-1'],['--limite','101']])assert.throws(()=>argumentos(args));
   assert.equal(reprovado([{percentual:99}],null),false);
   assert.equal(reprovado([{percentual:.5}],.5),false);
@@ -65,7 +68,7 @@ test('fidelidade: DOM vivo, relógio, pixels, máscara e estados reais', async t
   const d=await lerDesenho({browser:b});
   await t.test('cada valor visível do fixture ainda existe no desenho; erro identifica valor e quadro',()=>{
     assert.deepEqual(validarFixture(d),[]);
-    assert.equal(Object.keys(d.quadros).length,9);assert.ok(d.css.includes('.gi'));
+    assert.equal(Object.keys(d.quadros).length,10);assert.ok(d.css.includes('.gi'));
     for(const q of QUADROS)assert.ok(d.quadros[q].dom&&d.quadros[q].texto);
     const copia=structuredClone(d);copia.quadros.lista.texto=copia.quadros.lista.texto.replaceAll('Carla Menezes','');
     assert.ok(validarFixture(copia).some(e=>e.includes('lista:')&&e.includes('Carla Menezes')));

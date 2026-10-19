@@ -6,7 +6,7 @@ export async function testarReview1(b, base) {
     await b.navegar(base + '?escrita=1'); await pronto();
     await b.clicar('#cp-tab-novo');
     if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-    await b.preencher('#cp-titulo', titulo); await b.clicar('#cp-revisar');
+    await b.preencher('#cp-descricao', titulo); await b.clicar('#cp-revisar');
     await b.avaliar(() => {
       bancada.salvarOriginal = document.querySelector('#cp-confirmar').onclick;
       bancada.postsReview = 0;
@@ -51,7 +51,7 @@ export async function testarReview1(b, base) {
     await b.clicar('#cp-revisar');
     await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Não consegui falar com o servidor. O chamado não foi aberto. Confira sua conexão e tente de novo.'));
     assert.equal(await b.avaliar(() => bancada.postsReview), 1);
-    await b.preencher('#cp-titulo', 'Criação liberada sintética F17');
+    await b.preencher('#cp-descricao', 'Criação liberada sintética F17');
     await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
     await b.esperar(() => !!document.querySelector('#cp-sucesso'));
     assert.equal(await b.avaliar(() => bancada.postsReview), 2, 'só depois da ausência confirmada permite uma criação');

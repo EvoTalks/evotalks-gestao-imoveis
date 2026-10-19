@@ -7,6 +7,7 @@
     return aberto(c) && !s.pausado && ((!s.primeira_resposta_em && Date.parse(s.prazo_resposta_em) < Date.now()) || Date.parse(s.prazo_solucao_em) < Date.now());
   }
   function aceita(c, filtro) {
+    if (filtro === 'concluidos') return c.status === 'concluido';
     if (filtro === 'abertos') return aberto(c);
     if (filtro === 'atrasados') return atrasado(c);
     if (filtro === 'aguardando') return aberto(c) && (c.aprovacao || {}).status === 'pendente';
@@ -27,7 +28,7 @@
     });
   }
   // Lista permitida recursiva: nunca persistir fotos, arquivos ou credenciais.
-  var campos = ('id numero locacao_id titulo descricao categoria prioridade status criado_em atualizado_em imovel imovel_codigo imovel_titulo imovel_endereco imovel_bairro imovel_cidade contrato_numero inicio fim valor_aluguel_centavos papel_do_contato contatos contato_id nome papel telefone codigo endereco bairro cidade fora_do_catalogo solicitante atendente user_id atendimento chat_id protocolo canal fila iniciado_em quem_paga valor_estimado_centavos prestador orcamentos_total aprovacao enviada_em resposta_em por observacao visita sla prazo_resposta_em prazo_solucao_em primeira_resposta_em pausado pausado_desde').split(' ');
+  var campos = ('id numero locacao_id titulo descricao categoria prioridade status criado_em atualizado_em concluido_em cancelado_em status_desde imovel imovel_codigo imovel_titulo imovel_endereco imovel_bairro imovel_cidade contrato_numero inicio fim valor_aluguel_centavos papel_do_contato contatos contato_id nome papel telefone codigo endereco bairro cidade fora_do_catalogo solicitante atendente user_id atendimento chat_id protocolo canal fila iniciado_em quem_paga valor_estimado_centavos prestador orcamentos_total aprovacao enviada_em resposta_em por observacao visita sla prazo_resposta_em prazo_solucao_em primeira_resposta_em pausado pausado_desde').split(' ');
   function limpar(v) {
     if (Array.isArray(v)) return v.map(limpar);
     if (!v || typeof v !== 'object') return v;
@@ -63,5 +64,9 @@
     }
     return d;
   }
-  GI.cockpit = { dadosEdicao: dadosEdicao, diffEdicao: diffEdicao, resumo: resumo, listar: listar, ligado: ligado, atrasado: atrasado, ler: ler, guardar: guardar };
+  function tituloNovo(descricao, categoria) {
+    var primeira = String(descricao || '').trim().split(/\r?\n|[.!?](?:\s|$)/)[0].trim();
+    return primeira ? primeira.slice(0, 80).trim() : 'Reparo de ' + (Object.hasOwn(GI.CHAMADO_CATEGORIAS, categoria) ? GI.CHAMADO_CATEGORIAS[categoria] : 'Outro');
+  }
+  GI.cockpit = { tituloNovo: tituloNovo, dadosEdicao: dadosEdicao, diffEdicao: diffEdicao, resumo: resumo, listar: listar, ligado: ligado, atrasado: atrasado, ler: ler, guardar: guardar };
 })();

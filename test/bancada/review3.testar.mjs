@@ -94,7 +94,7 @@ try {
     await caso(remover ? 'locação removida (' + remover + ') preserva rascunho e exige nova escolha explícita' : 'reordenar locações conserva seleção por ID no Novo e no cabeçalho', async () => {
       await abrir(); await b.clicar('#cp-tab-novo');
       await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-      await b.preencher('#cp-titulo', '<Título F22>'); await b.preencher('#cp-descricao', 'Texto do contrato C1');
+      await b.preencher('#cp-descricao', 'Texto do contrato C1');
       await b.avaliar(() => { document.querySelector('#cp-mais-detalhes').open = true; });
       await b.preencher('#cp-chaves', 'Portaria');
       if (remover === 'confirmacao') await b.clicar('#cp-revisar');
@@ -118,8 +118,7 @@ try {
       }, remover);
       if (remover) {
         assert.equal(await b.avaliar(() => document.querySelector('#cp-novo-imovel')?.value), '', 'imóvel removido não pode virar a primeira locação restante');
-        assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo')?.value), '<Título F22>');
-        assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Texto do contrato C1');
+        assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao')?.value), 'Texto do contrato C1');
         assert.equal(await b.avaliar(() => document.querySelector('#cp-chaves').value), 'Portaria');
         assert.ok(await b.avaliar(() => document.querySelector('#cp-novo-imovel').parentElement.innerText.includes('O imóvel escolhido não está mais disponível. Escolha o imóvel de novo.')));
         assert.equal(await b.avaliar(() => document.querySelector('#cp-revisar').disabled), true);
@@ -128,10 +127,10 @@ try {
         assert.equal(await b.avaliar(() => document.querySelector('#cp-imovel').value), '');
         if (remover !== 'todas') {
           await b.preencher('#cp-novo-imovel', '3');
-          assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), '<Título F22>');
+          assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Texto do contrato C1');
           assert.equal(await b.avaliar(() => document.querySelector('#cp-revisar').disabled), false);
           await b.clicar('#cp-revisar');
-          assert.match(await b.avaliar(() => document.querySelector('.gi-cp-imovel-novo').textContent), /Contrato DEMO-C3/);
+          assert.match(await b.avaliar(() => document.querySelector('[data-kv="Contrato"] .v').textContent), /^DEMO-C3$/);
         }
       } else {
         assert.equal(await b.avaliar(() => document.querySelector('#cp-novo-imovel').value), '1');
@@ -139,7 +138,7 @@ try {
         assert.equal(await b.avaliar(() => document.querySelector('#cp-imovel').value), '1');
         assert.deepEqual(await b.avaliar(() => [...document.querySelector('#cp-imovel').options].map(o => o.value)), ['3', '1']);
         await b.clicar('#cp-revisar');
-        assert.match(await b.avaliar(() => document.querySelector('.gi-cp-imovel-novo').textContent), /Contrato DEMO-C1/);
+        assert.match(await b.avaliar(() => document.querySelector('[data-kv="Contrato"] .v').textContent), /^DEMO-C1$/);
       }
     });
   }

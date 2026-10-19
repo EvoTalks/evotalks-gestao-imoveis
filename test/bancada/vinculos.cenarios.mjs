@@ -22,8 +22,8 @@ export async function testarHistorico(b, origem) {
   ]; }, hostil);
   await abrir();
   assert.equal(await b.avaliar(() => document.querySelectorAll('[data-atendimento]').length), 3);
-  assert.match(await texto(b, '[data-atendimento="0"]'), /20\/10\/2026.*Atendimento.*Encerrado/);
-  assert.match(await texto(b, '[data-atendimento="1"]'), /Fila Histórica Sintética.*Aberto.*foto-demonstracao/);
+  assert.match(await texto(b, '[data-atendimento="0"]'), /Atendimento.*encerrado.*20\/10/);
+  assert.match(await texto(b, '[data-atendimento="1"]'), /aberto agora.*Fila Histórica Sintética.*foto-demonstracao/);
   assert.equal(await b.avaliar(() => document.querySelectorAll('#c-atendimentos img, #c-atendimentos script').length), 0);
   await b.clicar('#c-trocar'); assert.equal(await b.avaliar(() => bancada.consultasHistorico), 1, 'cache enquanto o contato é o mesmo');
   await b.viewport(390, 1100); await b.captura('vinculos-historico-390');
@@ -71,7 +71,7 @@ export async function testarHistorico(b, origem) {
   await b.preencher('#c-cliente', 'Demonstração Dois'); await b.esperar(() => !!document.querySelector('[data-contato]')); await b.clicar('[data-contato]');
   await b.esperar(() => !document.querySelector('#c-atendimentos').textContent.includes('Buscando'));
   await b.avaliar(() => bancada.liberarHistorico());
-  await b.esperar(() => document.querySelector('#c-atendimentos').textContent.includes('Aberto'));
+  await b.esperar(() => document.querySelector('#c-atendimentos').textContent.includes('aberto agora'));
   assert.doesNotMatch(await texto(b, '#c-atendimentos'), /CONTATO ANTERIOR/); await fechar();
   prova('contato trocado durante histórico pendente não mistura listas');
 }
@@ -87,7 +87,7 @@ export async function testarResidencias(b, origem) {
   };
   const confirmar = async () => { await b.clicar('#cp-r-confirmar'); await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Residência vinculada.')); };
   const capturar = async nome => {
-    assert.ok(await b.avaliar(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll('#gi-cockpit *')].every(el => el.scrollWidth <= el.clientWidth + 1 || ['INPUT','TEXTAREA','SELECT'].includes(el.tagName))), nome + ': sem overflow');
+    assert.ok(await b.avaliar(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll('#gi-cockpit *')].filter(el => el.checkVisibility() && !el.classList.contains('cp-so-leitor')).every(el => el.scrollWidth <= el.clientWidth + 1 || ['INPUT','TEXTAREA','SELECT'].includes(el.tagName))), nome + ': sem overflow');
     await b.captura('residencia-' + nome);
   };
   let inicioVinculo;

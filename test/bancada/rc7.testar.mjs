@@ -121,7 +121,7 @@ try {
   await caso('resultado descartado por foco em edição refaz os dois GET para a mesma marca', async () => {
     await abrir(); await mudarStatusExterno(); await zerar(); await atrasarReleitura(); await marca(); await acionar();
     await b.esperar(() => bancada.pendentes.length === 2);
-    await b.avaliar(() => document.querySelector('[data-os-id] [data-rapida="prioridade"]').focus());
+    await b.avaliar(() => { document.querySelector('[data-os-id] .cp-extras').open = true; document.querySelector('[data-os-id] [data-rapida="prioridade"]').focus(); });
     await liberarReleitura();
     assert.equal(await atualizado(), false, 'resultado durante edição deve ser descartado');
     await b.avaliar(() => document.activeElement.blur());

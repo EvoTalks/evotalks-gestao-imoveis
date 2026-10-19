@@ -1,5 +1,5 @@
 /* Adaptador determinístico de bancada. Nenhuma rota alcança portal/SDK reais. */
-import { fixture, AGORA, anexos, orcamentos, eventos, normalizar } from './fixture-desenho.mjs';
+import { fixture, AGORA, anexos, orcamentos, eventos, totalPrestadoresHidraulica, normalizar } from './fixture-desenho.mjs';
 import { criarPortalChamados } from '../bancada/portal-chamados.mjs';
 export function criarFixturePortal() {
   const dados = structuredClone(fixture), { chamados, locacoes, produtos, contatos } = dados;
@@ -37,7 +37,14 @@ export function criarFixturePortal() {
     if (rota === '/preenchidos') return resposta({ preenchidos: {} });
     if (rota.startsWith('/valores/')) return resposta({ valores: [], entradas: [] });
     if (rota === '/config/manutencao') return criacao.responder(method,rota,q);
-    if (rota === '/prestadores') return resposta({ rows: orcamentos.map(o=>({ id:o.prestador_id,nome:o.prestador_nome,ativo:true,categorias:['hidraulica'] })), total: 2 });
+    if (rota === '/prestadores') {
+      // O desenho conta cinco, mas nomeia só dois. Os outros três têm apenas
+      // identidade técnica e categoria, sem inventar nome nem situação cadastral.
+      const rows=orcamentos.map(o=>({ id:o.prestador_id,nome:o.prestador_nome,ativo:true,categorias:['hidraulica'] }));
+      while(rows.length<totalPrestadoresHidraulica)rows.push({id:rows.length+1,categorias:['hidraulica']});
+      const categoria=q.get('categoria');
+      return resposta({rows:rows.filter(p=>!categoria||p.categorias.includes(categoria)).slice(0,Number(q.get('por_pagina')||25)),total:categoria==='hidraulica'?totalPrestadoresHidraulica:categoria?0:rows.length});
+    }
     if (rota === '/locacoes/mapa') return resposta({ locados: Object.fromEntries(locacoes.filter(l=>l.imovel_codigo).map(l=>[l.imovel_codigo,{locacao_id:l.id,contrato_numero:l.contrato_numero,locatario_nome:l.contatos[0].nome}])) });
     if (rota === '/locacoes/candidatas') return resposta({ rows: [], total: 0 });
     if (rota === '/locacoes') return resposta({ rows:locacoes,total:locacoes.length,pageSize:Number(q.get('por_pagina')||25), resumo:{ativas:locacoes.length,vencendo_60d:locacoes.filter(l=>l.vence_em_dias<=60).length,encerradas:0} });

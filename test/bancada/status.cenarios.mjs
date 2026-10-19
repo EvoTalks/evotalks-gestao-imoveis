@@ -22,7 +22,7 @@ export async function testarStatus(b, origem) {
   await b.preencher(seletor(1), 'triagem'); await terminou(1, 'triagem');
   assert.equal(await contar(), antes + 1);
   assert.equal(await b.avaliar(() => bancada.primeiraLinha === document.querySelector('[data-editar="1"]').closest('tr') && bancada.outraLinha === document.querySelector('[data-editar="2"]').closest('tr')), true);
-  assert.match(await texto('#gi-resumo'), /0 emergências sem triagem/);
+  assert.match(await b.avaliar(() => document.querySelector('#gi-resumo').title), /0 emergências sem triagem/);
   assert.match(await texto('[data-status-controle="1"]'), /OS-1001: Novo → Triagem/);
   assert.notEqual(await b.avaliar(() => document.querySelector('[data-editar="1"]').closest('tr').cells[5].textContent), 'Responder já');
   prova('lista grava com uma requisição, atualiza prazo/resumo e preserva os nós das linhas');

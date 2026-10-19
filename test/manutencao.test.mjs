@@ -52,9 +52,9 @@ test('F18 criação segura usa início da operação mesmo após resposta demora
   const r = await GI.chamadosCriarSeguro(dados);
   assert.equal(r.chamado.id, 3);
 });
-test('manifest 0.24.0 declara navegação ordenada, cockpit e escrita configurável', () => {
+test('manifest 0.25.0 declara navegação ordenada, cockpit e escrita configurável', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.24.0');
+  assert.equal(m.version, '0.25.0');
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
   const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
@@ -73,7 +73,7 @@ test('manifest 0.24.0 declara navegação ordenada, cockpit e escrita configurá
   }
   const GI = carregar(); GI.ctx = () => ({ user: { type: 0 } });
   const cabecalho = GI.cabecalho('gi-chamados');
-  const titulos = m.contributions[0].items.map(i => i.title);
+  const titulos = m.contributions[0].items.filter(i => i.id !== 'gi-prestadores').map(i => i.title);
   for (let i = 1; i < titulos.length; i++) assert.ok(cabecalho.indexOf(titulos[i - 1]) < cabecalho.indexOf(titulos[i]));
 });
 test('formatação pura: número, rótulos, trilha e máscaras nunca produzem marcação hostil', () => {

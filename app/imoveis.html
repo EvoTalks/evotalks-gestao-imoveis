@@ -1,5 +1,13 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.24.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imóveis</title>
+<link rel="stylesheet" href="estilo.css?v=0.25.0">
+<link rel="stylesheet" href="chamados.css?v=0.25.0">
+</head>
+<body class="gi gi-gestao">
 
 <div class="gi-topo">
   <div>
@@ -19,17 +27,17 @@
       <input id="f-termo" type="search" placeholder="ex.: 0060, apartamento, Souza Cruz">
     </div>
     <div class="gi-campo">
+      <label for="f-situacao">Situação</label>
+      <select id="f-situacao">
+        <option value="">todas</option><option value="disponiveis">Disponíveis</option><option value="locados">Locados</option>
+      </select>
+    </div>
+    <div class="gi-campo">
       <label for="f-estado">Estado</label>
       <select id="f-estado">
         <option value="">todos</option>
         <option value="pendente">Pendentes</option>
         <option value="preenchido">Verificados</option>
-      </select>
-    </div>
-    <div class="gi-campo">
-      <label for="f-situacao">Situação · nesta página</label>
-      <select id="f-situacao">
-        <option value="">todas</option><option value="disponiveis">Disponíveis</option><option value="locados">Locados</option>
       </select>
     </div>
     <div class="gi-campo">
@@ -48,11 +56,11 @@
         <tr>
           <th style="width:92px">Código</th>
           <th>Imóvel</th>
-          <th style="width:150px">Bairro</th>
-          <th style="width:120px" class="gi-direita">Valor</th>
-          <th style="width:120px">Preenchido</th>
-          <th style="width:130px">Status</th>
-          <th>Situação</th>
+          <th style="width:140px">Bairro</th>
+          <th style="width:115px" class="gi-direita">Valor</th>
+          <th style="width:105px">Preenchido</th>
+          <th style="width:115px">Status</th>
+          <th style="width:190px">Situação</th>
           <th style="width:150px" class="gi-direita">Funções</th>
         </tr>
       </thead>
@@ -75,8 +83,8 @@
 </p>
 
 <div class="gi-aviso" id="gi-locados-aviso" hidden></div>
-<script src="comum.js?v=0.24.0"></script>
-<script src="locacao.js?v=0.24.0"></script>
+<script src="comum.js?v=0.25.0"></script>
+<script src="locacao.js?v=0.25.0"></script>
 <script>
 (function () {
   'use strict';
@@ -146,7 +154,7 @@
       var locacao = estado.locados && estado.locados[p.internalcode];
       var tituloLocacao = !estado.locados ? 'Locados exigem o portal conectado e o mapa de locações disponível' : locacao ? 'Ver a locação' : 'Marcar como locado';
       var situacao = !estado.locados ? '<span class="gi-mudo">—</span>' :
-        '<span class="gi-estado ' + (locacao ? 'gi-estado-escuro' : 'gi-disponivel') + '"><span class="gi-ponto ' +
+        '<span class="gi-estado ' + (locacao ? 'gi-estado-escuro' : 'gi-estado-ok') + '"><span class="gi-ponto ' +
         (locacao ? 'gi-ponto-escuro' : 'gi-ponto-ok') + '"></span>' + (locacao ? 'Locado' : 'Disponível') + '</span>' +
         (locacao ? '<div class="gi-ajuda">contrato ' + GI.escapar(locacao.contrato_numero || '—') + ' · ' + GI.escapar(locacao.locatario_nome || '') + '</div>' : '');
       return '<tr>' +
@@ -237,8 +245,13 @@
       if (atual !== geracao) return;
       estado.itens = r.itens;
       el('gi-pagina').textContent = String(estado.pagina);
-      el('gi-origem').textContent = r.itens.length + ' nesta página · ' +
-        (r.total !== null ? r.total + ' no total · ' : '') + r.ms + ' ms · ' + GI.estrategiaCatalogo;
+      // Uma página incompleta prova o total, mesmo quando o SDK não o informa.
+      var totalConhecido = r.total !== null ? r.total : r.itens.length < estado.porPagina ?
+        (estado.pagina - 1) * estado.porPagina + r.itens.length : null;
+      el('gi-origem').innerHTML = r.itens.length + ' nesta página' +
+        (totalConhecido !== null ? ' · <span class="gi-total-catalogo">' + GI.escapar(totalConhecido) + '</span> no total' : '') +
+        (estado.locados ? ' · dos quais ' + Object.keys(estado.locados).length + ' locados' : '');
+      el('gi-origem').title = r.ms + ' ms · ' + GI.estrategiaCatalogo;
       el('b-anterior').disabled = estado.pagina <= 1;
       el('b-proxima').disabled = r.itens.length < estado.porPagina;
       desenharLista();
@@ -449,6 +462,7 @@
   GI.pronto(function () {
     el('gi-nav').innerHTML = GI.cabecalho('gi-imoveis');
     GI.ligarNavegacao();
+    if (GI.modo === 'portal') el('gi-modo').parentNode.hidden = true;
 
     el('b-buscar').addEventListener('click', function () {
       estado.termo = el('f-termo').value.trim();
@@ -486,10 +500,14 @@
       estado.preenchidos = r[2];
       var ativos = estado.campos.filter(function (c) { return c.ativo !== false; }).length;
       var comInfo = Object.keys(estado.preenchidos).length;
-      el('gi-resumo').textContent = ativos + ' campo' + (ativos === 1 ? '' : 's') + ' em uso · ' +
-        comInfo + ' imóve' + (comInfo === 1 ? 'l' : 'is') + ' com informação preenchida';
+      el('gi-resumo').innerHTML = '<span class="gi-contagem-campos">' + ativos + '</span> campo' + (ativos === 1 ? '' : 's') + ' em uso · ' +
+        comInfo + ' imóve' + (comInfo === 1 ? 'l' : 'is') + ' com informação preenchida' +
+        (estado.locados ? ' · ' + Object.keys(estado.locados).length + ' locados do catálogo' : '');
       return carregar();
     });
   });
 })();
 </script>
+
+</body>
+</html>

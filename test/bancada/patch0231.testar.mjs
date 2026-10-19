@@ -50,7 +50,7 @@ try {
     assert.equal((await consultas()).length, 2);
     assert.equal(await b.avaliar(() => document.querySelector('[data-os-id="' + bancada.alvo + '"]').open), true);
     assert.equal(await b.avaliar(() => document.querySelector('[data-filtro="todos"]').getAttribute('aria-pressed')), 'true');
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-idade').textContent), 'atualizado há 0 min');
+    assert.match(await b.avaliar(() => document.querySelector('#cp-idade').textContent), /atualizado às \d{2}:\d{2}/);
     for (const tipo of ['focus', 'visibilitychange', 'pointerdown', 'timer']) await acionar(tipo);
     assert.equal((await consultas()).length, 2, 'a mesma marca não repete GET');
     assert.equal(await b.avaliar(() => bancada.toasts.length), 0, 'releitura é silenciosa');
@@ -58,11 +58,10 @@ try {
   await caso('rascunho Novo, aba, imóvel e filtros sobrevivem à releitura', async () => {
     await abrir(); await b.clicar('[data-filtro="abertos"]'); await b.preencher('#cp-busca', 'reparo');
     await b.preencher('#cp-imovel', '3'); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', '3');
-    await b.preencher('#cp-titulo', '<Título sintético>'); await b.preencher('#cp-descricao', 'Rascunho não pode sumir');
+    await b.preencher('#cp-descricao', 'Rascunho não pode sumir');
     await zerar(); await marca(); await acionar('focus');
     assert.equal((await consultas()).length, 2);
     assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').getAttribute('aria-selected')), 'true');
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), '<Título sintético>');
     assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Rascunho não pode sumir');
     assert.equal(await b.avaliar(() => document.querySelector('#cp-imovel').value), '3');
     await b.clicar('#cp-tab-chamados');
@@ -100,7 +99,7 @@ try {
   });
   await caso('gravação de Novo e criação incerta impedem releitura', async () => {
     await abrir(); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-    await b.preencher('#cp-titulo', 'Incerta F19'); await b.clicar('#cp-revisar');
+    await b.preencher('#cp-descricao', 'Incerta F19'); await b.clicar('#cp-revisar');
     await b.avaliar(() => {
       const http = omni.http.request;
       omni.http.request = op => {

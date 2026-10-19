@@ -1,6 +1,10 @@
 /* Edição única para a lista administrativa e para o diálogo da O.S. */
 (function () {
   'use strict';
+  GI.tituloNovoChamado = function (descricao, categoria) {
+    var texto = String(descricao || '').trim().split(/[\r\n]|[.!?](?:\s|$)/)[0].trim();
+    return texto ? texto.slice(0, 80) : 'Reparo de ' + (Object.hasOwn(GI.CHAMADO_CATEGORIAS, categoria) ? GI.CHAMADO_CATEGORIAS[categoria] : 'Outros');
+  };
   GI.criarChamadoForm = function (op) {
     op = op || {};
     var e = GI.escapar, el = function (id) { return document.getElementById(id); };
@@ -13,13 +17,13 @@
     function idValido(v) { var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; }
     function data(v) {
       var s = String(v || '');
-      return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && Number.isFinite(Date.parse(s)) ? GI.dataHora(s) : '—';
+      return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && Number.isFinite(Date.parse(s)) ? GI.dataHora(s).replace(/\/\d{4}/, '').replace(/,? (\d{2}:\d{2})$/, ' · $1') : '—';
     }
     function opcoes(mapa, atual) {
       return Object.keys(mapa).map(function (k) { return '<option value="' + e(k) + '"' + (k === atual ? ' selected' : '') + '>' + e(mapa[k]) + '</option>'; }).join('');
     }
     function status(c) {
-      return '<span class="gi-estado ' + (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off') + '"><span class="gi-ponto"></span>' + e(valorMapa(GI.CHAMADO_STATUS, c.status) || 'Não informado') + '</span>';
+      return '<span class="gi-estado ' + (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off') + '"><span class="gi-ponto gi-ponto-' + (valorMapa({ orcamento: 'pendente', aprovacao: 'pendente', agendado: 'azul', execucao: 'azul', concluido: 'ok' }, c.status) || 'off') + '"></span>' + e(valorMapa(GI.CHAMADO_STATUS, c.status) || 'Não informado') + '</span>';
     }
     function erro(err) { return GI.mensagemErro(err); }
     function sdk(grupo, metodo, args) {
@@ -31,11 +35,11 @@
     function controleStatus(c, modal) {
       var conhecido = Object.hasOwn(GI.CHAMADO_STATUS, c.status), bloqueado = GI.modo !== 'portal';
       return '<div data-status-controle="' + e(c.id) + '"' + (modal ? ' id="c-status-controle"' : '') + '>' +
-        (modal ? '<label for="c-status">Status</label>' : '') +
+        (modal ? '<label for="c-status">Status</label>' : '<div class="gi-status-pilula">' + status(c)) +
         '<select data-status-id="' + e(c.id) + '"' + (modal ? ' id="c-status"' : '') + ' aria-label="Status de ' + e(GI.chamadoNumero(c.numero)) + '" class="gi-status-select gi-estado ' +
         (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off') + '"' + (bloqueado || gravandoStatus[c.id] ? ' disabled' : '') + '>' +
-        (!conhecido ? '<option value="' + e(c.status) + '" selected>Não informado</option>' : '') + opcoes(GI.statusDisponiveis(c.status), c.status) + '</select>' +
-        '<p class="gi-ajuda" data-status-mensagem role="status" aria-live="polite">' + (bloqueado ? 'Manutenção exige o portal conectado.' : terminal(c) ? 'Reabrir volta o chamado para Triagem.' : '') + '</p>' +
+        (!conhecido ? '<option value="' + e(c.status) + '" selected>Não informado</option>' : '') + opcoes(GI.statusDisponiveis(c.status), c.status) + '</select>' + (modal ? '' : '</div>') +
+        '<p class="gi-ajuda" data-status-mensagem role="status" aria-live="polite">' + (bloqueado ? 'Manutenção exige o portal conectado.' : modal && terminal(c) ? 'Reabrir volta o chamado para Triagem.' : '') + '</p>' +
         (modal ? '<button type="button" class="btn btn-slim" data-status-decisao hidden>Registrar decisão</button>' : '') +
         '<div data-status-cancelamento hidden><strong>Cancelar este chamado?</strong><label>Motivo (opcional)<input data-status-motivo maxlength="500"></label>' +
         '<div class="gi-barra"><button type="button" class="btn btn-slim btn-perigo" data-status-confirmar>Cancelar chamado</button>' +
@@ -45,7 +49,7 @@
       document.querySelectorAll('[data-status-id="' + idValido(id) + '"]').forEach(function (s) { s.disabled = valor || GI.modo !== 'portal'; });
       var editar = el('gi-corpo') && el('gi-corpo').querySelector('[data-editar="' + idValido(id) + '"]');
       var cancelarBotao = editar && editar.closest('tr').querySelector('[data-cancelar-chamado]');
-      if (cancelarBotao) cancelarBotao.disabled = valor || GI.modo !== 'portal';
+      if (cancelarBotao) { var statusLinha = editar.closest('tr').querySelector('[data-status-id]'); cancelarBotao.disabled = valor || GI.modo !== 'portal' || statusLinha && ['concluido', 'cancelado'].includes(statusLinha.value); }
     }
     function mudarStatus(c, destino, motivo) {
       if (GI.modo !== 'portal') return Promise.reject(new Error('Manutenção exige o portal conectado.'));
@@ -135,21 +139,21 @@
       var c = detalhe && detalhe.chamado || {}, editando = !!c.id, fechado = terminal(c), acesso = c.acesso || {};
       var contato = editando ? { id: c.solicitante.contato_id, name: c.solicitante.nome, phone: c.solicitante.telefone } : null;
       var usuariosCarregados = false, locacoes = [], usuarios = c.atendente ? [{ id: c.atendente.user_id, name: c.atendente.nome }] : [], atendimentos = [];
-      var consultaAtendimentos = null, limiteAtendimentos = 10;
+      var consultaAtendimentos = null, limiteAtendimentos = editando ? 10 : 3, mensagensAtendimentos = Object.create(null), primeirasMensagens = Object.create(null);
       var selecionado = c.atendimento || null, modoAtendimento = selecionado ? 'atual' : 'nenhum';
-      var caixa, no, mudou = false, ocupado = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = rascunhoNota && rascunhoNota.enviado || null;
+      var caixa, no, montando = null, mudou = false, ocupado = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = rascunhoNota && rascunhoNota.enviado || null;
       var avisoNotaFinal = '', fecharAposFotos = false, envioFotos = false, cancelarFotos = false, confirmarVolume = false, criacaoIncerta = false;
       var pendentes = restantes || [], retomada = null, fotosInteiras = {}, notaConfirmada = rascunhoNota && rascunhoNota.confirmada || null;
       var prestadores = [], configManutencao = null, envioProprietario = null, avisoAberto = false, versaoAviso = 0, timerPrestador, versaoPrestador = 0;
-      var corpo = '<div class="gi-form-chamado"><div id="c-mensagem" class="gi-chamado-msg" role="alert" aria-live="polite"></div><button type="button" class="btn btn-slim" id="c-salvar-pendentes" hidden>Salvar dados pendentes</button>';
+      var corpo = '<div class="gi-form-chamado' + (editando ? ' gi-form-editar' : ' gi-form-novo') + '"><div id="c-mensagem" class="gi-chamado-msg" role="alert" aria-live="polite"></div><button type="button" class="btn btn-slim" id="c-salvar-pendentes" hidden>Salvar dados pendentes</button>';
       if (editando) corpo += '<div class="gi-modal-imovel"><div class="gi-modal-imovel-titulo">' + e(c.titulo) + '</div><div class="gi-ajuda">' +
-        e(GI.chamadoNumero(c.numero)) + ' · ' + e(c.imovel && c.imovel.titulo) + ' · ' + e(c.solicitante.nome) + ' · aberto em ' + e(data(c.criado_em)) + '</div></div>' +
+        e(String(c.numero).padStart(4, '0')) + ' · ' + e(valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || '') + ' · ' + e(c.imovel && c.imovel.titulo) + ' · ' + e(c.solicitante.nome) + ' · aberto em ' + e(data(c.criado_em).replace(' · ', ' às ')) + (c.criado_por ? ' pela ' + e(c.criado_por) : '') + '</div></div>' +
         '<div id="c-cabecalho-status"><span id="c-selo">' + status(c) + '</span> <span id="c-prazo" class="gi-ajuda">' + e(GI.chamadoPrazo(c).replace(/^SLA /, 'Prazo ')) + '</span></div>' +
         '<div id="c-faixa-aprovacao"></div>' + controleStatus(c, true);
       corpo += '<fieldset id="c-dados"' + (fechado ? ' disabled' : '') + '><div class="gi-secao"><strong>Cliente e imóvel</strong></div><div class="gi-grade-modal">' +
-        campo('cliente', editando ? 'Cliente' : 'Cliente · buscar contato', contato && contato.name, 'search', editando ? 'readonly' : 'autocomplete="off" placeholder="Digite ao menos 2 caracteres"') +
+        campo('cliente', editando ? 'Cliente' : 'Cliente · buscar contato', contato && contatoRotulo(contato), 'search', editando ? 'readonly' : 'autocomplete="off" placeholder="Digite ao menos 2 caracteres"') +
         (editando ? campo('imovel', 'Imóvel locado', c.imovel && c.imovel.titulo, 'text', 'readonly') : '<div class="gi-campo-caixa"><label for="c-locacao">Imóvel locado</label><select id="c-locacao" disabled><option value="">Escolha um cliente</option></select></div>') +
-        '</div><div id="c-contatos" class="gi-resultados" aria-live="polite"></div><div class="gi-grade-modal">' + campo('titulo', 'Título', c.titulo) +
+        '</div><div id="c-contatos" class="gi-resultados" aria-live="polite"></div><div class="gi-grade-modal">' + (editando ? campo('titulo', 'Título', c.titulo) : '') +
         '<div class="gi-campo-caixa gi-campo-caixa--todo"><label for="c-descricao">Descrição</label><textarea id="c-descricao" rows="3">' + e(c.descricao) + '</textarea></div>' +
         seletor('prioridade', 'Prioridade', GI.CHAMADO_PRIORIDADES, c.prioridade || 'normal') + '</div>' +
         '<div class="gi-secao"><strong>Atendimento</strong></div><p id="c-vinculo">' + e(atendimentoTexto(c.atendimento)) + '</p>' +
@@ -163,7 +167,7 @@
         '<p id="c-fotos-erros" class="gi-chamado-msg" role="alert" aria-live="polite"></p>';
       if (editando) corpo += '<div id="c-orcamentos"></div><div class="gi-secao"><strong>Nota para a equipe</strong></div>' +
         '<div class="gi-campo-caixa"><label for="c-nota">Nota para a equipe</label><textarea id="c-nota" rows="3">' + e(rascunhoNota && rascunhoNota.texto || '') + '</textarea></div>' +
-        '<label class="gi-nota-check"><input id="c-avisar" type="checkbox" disabled>Avisar o cliente neste atendimento</label><p id="c-aviso-dica" class="gi-ajuda">Escolha o atendimento acima para avisar o cliente.</p>' +
+        '<label class="gi-nota-check"><input id="c-avisar" type="checkbox" disabled>Avisar o cliente neste atendimento</label><span id="c-aviso-dica" class="gi-ajuda">Escolha o atendimento acima para avisar o cliente.</span>' +
         '<button class="btn btn-slim" id="c-salvar-nota" type="button">Salvar nota</button>';
       corpo += '<div id="c-foto-ampliada" class="gi-foto-ampliada" hidden><button type="button" class="btn btn-slim" id="c-fechar-foto">Fechar foto</button><div id="c-foto-inteira"></div></div>' +
         '<div id="c-descarte" class="gi-confirmacao" hidden><strong id="c-descarte-texto"></strong><div class="gi-barra"><button type="button" class="btn" id="c-voltar-descarte">Voltar</button><button type="button" class="btn btn-perigo" id="c-descartar">Descartar</button></div></div>' +
@@ -177,6 +181,174 @@
         (editando ? '<div id="c-visita"></div><div id="c-prestador"></div><div id="c-aprovacao"></div><div class="gi-secao"><strong>Histórico</strong></div><ul id="c-historico" class="gi-historico"></ul><p id="c-ultima" class="gi-ajuda">Última alteração: ' + e(data(c.atualizado_em)) + '</p>' : '') + '</details>' +
         '<div id="c-confirmacao" class="gi-confirmacao" hidden><strong>Confirmar envio</strong><p id="c-confirmacao-texto"></p><div class="gi-barra"><button class="btn" type="button" id="c-voltar">Voltar</button><button class="btn btn-primario" type="button" id="c-confirmar-acao">Enviar</button></div></div></div>';
 
+      function secao(titulo, ajuda) {
+        var d = document.createElement('div'); d.className = 'gi-secao';
+        d.innerHTML = '<strong>' + e(titulo) + '</strong>' + (ajuda ? '<span class="gi-ajuda">' + ajuda + '</span>' : ''); return d;
+      }
+      function grade() { var d = document.createElement('div'); d.className = 'gi-grade-modal'; return d; }
+      function moverCampo(alvo, id, rotulo) {
+        var campo = no(id).closest('.gi-campo-caixa');
+        if (rotulo) campo.querySelector('label').textContent = rotulo;
+        alvo.appendChild(campo); return campo;
+      }
+      function apresentarDesenho() {
+        var raiz = caixa.querySelector('.gi-form-chamado'), dadosForm = no('dados'), extras = no('dados-mais');
+        var conteudo = document.createElement('div'), g; conteudo.className = 'gi-desenho-conteudo';
+        montando = {}; caixa.querySelectorAll('[id]').forEach(function (n) { montando[n.id] = n; });
+        // Preserve os fieldsets e o estado disabled dos controles originais.
+        var antigosDados = Array.from(dadosForm.children), antigosExtras = Array.from(extras.children); dadosForm.appendChild(conteudo);
+        if (editando) { extras.appendChild(no('cabecalho-status')); extras.appendChild(no('faixa-aprovacao')); }
+        Array.from(raiz.children).filter(function (n) { return n.classList.contains('gi-secao'); }).forEach(function (n) { n.remove(); });
+        if (editando) {
+          conteudo.appendChild(raiz.querySelector('.gi-modal-imovel'));
+          conteudo.appendChild(secao('Status', 'avance quando o passo estiver feito'));
+          var trilha = document.createElement('div'); trilha.id = 'c-trilha'; trilha.className = 'trail'; conteudo.appendChild(trilha);
+          conteudo.appendChild(secao('Atendimento vinculado', 'a conversa que originou o chamado'));
+          var atendimento = document.createElement('div'); atendimento.id = 'c-atendimento-cartao'; atendimento.className = 'gi-atend gi-atend--on';
+          var conversa = document.createElement('div'); conversa.className = 'gi-atend__corpo'; conversa.id = 'c-conversa'; atendimento.appendChild(conversa);
+          var acoes = document.createElement('div'); acoes.className = 'gi-acoes'; acoes.appendChild(no('abrir-atendimento')); acoes.appendChild(no('trocar')); no('trocar').textContent = 'Trocar'; no('trocar').classList.add('btn-texto'); atendimento.appendChild(acoes);
+          conteudo.appendChild(atendimento); conteudo.appendChild(no('escolha-atendimento'));
+          conteudo.appendChild(secao('Dados do chamado', 'o que muda aqui vai para o histórico'));
+          g = grade();
+          var statusCampo = document.createElement('div'); statusCampo.className = 'gi-campo-caixa'; statusCampo.appendChild(no('status-controle')); g.appendChild(statusCampo);
+          moverCampo(g, 'prioridade'); moverCampo(g, 'categoria'); moverCampo(g, 'atendente', 'Atendente'); moverCampo(g, 'cliente', 'Solicitante');
+          var dono = (detalhe.locacao && detalhe.locacao.contatos || []).filter(function (p) { return p.papel === 'proprietario'; }).map(function (p) { return p.nome; }).join(' · ');
+          g.insertAdjacentHTML('beforeend', campo('dono-leitura', 'Proprietário', dono, 'text', 'readonly'));
+          moverCampo(g, 'quem-paga'); g.appendChild(no('valor-caixa'));
+          var prestadorCampo = document.createElement('div'); prestadorCampo.id = 'c-prestador-campo'; g.appendChild(prestadorCampo);
+          var visitaCampo = document.createElement('div'); visitaCampo.id = 'c-visita-campo'; g.appendChild(visitaCampo);
+          moverCampo(g, 'disponibilidade'); moverCampo(g, 'sem-cliente'); conteudo.appendChild(g);
+          var repasse = document.createElement('label'); repasse.className = 'chk gi-repasse-check';
+          var repasseSelect = no('repasse'); repasseSelect.closest('.gi-campo-caixa').hidden = true;
+          repasse.innerHTML = '<input type="checkbox" id="c-repasse-check"' + (c.repasse ? ' checked' : '') + '>Lançar no repasse do proprietário <span class="gi-ajuda">fica registrado aqui; a baixa financeira segue no sistema da imobiliária</span>';
+          conteudo.appendChild(repasse); checkboxDesenho(repasse.querySelector('input'));  repasse.querySelector('input').onchange = function () { repasseSelect.value = this.checked ? 'sim' : 'nao'; };
+          conteudo.appendChild(secao('Relato do cliente', c.origem === 'ia' ? 'resumo da ' + e(c.criado_por || 'IA') + ' a partir do ' + e(c.atendimento && c.atendimento.canal || 'atendimento') : 'relato registrado no chamado'));
+          if (window.omni && omni.chats && omni.chats.select && idValido(selecionado && selecionado.chat_id)) {
+            var ver = document.createElement('button'); ver.type = 'button'; ver.className = 'gi-link'; ver.textContent = 'ver a conversa';
+            ver.onclick = function () { no('abrir-atendimento').click(); };
+            conteudo.lastChild.querySelector('.gi-ajuda').appendChild(document.createTextNode(' · ')); conteudo.lastChild.querySelector('.gi-ajuda').appendChild(ver);
+          }
+          var descricao = moverCampo(conteudo, 'descricao', 'O que o cliente contou'); descricao.classList.remove('gi-campo-caixa--todo'); no('descricao').rows = 2;
+          conteudo.appendChild(no('fotos')); conteudo.appendChild(no('pendentes'));
+          conteudo.appendChild(no('orcamentos')); conteudo.appendChild(no('aprovacao'));
+          conteudo.appendChild(secao('Histórico', 'do mais antigo ao mais novo')); conteudo.appendChild(no('historico'));
+          no('historico').className = 'tl';
+          conteudo.appendChild(secao('Nota interna', 'só a equipe vê')); moverCampo(conteudo, 'nota', 'Observação'); no('nota').rows = 2; no('nota').placeholder = 'opcional';
+          no('avisar').closest('label').className = 'chk gi-aviso-check'; conteudo.appendChild(no('avisar').closest('label')); no('avisar').parentNode.lastChild.textContent = 'Avisar a cliente no WhatsApp'; checkboxDesenho(no('avisar'));
+          no('avisar').setAttribute('aria-describedby', 'c-aviso-dica');
+          no('avisar').closest('label').appendChild(no('aviso-dica')); conteudo.appendChild(no('salvar-nota'));
+          moverCampo(extras, 'titulo');
+        } else {
+          conteudo.appendChild(secao('Cliente e imóvel', 'o imóvel vem dos locados do cliente'));
+          g = grade(); moverCampo(g, 'cliente', 'Cliente'); moverCampo(g, 'locacao'); conteudo.appendChild(g); conteudo.appendChild(no('contatos'));
+          conteudo.appendChild(secao('Atendimento', 'quem atende e a conversa que originou o chamado'));
+          g = grade(); moverCampo(g, 'atendente', 'Atendente');
+          g.insertAdjacentHTML('beforeend', '<div class="gi-campo-caixa"><label for="c-origem">Como o chamado chegou</label><select id="c-origem"><option value="atendimento">Atendimento do EvoTalks</option><option value="gestao">Na imobiliária, telefone ou e-mail</option></select></div>');
+          conteudo.appendChild(g); conteudo.appendChild(no('escolha-atendimento'));
+          var legenda = document.createElement('p'); legenda.id = 'c-atendimentos-legenda'; legenda.className = 'gi-ajuda gi-atendimentos-legenda';
+          legenda.innerHTML = '<span></span> <button type="button" class="gi-link" id="c-buscar-protocolo">Buscar por protocolo</button>'; conteudo.appendChild(legenda);
+          var busca = document.createElement('input'); busca.id = 'c-busca-atendimento'; busca.type = 'search'; busca.hidden = true; busca.placeholder = 'Buscar por protocolo'; busca.setAttribute('aria-label', 'Buscar por protocolo'); conteudo.appendChild(busca);
+          no('buscar-protocolo').onclick = function () { busca.hidden = !busca.hidden; if (!busca.hidden) busca.focus(); };
+          busca.oninput = function () { redesenharAtendimentos(); lerMensagensVisiveis(); };
+          conteudo.appendChild(secao('O que aconteceu', 'com o atendimento vinculado, o resumo vem pronto'));
+          g = grade(); moverCampo(g, 'categoria'); moverCampo(g, 'prioridade'); moverCampo(g, 'descricao'); no('descricao').rows = 2; moverCampo(g, 'disponibilidade'); moverCampo(g, 'sem-cliente'); conteudo.appendChild(g);
+          var midia = document.createElement('p'); midia.className = 'gi-ajuda gi-novo-midia';
+          midia.innerHTML = '<button class="gi-link" type="button" id="c-usar-resumo">Usar o resumo do atendimento</button> · <span id="c-resumo-fotos">Escolha um atendimento para consultar as fotos.</span> ';
+          conteudo.appendChild(midia); midia.appendChild(no('buscar-pasta')); no('buscar-pasta').className = 'gi-link'; no('buscar-pasta').textContent = 'Anexar foto';
+          conteudo.appendChild(no('fotos')); conteudo.appendChild(no('pendentes'));
+          no('origem').onchange = function () { if (this.value === 'gestao') aplicarAtendimento(null); no('escolha-atendimento').hidden = this.value === 'gestao'; };
+          no('usar-resumo').onclick = function () {
+            var atual = atendimentos.find(function (a) { return selecionado && Number(a.chat_id) === Number(selecionado.chat_id); });
+            if (atual && (atual.ultima || atual.primeira)) no('descricao').value = atual.ultima || atual.primeira;
+            else mensagem('Este atendimento não tem resumo disponível. Preencha a descrição.', 'info');
+          };
+        }
+        antigosDados.forEach(function (n) { if (n.parentNode === dadosForm) extras.appendChild(n); });
+        antigosExtras.forEach(function (n) { if (n.parentNode === extras && n.classList.contains('gi-grade-modal') && !n.children.length) n.remove(); });
+        dadosForm.appendChild(conteudo);
+        // Elementos de apoio só aparecem na ação correspondente.
+        [no('vinculo'), no('tirar-vinculo')].forEach(function (n) { extras.appendChild(n); });
+        if (editando) { extras.appendChild(no('imovel').closest('.gi-campo-caixa')); extras.appendChild(no('prestador')); extras.appendChild(no('visita')); }
+        else no('mais').appendChild(no('fotos-edicao'));
+        if (editando) no('mais').appendChild(no('fotos-edicao'));
+        raiz.insertBefore(dadosForm, raiz.firstChild);
+        no('cota-fotos').parentNode.querySelectorAll('p').forEach(function (n) { if (!n.textContent && n !== no('cota-fotos')) n.remove(); });
+        var dadosVisuais = document.createElement('div'); dadosVisuais.id = 'c-dados'; dadosVisuais.disabled = fechado;
+        while (dadosForm.firstChild) dadosVisuais.appendChild(dadosForm.firstChild); dadosForm.replaceWith(dadosVisuais);
+        var maisLink = document.createElement('button'); maisLink.type = 'button'; maisLink.className = 'gi-link gi-mais-link'; maisLink.textContent = 'Mais opções';
+        maisLink.setAttribute('aria-expanded', 'false'); maisLink.setAttribute('aria-controls', 'c-mais');
+        maisLink.onclick = function () { no('mais').open = !no('mais').open; this.setAttribute('aria-expanded', String(no('mais').open)); };
+        no('mais').querySelector('summary').hidden = true;
+        caixa.closest('.gi-modal').querySelector('.gi-modal-rodape').insertBefore(maisLink, caixa.closest('.gi-modal').querySelector('[data-cancelar]'));
+        montando = null; bloquearCampos();
+      }
+      function bloquearCampos() {
+        ['cliente', 'imovel', 'titulo', 'descricao', 'prioridade', 'categoria', 'disponibilidade', 'sem-cliente', 'chaves', 'quem-paga', 'repasse', 'repasse-check', 'valor', 'prestador-id', 'visita-inicio', 'visita-fim', 'trocar', 'tirar-vinculo', 'origem', 'locacao'].forEach(function (id) {
+          if (no(id)) no(id).disabled = fechado || id === 'locacao' && !locacoes.length;
+        });
+      }
+      function checkboxDesenho(input) {
+        var box = document.createElement('span'); box.className = 'box'; box.setAttribute('aria-hidden', 'true');
+        function desenhar() { box.innerHTML = input.checked ? '<svg class="i gi-check-icon" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"></path></svg>' : ''; }
+        desenhar(); input.addEventListener('change', desenhar); input.insertAdjacentElement('afterend', box);
+      }
+      function contatoRotulo(p) {
+        var telefone = String(p.phone || ''), digitos = telefone.replace(/\D/g, '');
+        if (/^55\d{10,11}$/.test(digitos)) digitos = digitos.slice(2);
+        var mascarado = '';
+        if (/^\(\d{2}\) \d ••••-\d{4}$/.test(telefone) && telefone === telefone.trim()) mascarado = telefone;
+        else if (digitos.length >= 10) mascarado = '(' + digitos.slice(0, 2) + ') ' + (digitos.length >= 11 ? digitos.charAt(2) + ' ' : '') + '••••-' + digitos.slice(-4);
+        else if (digitos) mascarado = '••••' + (digitos.length > 4 ? '-' + digitos.slice(-4) : '');
+        return String(p.name || '') + (mascarado ? ' · ' + mascarado : '');
+      }
+      function mensagensDoAtendimento(id, renovar) {
+        if (renovar) delete mensagensAtendimentos[id];
+        if (!mensagensAtendimentos[id]) mensagensAtendimentos[id] = sdk('chats', 'getMessages', [id, { limit: 50 }]).catch(function (err) { delete mensagensAtendimentos[id]; throw err; });
+        return mensagensAtendimentos[id];
+      }
+      function primeiraMensagem(id) {
+        if (!primeirasMensagens[id]) {
+          var cursores = Object.create(null);
+          function procurar(msgs, anterior) {
+            var textos = msgs.filter(function (m) { return m.direction === 'in' && m.text; }).slice().sort(function (a, b) { return String(a.at || '').localeCompare(String(b.at || '')); });
+            var texto = textos[0] && textos[0].text || anterior;
+            var cursor = msgs.length && msgs[msgs.length - 1].id;
+            if (msgs.length < 50 || !cursor || cursores[cursor]) return texto;
+            cursores[cursor] = true;
+            return sdk('chats', 'getMessages', [id, { limit: 50, before: cursor }]).then(function (mais) { return procurar(mais, texto); });
+          }
+          primeirasMensagens[id] = mensagensDoAtendimento(id).then(function (msgs) { return procurar(msgs, ''); }).catch(function (err) { delete primeirasMensagens[id]; throw err; });
+        }
+        return primeirasMensagens[id];
+      }
+      function lerMensagensVisiveis() {
+        var v = versaoContato;
+        var lista = editando ? atendimentos.filter(function (a) { return selecionado && Number(a.chat_id) === Number(selecionado.chat_id); }) : Array.from(no('atendimentos').querySelectorAll('[data-atendimento]')).map(function (b) { return atendimentos[Number(b.dataset.atendimento)]; });
+        lista.forEach(function (a) {
+          primeiraMensagem(a.chat_id).then(function (texto) {
+            if (!caixa.isConnected || v !== versaoContato || atendimentos.indexOf(a) < 0) return;
+            a.primeira = texto; atualizarConversa(); redesenharAtendimentos();
+          }).catch(function () { /* Sem acesso às mensagens, o cartão permanece utilizável. */ });
+        });
+      }
+      function atualizarConversa() {
+        if (!editando) return;
+        var a = atendimentos.find(function (a) { return selecionado && Number(a.chat_id) === Number(selecionado.chat_id); }) || selecionado;
+        no('conversa').innerHTML = a ? '<div class="gi-atend__t"><strong>Atendimento #' + e(a.chat_id || a.protocolo) + '</strong><span class="gi-mudo">' + e(a.canal || '') + '</span>' + (a.vivo === false ? '<span class="gi-chip">encerrado</span>' : '') + '</div><div class="gi-ajuda">' + e([a.fila, a.atendenteNome || c.atendente && c.atendente.nome, data(a.iniciado_em).replace(' · ', ' às '), c.solicitante.nome].filter(Boolean).join(' · ')) + '</div>' + (a.primeira ? '<div class="gi-atend__txt">“' + e(a.primeira) + '”</div>' : '') : 'Nenhum atendimento vinculado';
+      }
+      function desenharTrilha() {
+        if (!editando || !no('trilha')) return;
+        no('trilha').innerHTML = GI.chamadoTrilha(c.status).map(function (t) {
+          var ev = (detalhe.eventos || []).find(function (ev) { return t.status === 'novo' ? ev.tipo === 'criou' : ev.tipo === 'status' && ev.detalhe && ev.detalhe.para === t.status; });
+          var legenda = t.feito && ev ? data(ev.em) : t.atual && t.status === 'orcamento' && c.orcamentos_total ? c.orcamentos_total + ' cotações' : t.atual ? '' : t.status === 'aprovacao' && configManutencao && Number(c.valor_estimado_centavos) > Number(configManutencao.alcada_centavos) && c.quem_paga === 'proprietario' ? 'acima da alçada' : t.status === 'agendado' ? 'visita do prestador' : '';
+          return '<div class="trail__s' + (t.feito ? ' trail__s--done' : t.atual ? ' trail__s--now' : '') + '" style="--c:var(--' + ({ orcamento: 'orc', aprovacao: 'aprov', agendado: 'agend', execucao: 'exec', concluido: 'done' }[t.status] || t.status) + ')"><b>' + e(t.rotulo) + '</b><small>' + e(legenda || '\u00a0') + '</small></div>';
+        }).join('');
+      }
+      function recadoPadrao() {
+        if (!editando) return 'Nada é gravado antes de você confirmar.';
+        var ultimo = (detalhe.eventos || []).filter(function (ev) { return Date.parse(ev.em) === Date.parse(c.atualizado_em) && ev.autor; }).slice().sort(function (a, b) { return numero(a.id) - numero(b.id); }).pop();
+        return 'Última alteração: ' + (ultimo ? ultimo.autor + ' · ' : '') + data(c.atualizado_em).replace(' · ', ' às ');
+      }
       function mensagem(t, tipo) {
         if (!caixa || !caixa.isConnected) return;
         no('mensagem').textContent = t || '';
@@ -202,10 +374,16 @@
       }
       function historico(eventos) {
         no('historico').innerHTML = eventos.length ? eventos.slice().sort(function (a, b) { return String(a.em).localeCompare(String(b.em)) || numero(a.id) - numero(b.id); }).map(function (ev) {
-          var d = ev.detalhe || {}, texto = ev.texto || (ev.tipo === 'status' ? 'Status: ' + (valorMapa(GI.CHAMADO_STATUS, d.de) || d.de || '') + ' → ' + (valorMapa(GI.CHAMADO_STATUS, d.para) || d.para || '') + (d.motivo ? ' · ' + d.motivo : '') :
-            valorMapa({ criou: 'Chamado aberto', atualizou: 'Dados atualizados', vinculou_atendimento: 'Atendimento vinculado alterado', nota: 'Nota interna', anexo: 'Anexo incluído',
-              orcamento: 'Orçamento · ' + (d.acao || 'registrado'), aprovacao: 'Aprovação · ' + (d.acao || d.status || 'atualizada'), prestador: 'Prestador alterado', sla: 'SLA · ' + (d.acao || 'atualizado') }, ev.tipo) || ev.tipo);
-          return '<li><time class="gi-ajuda">' + e(data(ev.em)) + ' · ' + e(ev.autor) + '</time><p>' + e(texto) + '</p>' + (ev.notificou_cliente ? '<span class="gi-chip">Cliente avisado</span>' : '') + '</li>';
+          var d = ev.detalhe || {}, autor = ev.autor || '', sub = '', cor = '', texto;
+          var cotacao = (detalhe.orcamentos || []).find(function (o) { return Number(o.id) === Number(d.orcamento_id); });
+          if (ev.tipo === 'criou') { texto = 'Chamado aberto' + (autor ? ' pela ' + autor : ''); cor = 'novo'; }
+          else if (ev.tipo === 'status') {
+            texto = 'Status: ' + (valorMapa(GI.CHAMADO_STATUS, d.de) || d.de || '') + ' para ' + (valorMapa(GI.CHAMADO_STATUS, d.para) || d.para || '') + (autor ? ', por ' + autor : '');
+            sub = d.motivo || ''; cor = { triagem: 'triagem', orcamento: 'orc', aprovacao: 'aprov', agendado: 'agend', execucao: 'exec', concluido: 'done' }[d.para] || 'novo';
+          } else if (ev.tipo === 'nota') { texto = 'Nota interna' + (autor ? ' de ' + autor : ''); sub = ev.texto ? '“' + ev.texto + '”' : ''; }
+          else if (ev.tipo === 'orcamento' && cotacao && d.acao !== 'apagou') { texto = 'Cotação de ' + cotacao.prestador_nome + ': ' + moeda(cotacao.valor_centavos); cor = 'orc'; }
+          else { texto = ev.texto || valorMapa({ atualizou: 'Dados atualizados', vinculou_atendimento: 'Atendimento vinculado alterado', anexo: 'Anexo incluído', orcamento: 'Orçamento · ' + (d.acao || 'registrado'), aprovacao: 'Aprovação · ' + (d.acao || d.status || 'atualizada'), prestador: 'Prestador alterado', sla: 'SLA · ' + (d.acao || 'atualizado') }, ev.tipo) || ev.tipo; sub = autor; }
+          return '<li data-evento="' + e(ev.tipo) + '"' + (cor ? ' style="--c:var(--' + cor + ')"' : '') + '><time>' + e(data(ev.em)) + '</time><span class="dot"></span><p>' + e(texto) + (sub ? '<small>' + e(sub) + '</small>' : '') + (ev.notificou_cliente ? '<small>Cliente avisado</small>' : '') + '</p></li>';
         }).join('') : '<li>Sem eventos.</li>';
       }
       function confirmarAcao(texto, fn) {
@@ -237,7 +415,7 @@
       function opcoesPrestadores(atual, vazio) {
         var lista = prestadores.filter(function (p) { return p.ativo || Number(p.id) === Number(atual); });
         if (atual && !lista.some(function (p) { return Number(p.id) === Number(atual); })) lista.push({ id: atual, nome: c.prestador && c.prestador.nome || 'Prestador vinculado', ativo: false });
-        return '<option value="">' + vazio + '</option>' + lista.filter(function (p) { return idValido(p.id); }).map(function (p) {
+        return '<option value="">' + vazio + '</option>' + lista.filter(function (p) { return idValido(p.id) && p.nome; }).map(function (p) {
           return '<option value="' + idValido(p.id) + '"' + (Number(p.id) === Number(atual) ? ' selected' : '') + '>' + e(p.nome) + (p.ativo ? '' : ' (inativo)') + '</option>';
         }).join('');
       }
@@ -250,7 +428,8 @@
       }
       function atualizarEstadoStatus(atual) {
         if (!caixa.isConnected || String(c.id) !== String(atual.id)) return;
-        c = atual; detalhe.chamado = c; fechado = terminal(c);
+        c = atual; detalhe.chamado = c; fechado = terminal(c); desenharTrilha(); bloquearCampos();
+        caixa.closest('.gi-modal').querySelector('.gi-modal-recado').setAttribute('data-padrao', recadoPadrao());
         no('status').innerHTML = opcoes(GI.statusDisponiveis(c.status), c.status);
         no('status').value = no('status-controle').querySelector('[data-status-cancelamento]').hidden ? c.status : 'cancelado';
         no('status').className = 'gi-status-select gi-estado ' + (valorMapa(GI.CHAMADO_STATUS_CLASSES, c.status) || 'gi-estado-off');
@@ -263,28 +442,28 @@
           var grupo = no(id).querySelector('fieldset');
           if (grupo) grupo.disabled = fechado || id === 'aprovacao' && (!c.aprovacao || c.aprovacao.status === 'nao_necessaria');
         });
+        if (no('enviar-proprietario')) no('enviar-proprietario').disabled = fechado || !c.aprovacao || c.aprovacao.status === 'nao_necessaria';
         desenharFaixaAprovacao(); desenharPendentes();
       }
       function orcamentoEscolhido() { return (detalhe.orcamentos || []).some(function (o) { return o.escolhido; }); }
       function desenharValor() {
-        no('valor-caixa').innerHTML = orcamentoEscolhido() ? '<label>Valor estimado</label><p id="c-valor">' + e(moeda(c.valor_estimado_centavos)) + ' · definido pelo orçamento escolhido</p>' :
+        no('valor-caixa').innerHTML = orcamentoEscolhido() ? '<label for="c-valor">Valor estimado</label><input id="c-valor" readonly title="Definido pelo orçamento escolhido" value="' + e((Number(c.valor_estimado_centavos) / 100).toFixed(2).replace('.', ',')) + '">' :
           campo('valor', 'Valor estimado (R$)', c.valor_estimado_centavos == null || !Number.isFinite(Number(c.valor_estimado_centavos)) ? '' : (Number(c.valor_estimado_centavos) / 100).toFixed(2), 'text', 'inputmode="decimal"');
       }
       function desenharFatia4() {
         clearTimeout(timerPrestador); ++versaoPrestador;
         var orcamentos = detalhe.orcamentos || [], ap = c.aprovacao || { status: 'nao_necessaria' }, visita = c.visita || {};
         var desabilitado = fechado ? ' disabled' : '';
-        no('orcamentos').innerHTML = '<div class="gi-secao"><strong>Orçamentos</strong></div><fieldset class="gi-fatia4"' + desabilitado + '>' +
+        no('orcamentos').innerHTML = '<div class="gi-secao"><strong>Orçamentos</strong>' + (orcamentos.length ? '<span class="gi-ajuda">' + orcamentos.length + ' recebidos</span>' : '') + '</div><fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-cartao-t"><table><thead><tr><th>Prestador</th><th class="gi-direita">Valor</th><th>Prazo</th><th>Visita</th><th class="gi-direita" style="width:150px">Ação</th></tr></thead><tbody>' +
           (orcamentos.length ? orcamentos.map(function (o, i) {
-            return '<div class="gi-orcamento"><strong>' + e(o.prestador_nome) + '</strong> · ' + e(o.valor_centavos == null ? 'sem valor' : moeda(o.valor_centavos)) +
-              '<p>' + e(o.observacao) + '</p><div class="gi-barra">' + (o.escolhido ? '<span class="gi-chip">Escolhido</span>' : '<button class="btn btn-slim" type="button" data-escolher-orcamento="' + i + '">Escolher</button>') +
-              '<button class="btn btn-slim btn-perigo" type="button" data-apagar-orcamento="' + i + '">Remover</button></div></div>';
-          }).join('') : '<p class="gi-ajuda">Nenhum orçamento registrado.</p>') +
-          '<div class="gi-grade-modal">' + campo('orc-nome', 'Prestador', '', 'text', 'list="c-prestador-sugestoes" autocomplete="off"') +
+            return '<tr><td><strong>' + e(o.prestador_nome) + '</strong>' + (o.observacao ? '<div class="gi-ajuda">' + e(o.observacao) + '</div>' : '') + '</td><td class="gi-direita gi-nowrap">' + e(o.valor_centavos == null ? 'sem valor' : moeda(o.valor_centavos)) + '</td><td>' + (o.prazo_dias ? e(o.prazo_dias) + ' ' + (Number(o.prazo_dias) === 1 ? 'dia' : 'dias') : '—') + '</td><td>' + (o.visita_em ? e(new Date(o.visita_em).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '') + ' ' + data(o.visita_em).split(' · ')[0]) : '—') + '</td><td class="gi-direita">' + (o.escolhido ? '<span class="gi-estado gi-estado-ok"><span class="gi-ponto gi-ponto-ok"></span>Escolhido</span>' : '<button class="btn btn-slim" type="button" data-escolher-orcamento="' + i + '">Escolher</button>') + '</td></tr>';
+          }).join('') : '<tr><td colspan="5" class="gi-ajuda">Nenhum orçamento registrado.</td></tr>') +
+          '<tr><td colspan="5"><button type="button" class="btn btn-slim btn-texto" id="c-pedir-cotacao">+ Pedir outra cotação</button> <span class="gi-ajuda">' + prestadores.filter(function (p) { return (p.categorias || []).indexOf(c.categoria) >= 0; }).length + ' prestadores de ' + e(valorMapa(GI.CHAMADO_CATEGORIAS, c.categoria) || c.categoria) + ' cadastrados</span></td></tr></tbody></table></div><details class="gi-orc-opcoes"><summary hidden>+ Adicionar ou remover cotação</summary><div class="gi-grade-modal">' + campo('orc-nome', 'Prestador', '', 'text', 'list="c-prestador-sugestoes" autocomplete="off"') +
           '<datalist id="c-prestador-sugestoes"></datalist>' + campo('orc-valor', 'Valor (R$) · opcional', '', 'text', 'inputmode="decimal"') +
           '<div class="gi-campo-caixa gi-campo-caixa--todo"><label for="c-orc-observacao">Descrição</label><textarea id="c-orc-observacao" rows="3" placeholder="O que inclui, prazo, condições…"></textarea></div></div>' +
-          '<button class="btn btn-slim" type="button" id="c-salvar-orcamento">Adicionar orçamento</button></fieldset>';
-        desenharFaixaAprovacao();
+          '<button class="btn btn-slim" type="button" id="c-salvar-orcamento">Adicionar orçamento</button>' + orcamentos.map(function (o, i) { return '<button class="btn btn-slim btn-perigo" type="button" data-apagar-orcamento="' + i + '">Remover ' + e(o.prestador_nome) + '</button>'; }).join('') + '</details></fieldset>';
+        no('pedir-cotacao').onclick = function () { var d = no('orcamentos').querySelector('details'); d.open = !d.open; };
+        desenharTrilha(); desenharFaixaAprovacao();
         no('aprovacao').innerHTML = '<div class="gi-secao"><strong>Aprovação do proprietário</strong><span class="gi-chip">' + e(valorMapa({ nao_necessaria: 'Não necessária', pendente: 'Pendente', aprovada: 'Aprovada', recusada: 'Recusada' }, ap.status) || 'Não informada') + '</span></div>' +
           '<div class="gi-aviso"><span>Limite para aprovação: ' + e(configManutencao ? moeda(configManutencao.alcada_centavos) : 'não foi possível consultar') + '. ' +
           (ap.status === 'pendente' ? 'Aprovação pendente bloqueia Agendado e Em execução.' : ap.status === 'recusada' ? 'Orçamento recusado. Defina outra cotação ou registre nova decisão antes de prosseguir.' : 'O limite se aplica ao orçamento escolhido pago pelo proprietário.') + '</span>' +
@@ -294,11 +473,24 @@
           ((detalhe.locacao && detalhe.locacao.contatos || []).filter(function (p) { return p.papel === 'proprietario'; }).map(function (p, i) { return '<option value="' + i + '">' + e(p.nome) + (idValido(p.contato_id) ? '' : ' (sem vínculo)') + '</option>'; }).join('') || '<option value="">Sem proprietário cadastrado</option>') + '</select></div>' +
           campo('aprovacao-observacao', 'Observação (opcional)', '') +
           '</div><div class="gi-barra"><button class="btn btn-slim" type="button" id="c-enviar-proprietario">Enviar ao proprietário</button><button class="btn btn-slim" type="button" id="c-aprovar">Aprovado</button><button class="btn btn-slim btn-perigo" type="button" id="c-recusar">Recusado</button></div></fieldset>';
+        var apCampo = no('aprovacao').querySelector('fieldset'), resumoAprovacao = document.createElement('div'); resumoAprovacao.className = 'gi-aprov';
+        resumoAprovacao.innerHTML = '<div><strong>Aprovação do proprietário · ' + (ap.enviada_em ? 'enviada' : ap.status === 'nao_necessaria' ? 'não necessária' : 'ainda não enviada') + '</strong><span>' + (configManutencao ? 'O valor ' + (Number(c.valor_estimado_centavos) > Number(configManutencao.alcada_centavos) ? 'passa da' : 'está dentro da') + ' alçada de ' + e(moeda(configManutencao.alcada_centavos)) + '. ' : '') + 'O proprietário recebe valor, fotos e prazo no WhatsApp e responde com um toque.</span></div>';
+        var botaoEnvio = no('enviar-proprietario'); botaoEnvio.disabled = fechado || ap.status === 'nao_necessaria'; resumoAprovacao.appendChild(botaoEnvio);
+        var maisAprovacao = document.createElement('details'); maisAprovacao.className = 'gi-aprov-opcoes'; maisAprovacao.innerHTML = '<summary>Registrar decisão e consultar aprovação</summary>';
+        Array.from(no('aprovacao').children).forEach(function (n) { maisAprovacao.appendChild(n); });
+        var consultar = document.createElement('button'); consultar.type = 'button'; consultar.className = 'gi-link gi-aprov-consultar'; consultar.textContent = 'Registrar decisão e consultar aprovação';
+        consultar.onclick = function () { maisAprovacao.open = !maisAprovacao.open; this.setAttribute('aria-expanded', String(maisAprovacao.open)); };
+        consultar.setAttribute('aria-expanded', 'false'); consultar.setAttribute('aria-label', consultar.textContent); consultar.title = consultar.textContent;
+        maisAprovacao.querySelector('summary').hidden = true; resumoAprovacao.firstChild.appendChild(consultar);
+        no('aprovacao').appendChild(resumoAprovacao); no('aprovacao').appendChild(maisAprovacao);
         no('prestador').innerHTML = '<div class="gi-secao"><strong>Prestador</strong></div><fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-grade-modal"><div class="gi-campo-caixa"><label for="c-prestador-id">Prestador responsável</label><select id="c-prestador-id">' +
           opcoesPrestadores(c.prestador && c.prestador.id, 'Sem prestador') + '</select></div></div></fieldset>';
         no('visita').innerHTML = '<div class="gi-secao"><strong>Visita</strong><span class="gi-ajuda">obrigatória antes de mudar para Agendado</span></div><fieldset class="gi-fatia4"' + desabilitado + '><div class="gi-grade-modal">' +
           campo('visita-inicio', 'Início da visita', dataLocal(visita.inicio), 'datetime-local') + campo('visita-fim', 'Fim da visita (opcional)', dataLocal(visita.fim), 'datetime-local') +
           '</div><p class="gi-ajuda">Para remover a visita, deixe o início vazio e salve.</p></fieldset>';
+        no('prestador-campo').textContent = ''; no('prestador-campo').appendChild(no('prestador-id').closest('.gi-campo-caixa')); no('prestador-campo').querySelector('label').textContent = 'Prestador';
+        no('visita-campo').textContent = ''; no('visita-campo').appendChild(no('visita-inicio').closest('.gi-campo-caixa')); no('visita-campo').querySelector('label').textContent = 'Visita';
+        bloquearCampos();
         var ultimoTermoPrestador = '';
         no('orc-nome').oninput = function () {
           var termo = no('orc-nome').value.trim();
@@ -404,11 +596,15 @@
       function atendimentoEscolhido() {
         return selecionado;
       }
+      function avisoDica(texto) {
+        no('aviso-dica').textContent = texto; no('aviso-dica').hidden = !texto;
+        no('aviso-dica').title = texto; no('avisar').title = texto;
+      }
       function atualizarAviso() {
         if (!editando) return Promise.resolve();
         var v = ++versaoAviso, a = selecionado;
         avisoAberto = false; no('abrir-atendimento').hidden = true; no('avisar').disabled = true; no('avisar').checked = false;
-        no('aviso-dica').textContent = 'Vincule um atendimento aberto para avisar o cliente.';
+        avisoDica('Vincule um atendimento aberto para avisar o cliente.');
         no('salvar-nota').textContent = 'Salvar nota';
         if (!a || !idValido(a.chat_id)) return Promise.resolve();
         return sdk('chats', 'get', [a.chat_id]).then(function (chat) {
@@ -416,8 +612,8 @@
           no('abrir-atendimento').hidden = !chatAberto(chat, contato.id);
           avisoAberto = chatAberto(chat, contato.id) && !chat.sessionLocked && ['E-mail', 'Atendimento'].indexOf(GI.canalAtendimento(chat.channel)) < 0;
           no('avisar').disabled = !avisoAberto;
-          no('aviso-dica').textContent = avisoAberto ? '' : !chatAberto(chat, contato.id) ? 'Atendimento encerrado' : chat.sessionLocked ? 'Janela de 24 h fechada' : 'Canal não permite mensagem';
-        }).catch(function () { if (caixa.isConnected && v === versaoAviso) no('aviso-dica').textContent = 'Não foi possível consultar o atendimento. Escolha outro atendimento.'; });
+          avisoDica(avisoAberto ? '' : !chatAberto(chat, contato.id) ? 'Atendimento encerrado' : chat.sessionLocked ? 'Janela de 24 h fechada' : 'Canal não permite mensagem');
+        }).catch(function () { if (caixa.isConnected && v === versaoAviso) avisoDica('Não foi possível consultar o atendimento. Escolha outro atendimento.'); });
       }
       function aplicarAtendimento(a) {
         return guardado(function () {
@@ -425,7 +621,8 @@
             selecionado = a; if (editando) mensagem('Atendimento vinculado.', 'sucesso'); modoAtendimento = a ? 'atual' : 'nenhum';
             if (editando) { atualizarEstadoStatus(r.chamado); atualizarLinha(c); mudou = true; }
             ++versaoFotos; anexos = []; no('fotos').textContent = ''; no('confirmacao').hidden = true;
-            no('vinculo').textContent = atendimentoTexto(a); no('escolha-atendimento').hidden = true;
+            no('vinculo').textContent = atendimentoTexto(a); atualizarConversa(); no('escolha-atendimento').hidden = editando;
+            if (!editando) { redesenharAtendimentos(); if (a) buscarFotos(true); else if (no('resumo-fotos')) no('resumo-fotos').textContent = 'Escolha um atendimento para consultar as fotos.'; }
             atualizarBotoesAtendimento();
             return atualizarAviso();
           });
@@ -436,7 +633,7 @@
         no('tirar-vinculo').hidden = !selecionado;
         if (no('abrir-atendimento')) {
           no('abrir-atendimento').disabled = ocupado || !idValido(selecionado && selecionado.chat_id);
-          if (!selecionado) no('abrir-atendimento').hidden = true;
+          no('abrir-atendimento').hidden = !idValido(selecionado && selecionado.chat_id) || !window.omni || !omni.chats || !omni.chats.select;
         }
         var abertos = atendimentos.filter(function (a) { return a.vivo; });
         var unico = editando && !selecionado && abertos.length === 1 ? abertos[0] : null;
@@ -447,13 +644,25 @@
       function redesenharAtendimentos() {
         atualizarBotoesAtendimento();
         var admin = GI.ctx() && GI.ctx().user && GI.ctx().user.type === 0;
-        no('atendimentos').innerHTML = atendimentos.length ? atendimentos.slice(0, limiteAtendimentos).map(function (a, i) {
-          return '<button class="gi-atend" type="button" data-atendimento="' + i + '"><span class="gi-atend__corpo"><strong>' + e(data(a.iniciado_em)) + ' · ' + e(a.canal || 'Atendimento') + ' · ' + e(a.fila || 'Sem fila') +
-            '</strong><span class="gi-ajuda"><span class="gi-chip">' + (a.vivo ? 'Aberto' : 'Encerrado') + '</span>' + (a.motivo && !a.vivo ? ' · ' + e(a.motivo) : '') + (a.protocolo ? ' · <small>' + e(a.protocolo) + '</small>' : '') + '</span>' +
-            (a.vivo && a.ultima ? '<span class="gi-ultima-mensagem">' + e(a.ultima) + '</span>' : '') + '</span></button>';
-        }).join('') + (atendimentos.length > limiteAtendimentos ? '<button type="button" class="btn btn-slim" id="c-mais-atendimentos">Mostrar mais</button>' : '') :
+        if (no('atendimentos-legenda')) no('atendimentos-legenda').firstChild.textContent = contato ? 'Os atendimentos mais recentes de ' + contato.name + '.' : '';
+        var termoProtocolo = no('busca-atendimento') && no('busca-atendimento').value.trim().toLowerCase();
+        var visiveis = termoProtocolo ? atendimentos.filter(function (a) { return String(a.protocolo || a.chat_id).toLowerCase().indexOf(termoProtocolo) >= 0; }) : atendimentos.slice(0, limiteAtendimentos);
+        no('atendimentos').innerHTML = atendimentos.length ? visiveis.map(function (a) {
+          var i = atendimentos.indexOf(a);
+          var escolhido = selecionado && Number(selecionado.chat_id) === Number(a.chat_id);
+          var vinculos = (op.itens ? op.itens() : []).filter(function (c) { return c.atendimento && Number(c.atendimento.chat_id) === Number(a.chat_id); });
+          var relato = a.primeira || (editando ? a.ultima : '');
+          var horario = data(a.iniciado_em), hoje = a.vivo && new Date(a.iniciado_em).toLocaleDateString() === new Date().toLocaleDateString();
+          return '<button class="gi-atend' + (escolhido ? ' gi-atend--on' : '') + '" type="button" data-atendimento="' + i + '" role="radio" aria-checked="' + !!escolhido + '"><span class="gi-radio' + (escolhido ? ' gi-radio--on' : '') + '"></span><span class="gi-atend__corpo"><span class="gi-atend__t"><strong>Atendimento #' + e(a.chat_id) + '</strong><span class="gi-mudo">' + e(a.canal || 'Atendimento') + '</span>' +
+            (a.vivo ? '<span class="gi-estado gi-estado-ok gi-atend-aberto"><span class="gi-ponto gi-ponto-ok"></span>aberto agora</span>' : '<span class="gi-chip">encerrado</span>') +
+            (a.protocolo ? '<span class="gi-chip">' + e(a.protocolo) + '</span>' : '') +
+            vinculos.map(function (c) { return '<span class="gi-chip">já vinculado à O.S. ' + e(String(c.numero).padStart(4, '0')) + '</span>'; }).join('') + '</span><span class="gi-ajuda">' + e([a.fila || 'Sem fila', a.atendenteNome || c.atendente && c.atendente.nome, hoje ? 'hoje às ' + horario.split(' · ')[1] : horario.replace(' · ', ' às ')].filter(Boolean).join(' · ')) + (a.motivo && !a.vivo ? ' · ' + e(a.motivo) : '') + '</span>' +
+            (relato ? '<span class="gi-atend__txt">“' + e(relato) + '”</span>' : '') + '</span></button>';
+        }).join('') + '<button class="gi-atend" type="button" id="c-sem-atendimento"><span class="gi-radio' + (!selecionado ? ' gi-radio--on' : '') + '"></span><span class="gi-atend__corpo"><span class="gi-atend__t"><strong>Não vincular a um atendimento</strong></span><span class="gi-ajuda">Use quando o pedido chegou por telefone, e-mail ou na imobiliária.</span></span></button>' + (atendimentos.length > limiteAtendimentos ? '<button type="button" class="btn btn-slim" id="c-mais-atendimentos">Mostrar mais</button>' : '') :
           '<p>' + (contato ? admin ? 'Este cliente ainda não tem atendimento.' : 'Nenhum atendimento deste cliente nas suas filas.' : 'Escolha o cliente para consultar os atendimentos.') + '</p>';
-        if (no('mais-atendimentos')) no('mais-atendimentos').onclick = function () { limiteAtendimentos += 10; redesenharAtendimentos(); };
+        if (no('sem-atendimento')) no('sem-atendimento').onclick = function () { aplicarAtendimento(null); };
+        if (!editando && no('resumo-fotos') && !selecionado) no('resumo-fotos').textContent = 'Escolha um atendimento para consultar as fotos.';
+        if (no('mais-atendimentos')) no('mais-atendimentos').onclick = function () { limiteAtendimentos += 10; redesenharAtendimentos(); lerMensagensVisiveis(); };
         no('atendimentos').querySelectorAll('[data-atendimento]').forEach(function (b) { b.onclick = function () {
           var a = atendimentos[Number(b.dataset.atendimento)];
           aplicarAtendimento({ chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em });
@@ -462,7 +671,7 @@
       function carregarAtendimentos(contatoId, versao, tentar) {
         if (!tentar && consultaAtendimentos && consultaAtendimentos.contatoId === contatoId && consultaAtendimentos.versao === versao) return consultaAtendimentos.promessa;
         var consulta = { contatoId: contatoId, versao: versao };
-        consultaAtendimentos = consulta; limiteAtendimentos = 10;
+        consultaAtendimentos = consulta; limiteAtendimentos = editando ? 10 : 3;
         no('atendimentos').textContent = 'Buscando atendimentos…'; no('atendimento-aviso').textContent = '';
         consulta.promessa = Promise.allSettled([
           sdk('data', 'request', ['contacts/getItemChatsHistory', 'POST', { id: contatoId }]),
@@ -473,7 +682,7 @@
                 var sucessos = [rs[0]].concat(fs).filter(function (r) { return r.status === 'fulfilled'; });
                 if (!sucessos.length) throw new Error('Listagem indisponível');
                 var abertos = GI.mesclarAtendimentos(sucessos.map(function (r) { return r.value; }), contatoId, filas);
-                return Promise.allSettled(abertos.map(function (a) {
+                return Promise.allSettled((editando ? abertos : []).map(function (a) {
                   return sdk('chats', 'getMessages', [a.chat_id, { limit: 1 }]).then(function (msgs) { a.ultima = msgs[0] && (msgs[0].text || msgs[0].fileName) || ''; });
                 })).then(function () { return abertos; });
               });
@@ -487,17 +696,20 @@
             no('tentar-atendimentos').onclick = function () { carregarAtendimentos(contatoId, versao, true); }; return;
           }
           atendimentos = GI.unirHistoricoAtendimentos(historico ? GI.lista(rs[0].value) : [], sdkOk ? rs[1].value : []);
-          redesenharAtendimentos();
+          atendimentos.forEach(function (a) { var h = historico && GI.lista(rs[0].value).find(function (h) { return Number(h.id) === Number(a.chat_id); }); a.atendenteNome = h && (h.uname || h.userName) || ''; });
+          if (!editando) atendimentos.sort(function (a, b) { return Number(b.vivo) - Number(a.vivo) || (Date.parse(b.iniciado_em) || 0) - (Date.parse(a.iniciado_em) || 0) || b.chat_id - a.chat_id; });
+          atualizarConversa();
+          redesenharAtendimentos(); lerMensagensVisiveis();
           no('atendimento-aviso').textContent = historico ? '' : 'Não foi possível carregar o histórico completo deste cliente.';
           if (!editando && atendimentos.length === 1 && atendimentos[0].vivo && !selecionado && modoAtendimento === 'nenhum') {
             var a = atendimentos[0]; selecionado = { chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em };
-            modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado); atualizarBotoesAtendimento();
+            modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado); redesenharAtendimentos(); buscarFotos(true);
           }
         });
         return consulta.promessa;
       }
       function escolherContato(p) {
-        contato = p; no('cliente').value = p.name; no('contatos').textContent = '';
+        contato = p; no('cliente').value = contatoRotulo(p); no('contatos').textContent = '';
         var v = ++versaoContato;
         selecionado = null; no('vinculo').textContent = atendimentoTexto(null); modoAtendimento = 'nenhum'; atendimentos = []; redesenharAtendimentos();
         ++versaoFotos; anexos = []; no('fotos').textContent = '';
@@ -516,7 +728,7 @@
         if (!contato) throw new Error('Busque e selecione um cliente da lista.');
         var l = !editando && no('locacao').value !== '' && locacoes[Number(no('locacao').value)];
         if (!editando && !l) throw new Error('Escolha um imóvel locado do cliente.');
-        var titulo = no('titulo').value.trim(); if (!titulo) throw new Error('Informe o título do chamado.');
+        var titulo = editando ? no('titulo').value.trim() : GI.tituloNovoChamado(no('descricao').value, no('categoria').value); if (!titulo) throw new Error('Informe o título do chamado.');
         var u = no('atendente').value === '' ? null : usuarios[Number(no('atendente').value)];
         var d = { titulo: titulo, descricao: no('descricao').value.trim(), categoria: no('categoria').value, prioridade: no('prioridade').value,
           atendente: u ? { user_id: idValido(u.id), nome: String(u.name || u.id) } : null, atendimento: atendimentoEscolhido(),
@@ -618,7 +830,7 @@
       function fotosSalvas() {
         no('fotos').textContent = '';
         (detalhe && detalhe.anexos || []).forEach(function (a, i) {
-          var alvo = document.createElement(a.origem === 'upload' ? 'button' : 'div'); alvo.className = 'gi-foto'; alvo.textContent = a.nome || a.file_ref;
+          var alvo = document.createElement(a.origem === 'upload' ? 'button' : 'div'); alvo.className = 'gi-foto ph ph--' + (i % 3 + 1); alvo.innerHTML = '<svg class="i i--lg" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg><small>' + e(a.nome || a.file_ref) + '</small>';
           no('fotos').appendChild(alvo);
           if (a.origem !== 'upload') { resolverFoto(a, alvo); return; }
           alvo.type = 'button'; alvo.dataset.ampliar = String(i); alvo.setAttribute('aria-label', 'Ampliar ' + (a.nome || 'foto'));
@@ -627,24 +839,29 @@
           }
           alvo.onclick = function () { ampliarFoto(a); };
         });
+        no('fotos').classList.add('photos');
+        var adicionar = document.createElement('button'); adicionar.type = 'button'; adicionar.className = 'ph ph--add'; adicionar.innerHTML = '+ Anexar<br>foto'; adicionar.disabled = fechado; adicionar.onclick = function () { no('buscar-pasta').click(); }; no('fotos').appendChild(adicionar);
       }
-      function buscarFotos() {
+      function buscarFotos(automatico) {
         var a;
         try { a = atendimentoEscolhido(); } catch (err) { mensagem(erro(err), 'erro'); return; }
         if (!a || !idValido(a.chat_id)) { mensagem('Selecione um atendimento consultado no EvoTalks para buscar as fotos.', 'info'); return; }
         var v = ++versaoFotos; no('fotos').textContent = 'Buscando…';
-        sdk('chats', 'getMessages', [a.chat_id, { limit: 50 }]).then(function (msgs) {
+        if (!editando && no('resumo-fotos')) no('resumo-fotos').textContent = 'Consultando fotos do atendimento #' + a.chat_id + '…';
+        mensagensDoAtendimento(a.chat_id, !automatico).then(function (msgs) {
           if (v !== versaoFotos || !caixa.isConnected) return;
           anexos = msgs.filter(function (m) { return m.fileRef && /^image\//.test(m.mimetype || ''); }).map(function (m) { return { file_ref: String(m.fileRef), nome: m.fileName, mimetype: m.mimetype, origem: 'atendimento' }; });
+          if (!editando && no('resumo-fotos')) no('resumo-fotos').textContent = (anexos.length ? anexos.length + ' ' + (anexos.length === 1 ? 'foto' : 'fotos') : 'Nenhuma foto') + ' no atendimento #' + a.chat_id + '.';
+          if (automatico && !editando && !anexos.length) { no('fotos').textContent = ''; return; }
           fotosSalvas();
           if (!anexos.length) { var p = document.createElement('p'); p.textContent = 'Mostrando as últimas 50 mensagens da conversa. Nenhuma foto encontrada. Mídias anteriores podem ser consultadas no atendimento.'; p.className = 'gi-ajuda'; no('fotos').appendChild(p); }
           anexos.forEach(function (a, i) {
-            var label = document.createElement('label'); label.className = 'gi-atend gi-foto';
-            label.innerHTML = '<input type="checkbox" data-foto="' + i + '"><span>' + e(a.nome || a.file_ref) + '</span>';
+            var label = document.createElement('label'); label.className = 'gi-foto ph ph--' + (i % 3 + 1);
+            label.innerHTML = '<input type="checkbox" data-foto="' + i + '"><small>' + e(a.nome || a.file_ref) + '</small>';
             label.querySelector('input').disabled = fechado;
             no('fotos').appendChild(label); resolverFoto(a, label);
           });
-        }).catch(function (err) { if (v === versaoFotos) { fotosSalvas(); mensagem(erro(err), 'erro'); } });
+        }).catch(function (err) { if (v === versaoFotos && caixa.isConnected) { fotosSalvas(); if (!editando && no('resumo-fotos')) no('resumo-fotos').textContent = 'Não foi possível consultar fotos do atendimento #' + a.chat_id + '.'; mensagem(erro(err), 'erro'); } });
       }
       function gravarNota(semReleitura) {
         var texto = no('nota').value.trim(), avisar = no('avisar').checked, a = c.atendimento, falhaEnvio = '';
@@ -745,10 +962,14 @@
           });
         });
       }
-      return apresentar({ titulo: editando ? 'Editar chamado ' + GI.chamadoNumero(c.numero) : 'Novo chamado', largura: 920, corpo: corpo,
-        rotuloOk: 'Salvar', rotuloCancelar: 'Fechar',
+      return apresentar({ titulo: editando ? 'Editar chamado ' + String(c.numero).padStart(4, '0') : 'Novo chamado', largura: 900, corpo: corpo,
+        rotuloOk: editando ? 'Atualizar' : 'Abrir chamado', rotuloCancelar: 'Cancelar',
         aoAbrir: function (elemento) {
-          caixa = elemento; no = function (id) { return caixa.querySelector('#c-' + id); };
+          caixa = elemento; no = function (id) { return caixa.querySelector('#c-' + id) || montando && montando['c-' + id]; };
+          apresentarDesenho(); desenharTrilha();
+          var modalDesenho = caixa.closest('.gi-modal'); modalDesenho.classList.add('gi-modal-chamado');
+          modalDesenho.querySelector('[data-ok]').className = 'btn btn-primario';
+          modalDesenho.querySelector('.gi-modal-recado').setAttribute('data-padrao', recadoPadrao());
           var faixa = document.createElement('div'); faixa.setAttribute('data-recado-form', ''); faixa.hidden = true;
           caixa.closest('.gi-modal').insertBefore(faixa, caixa);
           caixa.closest('.gi-modal').querySelector('.gi-modal-recado').setAttribute('role', 'alert');
@@ -771,7 +992,7 @@
             if (contato) carregarAtendimentos(contato.id, versaoContato).catch(function (err) { mensagem(erro(err), 'erro'); });
           };
           no('tirar-vinculo').onclick = function () { aplicarAtendimento(null); };
-          no('carregar-fotos').onclick = buscarFotos;
+          no('carregar-fotos').onclick = function () { buscarFotos(false); };
           no('buscar-pasta').onclick = function () { if (portalParaFotos() && !ocupado) no('pasta').click(); };
           no('pasta').onchange = escolherFotos;
           desenharPendentes(); mensagem(avisoInicial, 'erro');
@@ -824,6 +1045,8 @@
                 no('avisar').checked = true; no('salvar-nota').textContent = 'Enviar ao cliente';
               }
             });
+            no('nota').oninput = function () { no('salvar-nota').hidden = !this.value.trim(); };
+            no('salvar-nota').hidden = !no('nota').value.trim();
             no('avisar').onchange = function () { no('salvar-nota').textContent = no('avisar').checked ? 'Enviar ao cliente' : 'Salvar nota'; };
             no('abrir-atendimento').onclick = function () { if (c.atendimento) sdk('chats', 'select', [c.atendimento.chat_id]).catch(function (err) { mensagem(erro(err), 'erro'); }); };
             no('salvar-nota').onclick = salvarNota;

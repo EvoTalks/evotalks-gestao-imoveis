@@ -2,15 +2,17 @@ import { mkdir, writeFile, copyFile, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { abrirAmbiente, SAIDA, AGORA, principal } from './ambiente.mjs';
-import { QUADROS, lerDesenho, capturarDesenho } from './desenho.mjs';
+import { QUADROS, lerDesenho, capturarDesenho, capturarCockpitIsolado } from './desenho.mjs';
 import { abrirExtensao, capturarExtensao, capturarSucesso } from './roteiros.mjs';
 import { compararArquivos } from './pixels.mjs';
 import { LIMITACOES, validarFixture } from './fixture-desenho.mjs';
 
 export function argumentos(args) {
-  const op={quadros:[],soDesenho:false,limite:null};
+  const op={quadros:[],soDesenho:false,limite:null,origemComum:true};
   for(let i=0;i<args.length;i++) {
-    if(args[i]==='--so-desenho')op.soDesenho=true;
+    if(args[i]==='--original')op.origemComum=false;
+    else if(args[i]==='--so-desenho')op.soDesenho=true;
+    else if(args[i]==='--origem-comum')op.origemComum=true;
     else if(args[i]==='--limite') { const valor=args[++i]; op.limite=Number(valor); if(valor===undefined||!Number.isFinite(op.limite)||op.limite<0||op.limite>100)throw new Error('--limite exige número entre 0 e 100'); }
     else if(QUADROS.includes(args[i]))op.quadros.push(args[i]);
     else throw new Error('Quadro/opção desconhecido: '+args[i]);
@@ -31,7 +33,12 @@ export async function executarComparacao(op=argumentos([])) {
     const avisosFixture=validarFixture(d);
     if(avisosFixture.length)throw new Error(avisosFixture.join('\n'));
     for(const q of op.quadros) {
-      const tamanho=await capturarDesenho(b,q);
+      let tamanho=await capturarDesenho(b,q);
+      if(!op.soDesenho && op.origemComum) {
+        await mkdir(path.join(SAIDA,'desenho-canvas'),{recursive:true});
+        await copyFile(path.join(SAIDA,'desenho',q+'.png'),path.join(SAIDA,'desenho-canvas',q+'.png'));
+        tamanho=await capturarCockpitIsolado(b,d,q,tamanho);
+      }
       let extensao,alcancavel=true,motivos=[];
       if(op.soDesenho) {
         // Reabre o arquivo e recongela a página: testa também estabilidade entre cargas.
@@ -56,8 +63,8 @@ export async function executarComparacao(op=argumentos([])) {
       rows.push({quadro:q,...medidas,alcancavel,motivos,mascaras});
     }
     const manifest=JSON.parse(await readFile(new URL('../../manifest.json',import.meta.url),'utf8'));
-    const relatorio={versao:manifest.version,agora:AGORA,fuso:'America/Sao_Paulo',dpr:1,tolerancia:8,limite:op.limite,soDesenho:op.soDesenho,
-      fonte:d.arquivo,sha256:createHash('sha256').update(await readFile(d.arquivo)).digest('hex'),viewport:d.viewport,quadros:rows,limitacoes:LIMITACOES};
+    const relatorio={versao:manifest.version,agora:AGORA,fuso:'America/Sao_Paulo',dpr:1,tolerancia:8,antialias:'cinza, --disable-lcd-text nos dois documentos (mesma tolerância e máscaras)',limite:op.limite,soDesenho:op.soDesenho,
+      referenciaCockpit:op.origemComum?'Medida oficial: DOM/CSS/sprite vivos com origem inteira; recortes originais em desenho-canvas/':'Canvas original ao vivo; nenhuma normalização de origem',fonte:d.arquivo,sha256:createHash('sha256').update(await readFile(d.arquivo)).digest('hex'),viewport:d.viewport,quadros:rows,limitacoes:LIMITACOES};
     const resumo=`${rows.length} recortes; ${rows.filter(r=>r.percentual<=.5).length} dentro de 0,5 %; ${rows.filter(r=>!r.alcancavel).length} estados com limitações.`;
     const md=tabela(rows)+'\n\n'+resumo+'\n\n'+rows.flatMap(r=>r.motivos.map(m=>'- '+r.quadro+': '+m)).join('\n')+'\n\n'+LIMITACOES.map(m=>'- '+m).join('\n')+'\n';
     const nome=op.soDesenho?'relatorio-autocomparacao':'relatorio';

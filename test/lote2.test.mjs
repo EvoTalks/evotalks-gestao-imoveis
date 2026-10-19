@@ -74,7 +74,7 @@ test('lote 2: regressões no navegador', async t => {
     });
     await t.test('18c: troca silenciosa antes do POST reabilita confirmação', async () => {
       await cockpit('?escrita=1');
-      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', 'Reparo sintético');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Reparo sintético');
       await b.clicar('#cp-revisar');
       await b.avaliar(() => { omni.session.getUser = async () => { omni.chats.getSelected = async () => ({ id: 8802, contactId: 9902 }); return { id: 9999 }; }; });
       await b.clicar('#cp-confirmar');
@@ -87,7 +87,7 @@ test('lote 2: regressões no navegador', async t => {
       for (const pagina of ['chamados', 'painel']) {
         await abrir(pagina, '?lote2=classes');
         await b.esperar(() => !!document.querySelector('[data-editar], [data-chamado]'));
-        assert.equal(await b.avaliar(() => [...document.querySelectorAll('[class]')].some(n => /\[object|function|constructor|__proto__/.test(n.className))), false);
+        assert.equal(await b.avaliar(() => [...document.querySelectorAll('[class]')].some(n => /\[object|function|constructor|__proto__/.test(n.getAttribute('class')))), false);
         assert.doesNotMatch(await b.avaliar(() => document.body.textContent), /function Object|\[object Object\]/);
         await b.captura('lote2-classes-' + pagina);
       }
@@ -126,7 +126,7 @@ test('lote 2: regressões no navegador', async t => {
       await b.esperar(() => bancada.ultimaContribuicao?.id === 'gi-os');
       assert.equal(await b.avaliar(() => bancada.ultimaContribuicao.params.chamadoId), 1);
       await abrir('chamados', '?lote2=gestao');
-      await b.esperar(() => document.querySelector('.gi-modal h2')?.textContent.includes('OS-1002'));
+      await b.esperar(() => document.querySelector('.gi-modal h2')?.textContent.includes('1002'));
       await b.captura('lote2-gestao-chamado');
     });
     assert.deepEqual(b.erros, []);

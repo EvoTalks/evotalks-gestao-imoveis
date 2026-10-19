@@ -27,7 +27,8 @@ export const LIMITACOES = [
   '1042 já excede a alçada e pertence ao proprietário: o contrato marca aprovação pendente mesmo antes de enviar, somando três pendentes; o desenho resume só dois.',
   'Fotos do desenho são tiles ilustrados, sem bytes de fotografia/vídeo; fixture fornece apenas os três nomes, não inventa imagens.',
   'Desenho confirma e mostra sucesso na mesma tela; extensão 0.24.0 apresenta estados sucessivos. Captura principal é a confirmação, sucesso é capturado separadamente.',
-  'Novo do desenho não tem título obrigatório; roteiro preenche o título com a própria descrição para atravessar a validação existente.',
+  'Novo deriva o título da descrição; Editar mantém o título em Mais opções.',
+  'Histórico do portal não guarda valores sugeridos na abertura, decisão de quem paga ou SLA no evento de status; esses subtextos são omitidos. O desenho fornece dois nomes dos cinco prestadores de Hidráulica; os outros três registros da fixture têm apenas ID técnico e categoria, sem nome nem situação inventados; a contagem usa a lista completa do contrato.',
   'Região do botão Abrir chamado mascarada só no cockpit Chamados por pedido explícito; nenhuma outra região é mascarada.'
 ];
 export const locacoes = dados.locados.tabelas[0].map((r, i) => ({
@@ -85,17 +86,22 @@ export const chamados = dados.lista.tabelas[0].map(r => {
 export const orcamentos = dados.modal.tabelas[0].slice(0,2).map((r,i) => ({ id: i+1, chamado_id: 1042, prestador_id: i+1,
   prestador_nome: r[0].principal, valor_centavos: centavos(r[1].principal), prazo_dias: Number.parseInt(r[2].principal),
   visita_em: dataHora(i ? '21/10' : '20/10'), escolhido: i === 0, observacao: null }));
+export const totalPrestadoresHidraulica = Number.parseInt(dados.modal.folhas.find(v=>/prestadores de Hidráulica cadastrados/.test(v)));
 export const anexos = dados.modal.folhas.filter(v => /\.jpg$/.test(v)).map((nome,i) => ({ id: i+1, nome, mimetype: 'image/jpeg', origem: 'chat', chat_id: 2641 }));
 export const eventos = [
   { id: 1, tipo: 'criou', autor: 'Williane (IA)', em: dataHora('17/10','14:20'), detalhe: {} },
   { id: 2, tipo: 'status', autor: 'Marina', em: dataHora('17/10','15:05'), detalhe: { de: 'novo', para: 'triagem' } },
   { id: 3, tipo: 'status', autor: 'Marina', em: dataHora('17/10','16:40'), detalhe: { de: 'triagem', para: 'orcamento' } },
-  { id: 4, tipo: 'orcamento', autor: 'Marina', em: dataHora('17/10','17:25'), detalhe: { orcamento_id: 2 } }
+  { id: 4, tipo: 'orcamento', autor: 'Marina', em: dataHora('17/10','17:10'), detalhe: { acao: 'criou', orcamento_id: 2 } },
+  { id: 5, tipo: 'nota', autor: 'Marina', em: dataHora('17/10','17:25'), texto: dados.modal.folhas.find(v => v.includes('Cliente só atende')).replace(/[“”]/g, ''), detalhe: null }
 ];
 export const chats = [{ id: 2660, contactId: 103, userId: 531, queueId: 1, status: 'active', channel: 0, protocol: '', startedAt: Date.parse(dataHora('17/10','21:12')) / 1000 },
   ...chamados.filter(c => c.locacao_id === 4 && c.atendimento).map(c => ({ id: c.atendimento.chat_id, contactId: 103, userId: 531, queueId: 1,
     status: 'closed', channel: 0, protocol: c.atendimento.protocolo, startedAt: Date.parse(c.atendimento.iniciado_em || c.criado_em) / 1000 }))];
-export const fixture = { contatos, produtos, usuarios, chats, formulario, locacoes, chamados };
+chats.find(c=>c.id===2121).startedAt = Date.parse(dataHora('28/08','10:02')) / 1000;
+chats.find(c=>c.id===2121).userId = 532;
+export const mensagens = Object.fromEntries([2660,2641,2121].map((id,i)=>[id,[{ id:'DESENHO-'+id, chatId:id, direction:'in', text:dados.novo.folhas.filter(v=>/^“/.test(v))[i].replace(/[“”]/g,''), at:new Date(chats.find(c=>c.id===id).startedAt*1000).toISOString() }]]));
+export const fixture = { mensagens, contatos, produtos, usuarios, chats, formulario, locacoes, chamados };
 export function valoresVisiveis() {
   return Object.entries(dados).flatMap(([quadro,d]) => [...d.folhas, ...d.campos.map(c => c.valor)].filter(Boolean).map(valor => ({ quadro, valor })));
 }

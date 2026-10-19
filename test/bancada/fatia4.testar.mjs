@@ -3,7 +3,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.24.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.25.0');
 
 const servidor = criarServidor();
 // O contrato legado de configuração é independente do simulador de manutenção.
@@ -160,8 +160,8 @@ try {
   detalhe = await b.avaliar(async id => GI.chamadosObter(id), id);
   assert.equal(detalhe.chamado.aprovacao.status, 'recusada'); assert.equal(detalhe.chamado.status, 'aprovacao'); assert.equal(detalhe.chamado.sla.pausado, true);
   await capturar('fatia4-06-recusa-sla', '#c-aprovacao'); await fechar();
-  await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Prazo pausado'));
-  assert.match(await texto('#gi-corpo'), /Responder já/);
+  await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('parada'));
+  assert.match(await texto('#gi-corpo'), /responder já/);
   await b.captura('fatia4-07-lista-sla');
   prova('recusa registrada mantém Aprovação e pausa SLA; lista mostra prazo pausado e prazo estourado');
 

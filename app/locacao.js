@@ -37,9 +37,9 @@
     var selecionado = op.imovel || null;
     var modo = edicao ? (l.imovel_codigo ? 'catalogo' : 'fora') : selecionado ? 'catalogo' : 'fora';
     var corpo = '<fieldset class="gi-form-locacao"' + (encerrada ? ' disabled' : '') + '>';
-    if (!edicao) corpo += '<div class="gi-segmentos" aria-label="Origem do imóvel">' +
-      '<button type="button" class="btn btn-slim" data-modo="catalogo">Imóvel do catálogo</button>' +
-      '<button type="button" class="btn btn-slim" data-modo="fora">Imóvel fora do catálogo</button></div>' +
+    if (!edicao) corpo += '<div class="seg gi-locacao-modo" aria-label="Origem do imóvel">' +
+      '<button type="button" data-modo="catalogo">Imóvel do catálogo</button>' +
+      '<button type="button" data-modo="fora">Imóvel fora do catálogo</button></div>' +
       '<div id="l-catalogo"><div class="gi-barra"><div class="gi-campo gi-flex"><label for="l-busca-imovel">Buscar no catálogo</label>' +
       '<input id="l-busca-imovel" type="search" placeholder="código, título ou bairro"></div>' +
       '<button type="button" class="btn btn-slim" id="l-buscar-imovel">Buscar imóvel</button></div>' +
@@ -48,48 +48,73 @@
     if (!edicao) corpo += '<div class="gi-grade-modal" id="l-fora">' +
       campo('titulo', 'Título do imóvel', '') + campo('endereco', 'Endereço', '') + campo('tipo', 'Tipo', '') +
       campo('bairro', 'Bairro', '') + campo('cidade', 'Cidade', '') + '</div>';
-    corpo += '<div class="gi-secao"><strong>Locação</strong><span class="gi-ajuda">O locatário é um contato do EvoTalks.</span></div>' +
+    corpo += '<p class="gi-ajuda gi-locacao-ajuda">Em “fora do catálogo” (imóvel administrado que nunca foi anúncio), estes dados são digitados: endereço, tipo, bairro e cidade.</p>' +
+      '<div class="gi-secao"><strong>Locação</strong><span class="gi-ajuda">o locatário é um contato do EvoTalks: é por ele que o cockpit acha o imóvel</span></div>' +
       '<div class="gi-grade-modal">' +
-      '<div><div class="gi-campo-caixa"><label for="l-locatario">Locatário · buscar contato</label>' +
+      '<div class="gi-campo-caixa"><label for="l-locatario">Locatário</label>' +
       '<input id="l-locatario" type="search" autocomplete="off" value="' + e(inquilino && inquilino.nome) +
-      '" placeholder="Digite ao menos 2 caracteres"></div><div id="l-contatos" class="gi-resultados" aria-live="polite"></div>' +
+      '" placeholder="Digite ao menos 2 caracteres"><div id="l-contatos" class="gi-resultados" aria-live="polite"></div>' +
       '<div class="gi-ajuda" id="l-vinculo">' + e(inquilino ? 'Contato ' + (inquilino.contato_id || 'ainda sem vínculo') : 'Escolha um contato da lista.') + '</div></div>' +
       campo('proprietario', 'Proprietário', dono && dono.nome) +
       campo('contrato', 'Número do contrato', l.contrato_numero) +
       '<div class="gi-campo-caixa"><label for="l-garantia">Garantia</label><select id="l-garantia"><option value="">não informada</option>' +
       Object.keys(GI.GARANTIAS).map(function (g) { return '<option value="' + g + '"' + (l.garantia === g ? ' selected' : '') + '>' + GI.GARANTIAS[g] + '</option>'; }).join('') + '</select></div>' +
       campo('inicio', 'Início do contrato', l.inicio, 'date') + campo('fim', 'Fim do contrato', l.fim, 'date') +
-      campo('aluguel', 'Valor do aluguel (R$)', l.valor_aluguel_centavos == null ? '' : (Number(l.valor_aluguel_centavos) / 100).toFixed(2).replace('.', ','), 'text', 'inputmode="decimal"') +
+      campo('aluguel', 'Valor do aluguel', l.valor_aluguel_centavos == null ? '' : (Number(l.valor_aluguel_centavos) / 100).toFixed(2).replace('.', ','), 'text', 'inputmode="decimal"') +
       campo('vencimento', 'Dia do vencimento', l.dia_vencimento, 'number', 'min="1" max="31" step="1"') +
-      '<div class="gi-campo-caixa gi-campo-caixa--todo"><label for="l-observacao">Observação</label><textarea id="l-observacao" rows="2">' + e(l.observacao) + '</textarea></div></div></fieldset>' +
-      '<div class="gi-aviso">Enquanto estiver locado, o imóvel sai das buscas da assistente de IA e passa a aparecer em Locados. Ao encerrar, volta a ficar disponível; o histórico permanece.</div>' +
+      '<div class="gi-campo-caixa gi-campo-caixa--todo"><label for="l-observacao">Observação</label><textarea id="l-observacao" rows="2" placeholder="opcional">' + e(l.observacao) + '</textarea></div></div></fieldset>' +
+      '<div class="gi-aviso">Enquanto estiver locado, o imóvel sai das buscas da assistente de IA e passa a aparecer em Locados, onde os chamados de manutenção encontram o imóvel e o locatário.</div>' +
       (encerrada ? '<p class="gi-ajuda">Encerrada por ' + e(l.encerrada_por) + ' · ' + e(l.motivo_encerramento || 'sem motivo informado') + '</p>' : '');
     return GI.modal({
       titulo: edicao ? (encerrada ? 'Consultar locação encerrada' : 'Editar locação') : 'Marcar imóvel como locado',
       corpo: corpo, rotuloOk: edicao ? 'Atualizar' : 'Marcar como locado',
       aoAbrir: function (caixa) {
+        var modal = caixa.closest('.gi-modal');
+        modal.classList.add('gi-modal-locacao');
+        var botaoOk = modal.querySelector('[data-ok]');
+        botaoOk.classList.remove('btn-sucesso'); botaoOk.classList.add('btn-primario');
+        modal.querySelector('.gi-modal-recado').textContent = 'Fica no histórico com o seu nome.';
         var no = function (id) { return caixa.querySelector('#l-' + id); };
         function resumo() {
           var p = edicao ? { name: l.imovel_titulo, internalcode: l.imovel_codigo, value: l.valor_aluguel_centavos,
             category: [l.imovel_tipo, l.imovel_cidade, l.imovel_bairro, l.imovel_endereco].filter(Boolean).join(' · ') } : selecionado;
           no('resumo').hidden = !p || modo === 'fora' && !edicao;
-          if (p) no('resumo').innerHTML = '<div class="gi-modal-imovel-titulo">' + e(p.name) + '</div>' +
-            '<div class="gi-ajuda">' + e(p.internalcode || 'fora do catálogo') + ' · ' + e(p.category) +
-            (p.value == null ? '' : ' · ' + GI.dinheiro(p.value)) + '</div>';
+          if (p) {
+            var cat = edicao ? { tipo: l.imovel_tipo, bairro: l.imovel_bairro, cidade: l.imovel_cidade } : GI.partesCategoria(p.category);
+            no('resumo').innerHTML = '<div class="gi-modal-imovel-titulo">' + e(p.name) + '</div>' +
+              '<div class="gi-ajuda">' + e(p.internalcode ? GI.codigoCurto(p.internalcode) : 'fora do catálogo') +
+              (cat.tipo ? ' · ' + e(cat.tipo) : '') + (cat.bairro ? ' · ' + e(cat.bairro) : '') +
+              (cat.cidade ? ' · ' + e(cat.cidade) : '') +
+              (edicao && l.imovel_endereco ? ' · ' + e(l.imovel_endereco) : '') +
+              (p.value == null ? '' : ' · ' + GI.dinheiro(p.value)) +
+              (p.internalcode ? ' · código interno ' + e(p.internalcode) : '') + '</div>';
+          }
         }
         resumo();
+        function mostrarVinculo() {
+          no('vinculo').hidden = !!(inquilino && inquilino.contato_id);
+          if (inquilino) no('locatario').value = inquilino.nome + (inquilino.telefone ? ' · ' + inquilino.telefone : '');
+        }
+        mostrarVinculo();
+        no('aluguel').onblur = function () {
+          var valor = no('aluguel').value.trim();
+          if (valor && GI.numeroValido(valor)) no('aluguel').value = GI.paraNumero(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
         if (encerrada) { caixa.parentNode.querySelector('[data-ok]').disabled = true; return; }
         if (!edicao) {
           function alternar(novo) {
             modo = novo;
-            no('fora').hidden = modo !== 'fora'; no('catalogo').hidden = modo !== 'catalogo';
+            no('fora').hidden = modo !== 'fora'; no('catalogo').hidden = modo !== 'catalogo' || !!selecionado;
             Array.prototype.forEach.call(caixa.querySelectorAll('[data-modo]'), function (b) {
               b.setAttribute('aria-pressed', String(b.getAttribute('data-modo') === modo));
             });
             resumo();
           }
           Array.prototype.forEach.call(caixa.querySelectorAll('[data-modo]'), function (b) {
-            b.onclick = function () { alternar(b.getAttribute('data-modo')); };
+            b.onclick = function () {
+              alternar(b.getAttribute('data-modo'));
+              if (modo === 'catalogo') no('catalogo').hidden = false;
+            };
           });
           alternar(modo);
           if (selecionado && selecionado.value != null) no('aluguel').value = (Number(selecionado.value) / 100).toFixed(2).replace('.', ',');
@@ -106,7 +131,7 @@
                 b.onclick = function () {
                   selecionado = r.itens[Number(b.getAttribute('data-imovel'))];
                   no('aluguel').value = selecionado.value == null ? '' : (Number(selecionado.value) / 100).toFixed(2).replace('.', ',');
-                  no('resultados-imovel').textContent = ''; resumo();
+                  no('resultados-imovel').textContent = ''; no('catalogo').hidden = true; resumo();
                 };
               });
             }).catch(function (err) { if (caixa.isConnected && geracao === buscaImovel) no('resultados-imovel').textContent = GI.mensagemErro(err); });
@@ -115,7 +140,7 @@
         }
         var geracaoContato = 0, espera;
         no('locatario').oninput = function () {
-          inquilino = null;
+          inquilino = null; mostrarVinculo();
           no('vinculo').textContent = 'Escolha um contato da lista.';
           var geracao = ++geracaoContato, termo = no('locatario').value.trim();
           clearTimeout(espera); no('contatos').textContent = '';
@@ -132,7 +157,7 @@
                 b.onclick = function () {
                   var c = lista[Number(b.getAttribute('data-contato'))];
                   inquilino = { contato_id: c.id, papel: 'locatario', nome: c.name, telefone: c.phone, email: c.email };
-                  no('locatario').value = c.name; no('vinculo').textContent = 'Contato ' + c.id + ' selecionado';
+                  no('locatario').value = c.name; no('vinculo').textContent = 'Contato ' + c.id + ' selecionado'; mostrarVinculo();
                   no('contatos').textContent = '';
                 };
               });

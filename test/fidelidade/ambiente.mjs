@@ -1,4 +1,5 @@
 import { abrirChromium } from '../bancada/chromium.mjs';
+import { existsSync, readdirSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -20,6 +21,17 @@ export function scriptRelogio(dados) {
   })();`;
 }
 export async function abrirAmbiente(dados) {
+  // A camada composta do modal desativa LCD, mas o desenho estático não.
+  // Escolhemos o mesmo antialias para os dois documentos, sem mudar pixels,
+  // tolerância, máscara, DOM ou CSS. Chromium continua pelo lançador CDP comum.
+  const raster = fileURLToPath(new URL('./chromium-raster.sh', import.meta.url));
+  if (process.env.CHROMIUM_PATH !== raster) {
+    const cache='/srv/devhome/.cache/puppeteer/chrome';
+    const candidatos=['/usr/bin/chromium','/usr/bin/chromium-browser','/usr/bin/google-chrome'];
+    if(existsSync(cache)) candidatos.push(...readdirSync(cache).sort().reverse().map(v=>path.join(cache,v,'chrome-linux64/chrome')));
+    process.env.FIDELIDADE_CHROMIUM_EXEC=process.env.CHROMIUM_PATH || candidatos.find(f=>existsSync(f)) || '';
+    process.env.CHROMIUM_PATH=raster;
+  }
   const b = await abrirChromium({ antesDeCarregar: scriptRelogio(dados) });
   await b.cdp('Emulation.setTimezoneOverride', { timezoneId: 'America/Sao_Paulo' });
   await b.cdp('Emulation.setScrollbarsHidden', { hidden: true });

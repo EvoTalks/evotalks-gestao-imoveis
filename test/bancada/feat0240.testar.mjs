@@ -123,7 +123,7 @@ try {
   await caso('edição inline por três perfis; 1 GET ao abrir, diff e 1 GET após salvar', async () => {
     for (const perfil of ['agente', 'supervisor', 'admin']) {
       await abrir('&perfil=' + perfil);
-      assert.equal(await b.avaliar(() => document.querySelector('[data-os-id] .gi-cp-acoes button').textContent), '✎ Editar');
+      assert.equal(await b.avaliar(() => document.querySelector('[data-os-id] .cp-editar [data-editar-os]').textContent), '✎ Editar');
       await b.avaliar(async () => {
         const n = document.querySelector('[data-os-id]').dataset.osId;
         const r = await fetch('/api/ext/chamados/' + n, { method: 'POST', headers: { Authorization: 'Bearer bancada-sintetica', 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: 'Base F24', descricao: 'Base', categoria: 'outros', prioridade: 'normal' }) });
@@ -205,15 +205,16 @@ try {
     await b.clicar('[data-foto="F24-erro"]'); await b.clicar('[data-ampliar-foto="F24-erro"]'); assert.match(await texto('#cp-foto-ampliada'), /Esta foto não tem prévia, mas será anexada/); await b.clicar('#cp-foto-fechar');
     await b.clicar('#cp-fotos-todas'); assert.match(await texto('#cp-fotos-contador'), /20 foto/); assert.match(await texto('#cp-fotos-aviso'), /Máximo de 20 fotos/);
     await b.clicar('#cp-fotos-limpar'); assert.match(await texto('#cp-fotos-contador'), /0 foto/);
+    assert.equal(await b.avaliar(() => [...document.querySelectorAll('[data-foto]')].every(el => el.classList.contains('ph'))), true);
     await b.clicar('[data-foto="F24-24"]'); await b.clicar('[data-foto="F24-erro"]');
-    await b.preencher('#cp-titulo', 'Fotos F24'); await b.clicar('#cp-revisar'); assert.match(await texto('#cp-conteudo'), /2 foto\(s\)/);
+    await b.preencher('#cp-descricao', 'Fotos F24'); await b.clicar('#cp-revisar'); assert.match(await texto('#cp-conteudo'), /2 foto\(s\)/);
     await b.clicar('#cp-voltar'); assert.equal(await b.avaliar(() => document.querySelector('[data-foto="F24-24"]').getAttribute('aria-checked')), 'true');
     await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
     assert.deepEqual(await b.avaliar(() => JSON.parse(bancada.chamadas.find(r => r.method === 'POST' && /\/chamados$/.test(r.caminho)).body).anexos.map(a => a.file_ref)), ['F24-24', 'F24-erro']);
     assert.equal(await b.avaliar(() => bancada.getMessages.filter(x => x.limit === 50).length), 1);
   });
   await caso('POST sem resposta confere ausência, preserva fotos e retry cria só um chamado', async () => {
-    await novo(); await b.clicar('[data-foto]'); await b.preencher('#cp-titulo', 'Rede F24'); await b.preencher('#cp-descricao', 'Preservar relato');
+    await novo(); await b.clicar('[data-foto]');  await b.preencher('#cp-descricao', 'Preservar relato');
     await b.avaliar(() => { bancada.semResposta = true; }); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
     await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Tentar de novo');
     assert.match(await texto('#cp-recado'), /Não consegui falar com o servidor\. O chamado não foi aberto\. Confira sua conexão e tente de novo\./);
@@ -284,8 +285,8 @@ try {
     await b.clicar('#cp-fotos-todas'); await b.clicar('#cp-fotos-mais'); await b.clicar('#cp-fotos-todas');
     await b.clicar('[data-foto="F24-21"]'); assert.equal(await b.avaliar(() => document.querySelector('[data-foto="F24-21"]').getAttribute('aria-checked')), 'false');
     assert.match(await texto('#cp-fotos-aviso'), /Máximo de 20 fotos/);
-    await b.clicar('#cp-fotos-limpar'); await b.clicar('[data-foto="F24-0"]'); await b.preencher('#cp-titulo', 'Releitura F24');
-    await b.clicar('#cp-atualizar'); await b.esperar(() => !!document.querySelector('#cp-form') && document.querySelector('#cp-titulo').value === 'Releitura F24');
+    await b.clicar('#cp-fotos-limpar'); await b.clicar('[data-foto="F24-0"]'); await b.preencher('#cp-descricao', 'Releitura F24');
+    await b.clicar('#cp-atualizar'); await b.esperar(() => !!document.querySelector('#cp-form') && document.querySelector('#cp-descricao').value === 'Releitura F24');
     assert.equal(await b.avaliar(() => document.querySelector('[data-foto="F24-0"]').getAttribute('aria-checked')), 'true');
     assert.equal(await b.avaliar(() => bancada.getMessages.filter(x => x.limit === 50).length), 1);
   });
@@ -310,8 +311,8 @@ try {
       omni.chats.getMessages = async (n, opts) => { await new Promise(r => { bancada.liberarMensagens = r; }); return get(n, opts); };
     });
     await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-    await b.esperar(() => !!bancada.liberarMensagens); await b.preencher('#cp-titulo', 'Aguardar fotos F24');
-    await b.clicar('#cp-atualizar'); await b.esperar(() => document.querySelector('#cp-titulo')?.value === 'Aguardar fotos F24');
+    await b.esperar(() => !!bancada.liberarMensagens); await b.preencher('#cp-descricao', 'Aguardar fotos F24');
+    await b.clicar('#cp-atualizar'); await b.esperar(() => document.querySelector('#cp-descricao')?.value === 'Aguardar fotos F24');
     await b.avaliar(() => bancada.liberarMensagens()); await new Promise(r => setTimeout(r, 100));
     assert.equal(await b.avaliar(() => !!document.querySelector('[data-foto="F24-pendente"]')), true, 'resultado pendente precisa chegar ao formulário depois da releitura');
     assert.equal(await b.avaliar(() => bancada.getMessages.length), 1);
@@ -320,7 +321,7 @@ try {
     await abrir(); await b.avaliar(() => { bancada.msgs = []; }); await b.clicar('#cp-tab-novo');
     if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
     await b.esperar(() => document.querySelector('#cp-fotos').textContent.includes('Nenhuma foto'));
-    assert.equal(await texto('#cp-fotos'), 'Nenhuma foto de cliente encontrada nas últimas 50 mensagens.');
+    assert.equal(await texto('#cp-fotos'), 'Nenhuma foto nesta conversa. Anexe depois, na gestão.');
     await abrir(); await b.avaliar(() => { omni.chats.getMessages = () => Promise.reject(new Error('Falha sintética')); }); await b.clicar('#cp-tab-novo');
     if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
     await b.esperar(() => document.querySelector('#cp-fotos').textContent.includes('Fotos indisponíveis'));

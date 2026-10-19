@@ -1,5 +1,13 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.24.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imóveis locados</title>
+<link rel="stylesheet" href="estilo.css?v=0.25.0">
+<link rel="stylesheet" href="chamados.css?v=0.25.0">
+</head>
+<body class="gi gi-gestao">
 
 <div class="gi-topo">
   <div><h1>Imóveis locados</h1><p class="gi-sub" id="gi-resumo">carregando locações…</p></div>
@@ -9,21 +17,21 @@
 <div class="gi-aviso" id="gi-sem-portal" hidden>Locados exigem o portal conectado. Configure a conexão na instalação e abra a tela novamente.</div>
 <section>
   <div class="gi-barra">
-    <div class="gi-campo gi-flex"><label for="f-busca">Buscar por imóvel, locatário, proprietário ou contrato</label><input id="f-busca" type="search" placeholder="código, nome ou contrato"></div>
-    <div class="gi-campo"><label for="f-contrato">Contrato</label><select id="f-contrato"><option value="ativas">Vigentes</option><option value="vencendo">Vencendo em 60 dias</option><option value="encerradas">Encerrados</option><option value="todas">todos</option></select></div>
+    <div class="gi-campo gi-flex"><label for="f-busca">Buscar por imóvel, locatário, proprietário ou contrato</label><input id="f-busca" type="search" placeholder="ex.: 2290, Carla, Ed. Jasmim"></div>
+    <div class="gi-campo"><label for="f-contrato">Contrato</label><select id="f-contrato"><option value="todas">todos</option><option value="ativas" selected>Vigentes</option><option value="vencendo">Vencendo em 60 dias</option><option value="encerradas">Encerrados</option></select></div>
     <div class="gi-campo"><label for="f-origem">Origem</label><select id="f-origem"><option value="">todas</option><option value="manual">Manual</option><option value="imogestao">Imogestão</option></select></div>
-    <div class="gi-campo"><label for="f-porpagina">Por página</label><select id="f-porpagina"><option>30</option><option>50</option><option>100</option></select></div>
+    <div class="gi-campo"><label for="f-porpagina">Por página</label><select id="f-porpagina"><option>25</option><option>50</option><option>100</option></select></div>
     <button class="btn btn-primario" id="b-buscar" type="button">Buscar</button><button class="btn" id="b-limpar" type="button">Limpar</button>
   </div>
   <div class="gi-barra gi-barra-acoes"><span class="gi-mudo gi-pequeno">Cadastro da própria imobiliária. A coluna Origem mostra de onde veio cada locação.</span><button class="btn btn-primario" id="b-novo" type="button">Novo locado</button></div>
   <div class="gi-aviso gi-faixa" id="gi-candidatas" hidden><span id="gi-candidatas-texto"></span><button class="btn btn-slim" id="b-candidatas" type="button">Ver imóveis</button></div>
-  <div class="gi-tabela-rolagem"><table><thead><tr><th>Imóvel</th><th>Locatário</th><th>Proprietário</th><th>Contrato</th><th>Vigência</th><th class="gi-direita">Aluguel</th><th>Origem</th><th>Chamados</th><th class="gi-direita">Funções</th></tr></thead><tbody id="gi-corpo"><tr><td colspan="9">carregando…</td></tr></tbody></table></div>
+  <div class="gi-tabela-rolagem"><table><thead><tr><th>Imóvel</th><th style="width:165px">Locatário</th><th style="width:140px">Proprietário</th><th style="width:150px">Contrato</th><th style="width:195px">Vigência</th><th style="width:105px" class="gi-direita">Aluguel</th><th style="width:90px">Origem</th><th style="width:115px">Chamados</th><th style="width:100px" class="gi-direita">Funções</th></tr></thead><tbody id="gi-corpo"><tr><td colspan="9">carregando…</td></tr></tbody></table></div>
   <div class="gi-rodape"><button class="btn btn-slim" id="b-anterior" type="button">&larr; anterior</button><span class="gi-pagina-atual" id="gi-pagina">1</span><button class="btn btn-slim" id="b-proxima" type="button">próxima &rarr;</button><span class="gi-pequeno gi-mudo" id="gi-total"></span></div>
 </section>
 <p class="gi-nota"><span id="gi-modo">verificando conexão…</span></p>
-<script src="comum.js?v=0.24.0"></script>
-<script src="locacao.js?v=0.24.0"></script>
-<script src="manutencao.js?v=0.24.0"></script>
+<script src="comum.js?v=0.25.0"></script>
+<script src="locacao.js?v=0.25.0"></script>
+<script src="manutencao.js?v=0.25.0"></script>
 <script>
 (function () {
   'use strict';
@@ -41,28 +49,30 @@
     var dias = Number(l.vence_em_dias);
     if (l.vence_em_dias === null || l.vence_em_dias === undefined || !Number.isFinite(dias)) return '';
     return '<span class="' + (dias < 0 ? 'gi-prazo--erro' : dias <= 60 ? 'gi-prazo--warn' : '') + '">' +
-      (dias < 0 ? 'Vencido há ' + Math.abs(dias) + ' ' + GI.plural(Math.abs(dias), 'dia', 'dias') : 'Vence em ' + dias + ' ' + GI.plural(dias, 'dia', 'dias')) + '</span>';
+      (dias < 0 ? 'Vencido há ' + Math.abs(dias) + ' ' + GI.plural(Math.abs(dias), 'dia', 'dias') : 'vence em ' + (dias > 60 ? Math.round(dias / 30) + ' ' + GI.plural(Math.round(dias / 30), 'mês', 'meses') : dias + ' ' + GI.plural(dias, 'dia', 'dias'))) + '</span>';
   }
   function carregar() {
     if (GI.modo !== 'portal') return Promise.resolve();
     var atual = ++geracao;
     el('gi-erro').style.display = 'none';
     el('gi-corpo').innerHTML = '<tr><td colspan="9">buscando locações…</td></tr>';
-    return GI.locacoes({ busca: el('f-busca').value.trim(), contrato: el('f-contrato').value,
-      origem: el('f-origem').value, pagina: pagina, por_pagina: el('f-porpagina').value }).then(function (r) {
+    return Promise.all([GI.chamados({ por_pagina: 1 }).catch(function () { return null; }), GI.locacoes({ busca: el('f-busca').value.trim(), contrato: el('f-contrato').value,
+      origem: el('f-origem').value, pagina: pagina, por_pagina: el('f-porpagina').value })]).then(function (resultados) {
+      var r = resultados[1], manutencao = resultados[0];
       if (atual !== geracao) return;
       total = r.total;
-      el('gi-resumo').textContent = r.resumo.ativas + ' ' + GI.plural(r.resumo.ativas, 'imóvel locado', 'imóveis locados') + ' · ' + r.resumo.vencendo_60d + ' ' + GI.plural(r.resumo.vencendo_60d, 'contrato vence', 'contratos vencem') + ' em 60 dias';
+      el('gi-resumo').textContent = r.resumo.ativas + ' ' + GI.plural(r.resumo.ativas, 'imóvel locado', 'imóveis locados') + ' · ' + r.resumo.vencendo_60d + ' ' + GI.plural(r.resumo.vencendo_60d, 'contrato vence', 'contratos vencem') + ' em 60 dias' + (manutencao && manutencao.resumo ? ' · ' + Number(manutencao.resumo.abertos) + ' ' + GI.plural(manutencao.resumo.abertos, 'chamado aberto', 'chamados abertos') : '');
       el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = r.rows.length + ' nesta página · ' + total + ' no total';
       el('b-anterior').disabled = pagina <= 1;
       el('b-proxima').disabled = pagina * r.pageSize >= total;
       el('gi-corpo').innerHTML = r.rows.length ? r.rows.map(function (l) {
         return '<tr><td>' + e(l.imovel_titulo) + '<div class="gi-ajuda">' + (l.imovel_codigo ? 'cód. ' + e(GI.codigoCurto(l.imovel_codigo)) : 'fora do catálogo') + '</div></td>' +
           '<td>' + pessoas(l, 'locatario') + '</td><td>' + pessoas(l, 'proprietario') + '</td>' +
-          '<td><strong>' + e(l.contrato_numero || '—') + '</strong><div class="gi-ajuda">' + e(GI.GARANTIAS[l.garantia] || '') + '</div></td>' +
+          '<td class="gi-nowrap"><strong>' + e(l.contrato_numero || '—') + '</strong><div class="gi-ajuda">' + e(GI.GARANTIAS[l.garantia] || '') + '</div></td>' +
           '<td class="gi-nowrap">' + data(l.inicio) + ' a ' + data(l.fim) + '<div class="gi-ajuda">' + prazo(l) + '</div></td>' +
           '<td class="gi-direita gi-nowrap">' + (l.valor_aluguel_centavos == null ? '—' : GI.dinheiro(l.valor_aluguel_centavos)) + '</td>' +
-          '<td><span class="gi-chip">' + (l.origem === 'imogestao' ? 'Imogestão' : 'Manual') + '</span></td><td><span class="gi-mudo gi-pequeno">nenhum</span></td>' +
+          '<td><span class="gi-chip">' + (l.origem === 'imogestao' ? 'Imogestão' : 'Manual') + '</span></td><td>' +
+          (Number(l.chamados_abertos) > 0 ? '<span class="gi-chip">' + Number(l.chamados_abertos) + ' ' + GI.plural(l.chamados_abertos, 'aberto', 'abertos') + '</span>' : '<span class="gi-mudo gi-pequeno">nenhum</span>') + '</td>' +
           '<td><div class="gi-acoes"><button type="button" class="btn btn-slim btn-icone" title="' + (l.encerrada_em ? 'Consultar' : 'Editar') + '" aria-label="' + (l.encerrada_em ? 'Consultar' : 'Editar') + '" data-editar="' + e(l.id) + '">' + GI.iconeLocacao(l.encerrada_em ? 'ver' : 'editar') + '</button>' +
           (!l.encerrada_em ? '<button type="button" class="btn btn-slim btn-icone" title="Encerrar locação e devolver ao catálogo" aria-label="Encerrar locação" data-encerrar="' + e(l.id) + '">' + GI.iconeLocacao('encerrar') + '</button>' : '') + '</div></td></tr>';
       }).join('') : '<tr><td colspan="9"><div class="gi-vazio">Nenhuma locação com esses filtros.</div></td></tr>';
@@ -120,7 +130,9 @@
     }).then(atualizarAposGravar).catch(GI.erroFatal);
   }
   GI.pronto(function () {
-    el('gi-nav').innerHTML = GI.cabecalho('gi-locados'); GI.ligarNavegacao();
+    el('gi-nav').innerHTML = GI.cabecalho('gi-locados');
+    GI.ligarNavegacao();
+    if (GI.modo === 'portal') el('gi-modo').innerHTML = '🟢 <strong>Conectado ao portal</strong> — os locados aparecem no cockpit pelo contato do locatário e saem das buscas da assistente de IA.';
     if (GI.modo !== 'portal') {
       el('gi-sem-portal').hidden = false;
       el('gi-resumo').textContent = 'Locados exigem o portal conectado';
@@ -131,7 +143,7 @@
     el('b-buscar').onclick = function () { pagina = 1; carregar(); };
     el('f-busca').onkeydown = function (ev) { if (ev.key === 'Enter') el('b-buscar').click(); };
     el('b-limpar').onclick = function () {
-      el('f-busca').value = ''; el('f-contrato').value = 'ativas'; el('f-origem').value = ''; el('f-porpagina').value = '30'; pagina = 1; carregar();
+      el('f-busca').value = ''; el('f-contrato').value = 'ativas'; el('f-origem').value = ''; el('f-porpagina').value = '25'; pagina = 1; carregar();
     };
     el('f-porpagina').onchange = function () { pagina = 1; carregar(); };
     el('b-anterior').onclick = function () { if (pagina > 1) { pagina--; carregar(); } };
@@ -142,3 +154,6 @@
   });
 })();
 </script>
+
+</body>
+</html>
