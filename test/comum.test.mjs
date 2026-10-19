@@ -10,6 +10,45 @@ function carregar() {
   return { GI: window.GI, contexto };
 }
 
+test('gravações do transporte comum invalidam snapshots após sucesso nos dois transportes', async () => {
+  for (const mesmaOrigem of [false, true]) {
+    const { GI, contexto } = carregar();
+    let invalidacoes = 0, metodo, status = 200;
+    GI.cfg = (chave, padrao) => chave === 'portalUrl' ? 'https://portal.invalid' : chave === 'portalToken' ? 'sintetico-invalido' : padrao;
+    contexto.window.location = { origin: mesmaOrigem ? 'https://portal.invalid' : 'https://extensao.invalid' };
+    const responder = async () => { assert.equal(invalidacoes, 0, 'não invalida antes da resposta'); return {}; };
+    contexto.omni = contexto.window.omni = {
+      http: { request: async op => { metodo = op.method; await responder(); return { status, body: '{}' }; } },
+      storage: { get: async () => ({ rows: [{ contatoId: 9901 }] }), set: async (chave, valor) => {
+        assert.equal(chave, 'gi-cockpit-snapshots-v1'); assert.equal(valor.rows.length, 0); invalidacoes++;
+      } }
+    };
+    contexto.fetch = async (url, op) => { metodo = op.method; await responder(); return { ok: status === 200, status, text: async () => '{}' }; };
+    for (const [rota, method] of [['/chamados', 'POST'], ['/chamados/1/atendimento', 'PUT'], ['/chamados/1/anexos', 'DELETE'], ['/locacoes/1', 'PATCH'], ['/prestadores/1', 'POST']]) {
+      await GI.chamarPortal(rota, { method, ...(method === 'DELETE' ? {} : { corpo: {} }) });
+      assert.equal(invalidacoes, 1, method + ' ' + rota);
+      assert.equal(metodo, method); invalidacoes = 0;
+    }
+    await GI.chamarPortal('/chamados'); assert.equal(invalidacoes, 0, 'GET não invalida');
+    status = 422;
+    await assert.rejects(() => GI.chamarPortal('/chamados', { corpo: {} }));
+    assert.equal(invalidacoes, 0, 'gravação recusada não invalida');
+    status = 200;
+    for (const sincrona of [true, false]) {
+      contexto.omni.storage.set = () => { if (sincrona) throw new Error('Storage fora'); return Promise.reject(new Error('Storage fora')); };
+      assert.deepEqual(JSON.parse(JSON.stringify(await GI.chamarPortal('/chamados', { corpo: {} }))), {});
+    }
+    contexto.omni.storage.get = async () => null;
+    contexto.omni.storage.set = () => { invalidacoes++; };
+    await GI.chamarPortal('/chamados', { corpo: {} });
+    assert.equal(invalidacoes, 0, 'não cria cache quando ainda não existe snapshot');
+    for (const sincrona of [true, false]) {
+      contexto.omni.storage.get = () => { if (sincrona) throw new Error('Storage fora'); return Promise.reject(new Error('Storage fora')); };
+      assert.deepEqual(JSON.parse(JSON.stringify(await GI.chamarPortal('/chamados', { corpo: {} }))), {});
+    }
+  }
+});
+
 test('locações recusam leitura e gravação sem portal, sem recorrer ao storage', async () => {
   const { GI, contexto } = carregar();
   contexto.omni = { storage: { set() { assert.fail('locação no storage'); } } };

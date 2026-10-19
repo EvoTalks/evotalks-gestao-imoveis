@@ -261,6 +261,15 @@
 
   GI.usaPortal = function () { return !!(baseDoPortal() && tokenDoPortal()); };
 
+  GI.CHAVE_SNAPSHOTS = 'gi-cockpit-snapshots-v1';
+  GI.invalidarSnapshots = function () {
+    try {
+      return Promise.resolve(omni.storage.get(GI.CHAVE_SNAPSHOTS)).then(function (snapshot) {
+        if (snapshot) return omni.storage.set(GI.CHAVE_SNAPSHOTS, { origem: GI.cfg('portalUrl', ''), rows: [] });
+      }).catch(function () {});
+    } catch (_) { return Promise.resolve(); }
+  };
+
   /* Como a chamada sai daqui, e por que NÃO é sempre fetch.
      A CSP do contêiner libera em connect-src apenas o origin de onde o HTML
      veio (aqui, o GitHub Pages) mais o da própria aplicação. O portal fica em
@@ -302,7 +311,7 @@
 
   function viaFetch(url, opcoes) {
     return fetch(url, {
-      method: opcoes.corpo !== undefined ? "POST" : "GET",
+      method: opcoes.method || (opcoes.corpo !== undefined ? "POST" : "GET"),
       headers: cabecalhos(opcoes.corpo !== undefined),
       body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined
     }).then(function (r) {
@@ -337,7 +346,7 @@
     try { GI.cotaPortal.reservar(); } catch (err) { return Promise.reject(err); }
     return Promise.resolve(omni.http.request({
       url: url,
-      method: opcoes.corpo !== undefined ? "POST" : "GET",
+      method: opcoes.method || (opcoes.corpo !== undefined ? "POST" : "GET"),
       headers: cabecalhos(opcoes.corpo !== undefined),
       body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined,
       timeout: 20000
@@ -353,7 +362,11 @@
   function chamar(caminho, opcoes) {
     opcoes = opcoes || {};
     var url = baseDoPortal() + caminho;
-    return Promise.resolve().then(function () { return mesmaOrigem() ? viaFetch(url, opcoes) : viaOmni(url, opcoes); }).catch(function (err) {
+    return Promise.resolve().then(function () { return mesmaOrigem() ? viaFetch(url, opcoes) : viaOmni(url, opcoes); }).then(function (r) {
+      var metodo = String(opcoes.method || (opcoes.corpo !== undefined ? 'POST' : 'GET')).toUpperCase();
+      if (/^(POST|PUT|PATCH|DELETE)$/.test(metodo)) return GI.invalidarSnapshots().then(function () { return r; });
+      return r;
+    }).catch(function (err) {
       if (!err.status && !/rate_limit|forbidden|bad_args/.test(err.code || '')) err.semResposta = true;
       err.message = GI.mensagemErro(err); throw err;
     });

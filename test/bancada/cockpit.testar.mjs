@@ -1,4 +1,5 @@
 import { testarImpeditivos } from './impeditivos.cenarios.mjs';
+import { testarReview1 } from './review1.cenarios.mjs';
 import { testarLote1 } from './lote1.cenarios.mjs';
 import { testarCockpit2 } from './cockpit2.cenarios.mjs';
 /* Bancada do cockpit: SDK simulado, portal real da bancada e Chromium sem dependências. */
@@ -381,6 +382,7 @@ try {
   await testarCockpit2(b, base);
   await testarLote1(b, base.replace('/app/painel.html', ''));
   await testarImpeditivos(b, base.replace('/app/painel.html', ''));
+  await testarReview1(b, base);
   process.stdout.write('Cockpit: todas as provas passaram. Capturas em test/bancada/capturas/cockpit-*.png\n');
 } catch (err) {
   if (b) process.stderr.write(JSON.stringify(await b.avaliar(() => ({ texto: document.querySelector('#gi-cockpit')?.textContent, chamadas: bancada.chamadas.map(c => [c.method, c.caminho]), erros: window.__xss }))) + '\n');

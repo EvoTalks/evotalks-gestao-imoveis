@@ -338,6 +338,7 @@ prioriza o vínculo com o chat atual e mantém a ordem por urgência. ⟳ ignora
 a idade da última leitura aparece junto ao resumo. Um contato já visto pinta a consulta
 anterior enquanto o portal responde; erros transitórios não viram snapshot. Qualquer
 POST invalida o snapshot daquele contato e as gravações seguem uma fila única.
+`GI.invalidarSnapshots()` compartilha a invalidação após gravações no portal, inclusive as feitas no diálogo da O.S.; falha do storage não interrompe a gravação.
 
 Quando a escrita está habilitada, o detalhe permite editar status, prioridade,
 atendente, pagador e visita, com retorno na linha e rollback em recusas. Cancelamento
