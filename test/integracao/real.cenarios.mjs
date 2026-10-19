@@ -64,9 +64,11 @@ export async function testarReal(b, origem, real) {
       await b.esperar(() => !!document.querySelector('[data-contato="0"]')); await b.clicar('[data-contato="0"]');
       await b.esperar(() => document.querySelector('#c-locacao').options.length >= 2 && !!document.querySelector('[data-atendimento="0"]'));
       const indice = await b.avaliar(() => Array.from(document.querySelector('#c-locacao').options).find(o => o.textContent.includes('Avulso Integração')).value);
-      await b.preencher('#c-locacao', indice); await b.preencher('#c-titulo', 'Reparo Sintético Integração');
-      await b.preencher('#c-descricao', 'Relato sintético <img src=x onerror="window.__xss=1">'); await b.preencher('#c-prioridade', 'alta');
-      await b.clicar('[data-atendimento="0"]'); await salvar();
+      await b.preencher('#c-locacao', indice);
+      await b.preencher('#c-descricao', 'Reparo Sintético Integração. Relato sintético <img src=x onerror="window.__xss=1">'); await b.preencher('#c-prioridade', 'alta');
+      // A apresentação agora põe abertos primeiro; continua escolhendo o encerrado #8899.
+      const indiceEncerrado = await b.avaliar(() => [...document.querySelectorAll('[data-atendimento]')].find(n => n.textContent.includes('#8899')).dataset.atendimento);
+      await b.clicar('[data-atendimento="' + indiceEncerrado + '"]'); await salvar();
       id = (await sql("SELECT id FROM chamados WHERE titulo='Reparo Sintético Integração'"))[0].id;
       const c = await chamado(id);
       assert.equal(c.locacao_id, locacaoId); assert.equal(c.atendimento_chat_id, 8899); assert.equal(c.prioridade, 'alta');
@@ -132,8 +134,10 @@ export async function testarReal(b, origem, real) {
       await orcamentoBarato('escolher orçamento', () => b.clicar('[data-escolher-orcamento="2"]'));
       await b.clicar('[data-apagar-orcamento="1"]');
       await orcamentoBarato('remover orçamento', () => b.clicar('[data-apagar-orcamento="1"]'));
-      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').tagName), 'P');
-      assert.match(await texto('#c-valor'), /350,00.*definido pelo orçamento escolhido/);
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').tagName), 'INPUT');
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').value), '350,00');
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').readOnly), true);
+      assert.match(await b.avaliar(() => document.querySelector('#c-valor').title), /Definido pelo orçamento escolhido/);
       await b.clicar('#c-mais summary'); await b.preencher('#c-quem-paga', 'proprietario');
       let inicio = real.requisicoes.length; await salvar();
       let posts = real.requisicoes.slice(inicio).filter(r => r.method === 'POST');
@@ -195,7 +199,7 @@ export async function testarReal(b, origem, real) {
       await b.esperar(() => !!document.querySelector('[data-chamado]'));
       assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true);
       assert.match(await texto('#cp-conteudo'), /Reparo Sintético Integração/);
-      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Cockpit Sintético Integração');
       await b.captura('integracao-i-novo-vinculado');
       await b.clicar('#cp-revisar'); await b.captura('integracao-i-confirmacao'); await b.clicar('#cp-confirmar');
       await b.esperar(() => !!document.querySelector('#cp-sucesso'));
@@ -218,9 +222,11 @@ export async function testarReal(b, origem, real) {
       for (const perfil of ['agente', 'supervisor', 'admin']) {
         await b.navegar(origem + '/app/imoveis.html?perfil=' + perfil);
         await b.esperar(() => !!document.querySelector('#gi-nav .gi-nav'));
-        for (const tela of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
+        for (const tela of ['gi-locados', 'gi-chamados']) {
           assert.equal(await b.avaliar(tela => !!document.querySelector('[data-tela="' + tela + '"]'), tela), perfil === 'admin');
         }
+        // Prestadores permanece no menu do host; não integra a barra do desenho.
+        assert.equal(await b.avaliar(() => !!document.querySelector('[data-tela="gi-prestadores"]')), false);
         await b.esperar(() => !!document.querySelector('[data-abrir]'));
         assert.equal(await b.avaliar(() => !!document.querySelector('[data-locacao]')), perfil === 'admin');
         if (perfil !== 'admin') {
@@ -290,7 +296,7 @@ export async function testarReal(b, origem, real) {
     await cenario('F11 atendente edita a O.S. pela gestão do diálogo', async () => {
       await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1');
       await b.esperar(id => !!document.querySelector('[data-detalhes="' + id + '"]'), id);
-      await b.avaliar(id => document.querySelector('[data-detalhes="' + id + '"]').closest('details').querySelector('[data-gestao]').click(), id);
+      await b.avaliar(id => document.querySelector('[data-detalhes="' + id + '"]').closest('[data-os-id]').querySelector('[data-gestao]').click(), id);
       await modal(); await livre();
       assert.match(await b.avaliar(() => location.pathname), /os.html$/);
       assert.equal(await b.avaliar(() => document.querySelectorAll('[role="dialog"]').length), 0);

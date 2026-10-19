@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var el = function (id) { return document.getElementById(id); }, e = GI.escapar;
-  var geracao = 0, contato = null, fecharEdicao = null, fecharHost = false, demoItens = [];
+  var geracao = 0, contato = null, fecharEdicao = null, fecharHost = false, listaVista = false, demoItens = [];
   function id(v) { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; }
   function mapa(m, k) { return Object.hasOwn(m, k) ? m[k] : 'Não informado'; }
   function demo() { return GI.cfg('modoDemonstracao', false) === true; }
@@ -16,7 +16,8 @@
     if (fecharHost) { fecharHost = false; fechar(); } else carregar();
   }
   function apresentar(op) {
-    op.alvo = el('os-form'); op.rotuloCancelar = 'Voltar à lista';
+    op.alvo = el('os-form'); op.rotuloCancelar = listaVista ? 'Voltar à lista' : 'Fechar';
+    el('b-voltar').hidden = !listaVista;
     op.aoControlar = function (fn) { fecharEdicao = fn; };
     return GI.modal(op);
   }
@@ -24,9 +25,11 @@
     if (g !== geracao) return;
     recado('', 'info'); el('os-listagem').hidden = true; el('os-edicao').hidden = false;
     var form = GI.criarChamadoForm({ apresentar: function (op) { return g === geracao ? apresentar(op) : Promise.resolve(null); }, contatoInicial: contato });
-    form.formulario(detalhe).then(function () {
+    form.formulario(detalhe).then(function (resultado) {
       if (g !== geracao) return;
-      fecharEdicao = null; voltar();
+      fecharEdicao = null;
+      if (resultado === null && !listaVista) { fecharHost = false; fechar(); return; }
+      voltar();
     }).catch(function () { if (g === geracao) recado('Não foi possível editar este chamado. Tente novamente.', 'erro'); });
   }
   function abrir(n) {
@@ -48,7 +51,7 @@
     if (!rows.length) recado('Nenhum chamado deste contato.', 'info');
   }
   function carregar() {
-    var g = ++geracao; contato = null;
+    var g = ++geracao; contato = null; listaVista = true;
     el('b-novo').disabled = true; el('b-atualizar').disabled = GI.modo !== 'portal'; el('os-lista').textContent = '';
     if (demo()) { desenhar(demoItens); recado('Demonstração · dados sintéticos, sem gravação.', 'info'); return Promise.resolve(); }
     if (GI.modo !== 'portal') { el('gi-sem-portal').hidden = false; return Promise.resolve(); }

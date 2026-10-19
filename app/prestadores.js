@@ -60,7 +60,8 @@
     }).then(function (r) { if (r) return carregar(); }).catch(GI.erroFatal);
   }
   GI.pronto(function () {
-    el('gi-nav').innerHTML = GI.cabecalho('gi-prestadores'); GI.ligarNavegacao(); GI.manutencaoMostrarModo();
+    el('gi-nav').innerHTML = GI.cabecalho('gi-prestadores');
+    GI.ligarNavegacao(); GI.manutencaoMostrarModo();
     el('f-categoria').innerHTML += Object.keys(GI.CHAMADO_CATEGORIAS).map(function (c) { return '<option value="' + e(c) + '">' + e(GI.CHAMADO_CATEGORIAS[c]) + '</option>'; }).join('');
     if (GI.modo !== 'portal') {
       el('gi-sem-portal').hidden = false; el('gi-resumo').textContent = 'Manutenção exige o portal conectado';

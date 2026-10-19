@@ -29,8 +29,10 @@ test('F9: ajustes após o teste real, sem instância', async t => {
     });
     await t.test('1: valor escolhido somente leitura, delta ao salvar e status independente', async () => {
       await navegar(); await abrir(id);
-      assert.equal(await b.avaliar(() => document.querySelector('#c-valor')?.tagName), 'P');
-      assert.match(await texto('#c-valor'), /350,00.*definido pelo orçamento escolhido/);
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor')?.tagName), 'INPUT');
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').value), '350,00');
+      assert.equal(await b.avaliar(() => document.querySelector('#c-valor').readOnly), true);
+      assert.match(await b.avaliar(() => document.querySelector('#c-valor').title), /Definido pelo orçamento escolhido/);
       await b.preencher('#c-quem-paga', 'proprietario'); let inicio = await marcar(); await salvar();
       assert.deepEqual((await desde(inicio)).filter(r => r.method === 'POST').map(r => JSON.parse(r.body)), [{ quem_paga: 'proprietario' }]);
       await abrir(id); await b.preencher('#c-prioridade', 'alta'); inicio = await marcar(); await salvar();
@@ -147,13 +149,21 @@ test('F9: ajustes após o teste real, sem instância', async t => {
       assert.equal(await b.avaliar(() => document.querySelector('#c-locacao').value), '0');
       assert.equal(await b.avaliar(() => document.querySelector('#c-trocar').disabled), false);
     });
-    await t.test('6b: cockpit mantém resumo e confirma sem caixa repetida', async () => {
+    await t.test('6b: cockpit exige revisão e ação explícita mesmo com conferência pré-marcada', async () => {
       await navegar('painel', '?escrita=1'); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-      await b.preencher('#cp-titulo', 'Cockpit Sintético F9'); await b.clicar('#cp-revisar');
-      assert.equal(await b.avaliar(() => !!document.querySelector('#cp-conferi')), false);
+      await b.preencher('#cp-descricao', 'Cockpit Sintético F9');
+      const escritas = () => b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST' && c.caminho.endsWith('/chamados')).length);
+      const antes = await escritas();
+      assert.equal(await b.avaliar(() => !!document.querySelector('#cp-confirmar')), false);
+      await b.clicar('#cp-revisar');
+      assert.match(await texto('#cp-conteudo'), /Confirme antes de abrir/);
+      assert.equal(await b.avaliar(() => document.querySelector('#cp-conferencia').checked), true);
+      assert.equal(await escritas(), antes, 'revisar e pré-marcar não criam o chamado');
       assert.match(await texto('#cp-conteudo'), /Cockpit Sintético F9/);
       assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
+      assert.equal(await texto('#cp-confirmar'), 'Abrir chamado');
       await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
+      assert.equal(await escritas(), antes + 1);
     });
     await t.test('6c: editar oferece o único atendimento aberto sem abrir lista', async () => {
       await navegar();

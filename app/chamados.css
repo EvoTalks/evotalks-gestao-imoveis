@@ -83,3 +83,127 @@
 [data-status-cancelamento] input { display: block; width: 100%; box-sizing: border-box; }
 [data-status-cancelamento] .gi-barra { display: flex; flex-wrap: wrap; gap: 6px; }
 #c-cabecalho-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
+/* Quadros de manutenção: os componentes do desenho também no iframe real. */
+body.gi { min-height:0; margin:0; }
+#gi-manutencao table { min-width:1120px; }
+#gi-manutencao th:first-child { width:92px; }
+#gi-manutencao td { max-width:none; overflow-wrap:normal; }
+#gi-manutencao .gi-flex { flex:1 1 240px; }
+#gi-total { margin-left:auto; }
+.gi-status-pilula { position:relative; display:inline-flex; }
+.gi-status-pilula select { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; min-width:0; }
+.gi-status-pilula:focus-within { outline:2px solid var(--gi-acao); outline-offset:2px; border-radius:20px; }
+.gi-status-pilula:has(select:disabled) { opacity:.7; }
+[data-status-mensagem]:empty { display:none; }
+.gi [data-status-controle] > [data-status-mensagem] { margin:4px 0 0; max-width:180px; }
+.gi [data-status-controle] > [data-status-mensagem]:empty { margin:0; }
+.gi .gi-form-chamado .gi-grade-modal { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+.gi .gi-form-chamado .gi-secao:first-child { margin-top:6px; }
+.gi .gi-chamado-msg:empty, .gi-form-chamado > .gi-ajuda:empty { display:none; }
+.gi .gi-form-chamado .gi-lista-atend { margin-top:10px; }
+.gi .gi-form-chamado .gi-atend { text-align:left; font:inherit; color:inherit; width:100%; }
+.gi .gi-form-chamado .gi-atend input { margin:0; }
+.gi .gi-form-chamado .gi-atend__corpo { display:block; }
+.gi .gi-form-chamado .gi-atend--on { border-color:var(--gi-acao); background:var(--desenho-atend-bg); }
+.gi .gi-form-chamado [data-status-controle] > label { font-size:11px; color:var(--gi-mudo); }
+.gi .gi-form-chamado [data-status-controle] select { font-size:13.5px; width:100%; border:0; padding:0; background:transparent; border-radius:0; min-width:0; }
+.gi .gi-form-chamado .gi-status-select { color:var(--gi-texto); }
+.gi .gi-form-chamado #c-valor-caixa { display:flex; flex-direction:column; gap:1px; background:var(--gi-campo-bg); padding:7px 11px 8px; border-radius:var(--gi-raio-p); }
+.gi .gi-form-chamado #c-valor-caixa label { color:var(--gi-mudo); font-size:11px; }
+.gi .gi-form-chamado #c-valor-caixa input { border:0; background:transparent; padding:0; font-size:13.5px; }
+.gi .gi-form-chamado #c-valor-caixa p { font-size:12px; }
+.gi .gi-form-chamado .gi-link { padding:0; border:0; background:transparent; font:inherit; }
+.gi .gi-novo-midia { margin-top:8px; }
+.gi .gi-modal-chamado .gi-modal-corpo { max-height:70vh; }
+.gi .gi-form-chamado #c-mais { margin-top:14px; }
+.gi .gi-form-chamado #c-mais summary { font-size:12px; color:var(--gi-mudo); cursor:pointer; }
+.gi .gi-form-chamado .gi-fotos:empty, .gi .gi-form-chamado .gi-resultados:empty, .gi .gi-form-chamado #c-atendimento-aviso:empty { display:none; }
+.gi .gi-form-chamado .gi-fotos { margin:10px 0 0; }
+.gi .gi-form-chamado .gi-nota-check { margin:10px 0 0; font-size:12px; color:var(--gi-mudo); }
+.gi .gi-form-chamado .gi-nota-check input { accent-color:var(--gi-acao); width:16px; height:16px; }
+.gi .gi-modal-chamado .gi-modal-recado { font-size:12.5px; }
+.gi .gi-form-chamado .gi-foto { border:0; padding:0; flex:0 0 auto; cursor:pointer; }
+.gi .gi-form-chamado .gi-foto img { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:0; object-fit:cover; }
+.gi .gi-form-chamado .gi-foto small { z-index:1; }
+@media(max-width:620px) { .gi .gi-form-chamado .gi-grade-modal { grid-template-columns:minmax(0,1fr); } }
+
+body.gi.gi-com-modal { width:100%; }
+.gi .gi-form-chamado .gi-secao { margin:18px 0 8px; }
+.gi .gi-form-chamado .gi-desenho-conteudo > .gi-secao:first-child { margin-top:6px; }
+.gi .gi-form-chamado [data-status-controle] .gi-ajuda:empty { display:none; }
+.gi .gi-form-chamado [data-status-controle] select { line-height:normal; font-weight:400; }
+.gi .gi-form-chamado .tl li { overflow-wrap:anywhere; }
+.gi .gi-form-chamado .tl li::before { content:""; position:absolute; left:107px; top:14px; bottom:-2px; width:2px; height:auto; border-radius:0; background:var(--line); }
+.gi .gi-form-chamado .tl li:last-child::before { display:none; }
+.gi .gi-form-chamado .tl p { margin:0; white-space:pre-wrap; }
+.gi .gi-form-chamado .gi-orc-opcoes, .gi .gi-form-chamado .gi-aprov-opcoes { margin-top:8px; }
+.gi .gi-form-chamado .gi-orc-opcoes summary, .gi .gi-form-chamado .gi-aprov-opcoes summary { cursor:pointer; font-size:12px; color:var(--gi-mudo); }
+.gi .gi-form-chamado #c-orcamentos table { min-width:540px; }
+.gi .gi-form-chamado #c-orcamentos .gi-cartao-t { overflow-x:auto; }
+.gi .gi-form-chamado .gi-atend__txt, .gi .gi-form-chamado .gi-atend__corpo > .gi-ajuda { display:block; }
+.gi .gi-form-chamado .gi-atend-aberto { padding:3px 10px; font-size:11.5px; }
+.gi .gi-form-chamado .gi-atend-aberto .gi-ponto { width:8px; height:8px; }
+.gi .gi-estado .gi-ponto-off { background:var(--gi-mudo); opacity:.5; }
+.gi .gi-estado .gi-ponto-azul { background:var(--desenho-info); }
+.gi .gi-estado .gi-ponto-pendente { background:var(--gi-pendente); }
+.gi .gi-estado .gi-ponto-ok { background:var(--gi-ok); }
+
+body.gi:has(#gi-manutencao) .gi-modal-chamado { width:calc(100vw - 32px); }
+.gi #gi-manutencao td:nth-child(6) { max-width:145px; white-space:normal; }
+.gi #gi-manutencao td:nth-child(6) > span { display:block; }
+.gi .gi-status-pilula .gi-estado .gi-ponto-off { background:var(--gi-mudo); opacity:.5; }
+.gi .gi-status-pilula .gi-estado .gi-ponto-azul { background:var(--desenho-info); }
+.gi .gi-status-pilula .gi-estado .gi-ponto-pendente { background:var(--gi-pendente); }
+.gi .gi-status-pilula .gi-estado .gi-ponto-ok { background:var(--gi-ok); }
+
+.gi #gi-manutencao th:nth-child(6) { width:140px; }
+
+.gi .gi-modal-chamado .gi-modal-recado:empty::before { content:attr(data-padrao); }
+
+.gi #gi-manutencao [data-status-controle] { display:flex; flex-direction:column; align-items:flex-start; }
+
+/* Correção S2A2: campos, apoios recolhidos e linhas do desenho. */
+.gi .gi-form-chamado [data-status-controle] > label { margin:0 0 1px; }
+.gi .gi-form-chamado [data-status-controle] select { display:block; }
+.gi .gi-form-chamado #c-mais:not([open]), .gi .gi-form-chamado .gi-orc-opcoes:not([open]), .gi .gi-form-chamado .gi-aprov-opcoes:not([open]) { margin:0; border:0; padding:0; }
+.gi .gi-form-chamado #c-mais > summary[hidden], .gi .gi-form-chamado details > summary[hidden] { display:none; }
+.gi .gi-form-chamado .gi-atendimentos-legenda { margin:8px 0 0; }
+.gi .gi-form-chamado .gi-novo-midia { margin:8px 0 0; }
+.gi .gi-modal-chamado .gi-mais-link { border:0; padding:0; background:transparent; color:var(--gi-mudo); font:inherit; font-size:11px; cursor:pointer; text-decoration:underline; }
+.gi .gi-form-chamado .gi-aprov { position:relative; }
+.gi .gi-form-chamado .gi-aprov-consultar { position:absolute; bottom:2px; right:14px; font-size:9px; color:var(--gi-mudo); }
+.gi .gi-form-chamado #c-valor-caixa input { line-height:1.45; }
+.gi .gi-form-chamado #c-valor-caixa > .gi-campo-caixa { padding:0; }
+.gi .gi-form-chamado .gi-atend__txt { margin-top:4px; }
+.gi .gi-form-chamado #c-fotos.photos { margin-bottom:0; }
+.gi .gi-form-chamado .gi-orc-opcoes[open] { margin-top:8px; }
+body.gi.gi-com-modal { overflow:visible; min-height:100vh; }
+.gi .gi-modal-chamado .gi-modal-recado:empty { display:block; }
+.gi .gi-form-chamado #c-orcamentos > .gi-secao:first-child { margin-top:18px; }
+/* Centralização por margens, como no desenho, preservando o topo do host. */
+.gi .gi-modal-chamado { left:0; right:0; margin-inline:auto; transform:none; }
+.gi .gi-form-chamado .chk { margin-top:10px; position:relative; }
+.gi .gi-form-chamado .gi-aviso-check { margin-top:8px; max-width:100%; white-space:nowrap; }
+.gi .gi-form-chamado #c-aviso-dica { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.gi .gi-form-chamado .chk input { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+.gi .gi-form-chamado .gi-check-icon { width:11px; height:11px; stroke-width:3; }
+.gi .gi-form-chamado .chk input:not(:checked) + .box svg { visibility:hidden; }
+.gi .gi-form-chamado .chk input:checked + .box { background:var(--brand); border-color:var(--brand); }
+.gi .gi-form-chamado .chk input:focus-visible + .box { outline:2px solid var(--gi-acao); outline-offset:2px; }
+.gi .gi-form-chamado input[type="datetime-local"] { height:1.45em; line-height:1.45; }
+.gi .gi-form-chamado #c-orcamentos td > strong:only-child::after { content:""; display:block; height:1.45em; font-size:11px; }
+.gi .gi-form-chamado .tl [data-evento="criou"] p, .gi .gi-form-chamado .tl [data-evento="status"] p { min-height:2.6em; }
+
+.gi .gi-form-chamado #c-orcamentos th:first-child { width:35%; }
+.gi .gi-form-chamado .ph input[type="checkbox"] { position:absolute; top:4px; right:4px; width:16px; height:16px; padding:0; margin:0; accent-color:var(--gi-acao); z-index:2; }
+
+.gi .gi-form-chamado button.ph { font-family:inherit; }
+
+/* S2G: ajustes exclusivos das telas de gestão e do formulário de locação. */
+.gi .gi-modal-locacao .gi-locacao-modo { margin:6px 0 12px; }
+.gi .gi-modal-locacao .gi-locacao-ajuda { margin-top:6px; }
+.gi-modal-locacao .gi-resultados:empty { display:none; }
+.gi-modal-locacao #l-vinculo { margin-top:0; }
+body.gi.gi-gestao .gi-modal-locacao { width:calc(100vw - 32px); left:0; right:0; margin-inline:auto; transform:none; }
+.gi .gi-modal-locacao input[type="date"] { height:1.45em; line-height:1.45; }

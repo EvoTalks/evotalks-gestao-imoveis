@@ -29,17 +29,19 @@ export async function testarLote1(b, origem, conferir) {
 
   await b.esperar(() => !document.querySelector('#cp-vincular-residencia').disabled);
   await b.avaliar(() => { bancada.fotosNumericas = 2; });
-  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', '   '); await b.clicar('#cp-revisar');
-  assert.equal(await b.avaliar(() => document.activeElement.id), 'cp-titulo');
-  assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').getAttribute('aria-invalid')), 'true');
-  assert.match(await texto('#cp-titulo-erro'), /Informe o título/);
-  assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'alert');
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', '   '); await b.clicar('#cp-revisar');
+  // Novo não pede título: a descrição opcional produz o título de reserva.
+  assert.equal(await b.avaliar(() => !!document.querySelector('#cp-titulo')), false);
+  assert.match(await texto('#cp-conteudo'), /Reparo de Hidráulica/);
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
+  assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST' && c.caminho.endsWith('/chamados')).length), 0);
+  await b.clicar('#cp-voltar');
   // Atualizar preserva as fotos já lidas e continua testando referências numéricas.
 
   await b.clicar('#cp-tab-chamados'); await b.clicar('#cp-atualizar'); await pronto(); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
   await b.esperar(() => document.querySelectorAll('[data-foto]').length === 2);
   await b.esperar(() => document.querySelectorAll('#cp-fotos img').length === 2);
-  await b.clicar('[data-foto="1"]'); await b.preencher('#cp-titulo', 'Reparo sintético lote1 ' + hostil);
+  await b.clicar('[data-foto="1"]'); await b.preencher('#cp-descricao', 'Reparo sintético lote1 ' + hostil);
   await b.clicar('#cp-revisar'); assert.match(await texto('#cp-conteudo'), /WebChat/);
   await b.avaliar(() => { bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
   await b.esperar(() => !!document.querySelector('#cp-sucesso'));
@@ -228,7 +230,7 @@ export async function testarLote1(b, origem, conferir) {
 
   await b.navegar(origem + '/app/painel.html' + painel + '&demonstracao=1');
   await b.esperar(() => !!document.querySelector('#cp-tab-novo') && !document.querySelector('#cp-abas').hidden);
-  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', 'Somente demonstração'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Somente demonstração'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => !!document.querySelector('#cp-sucesso'));
   assert.doesNotMatch(await texto('#cp-sucesso'), /A equipe vê/);
   assert.equal(await b.avaliar(() => bancada.chamadas.length), 0);

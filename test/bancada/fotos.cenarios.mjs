@@ -14,7 +14,7 @@ export async function testarFotos(b, origem) {
     await b.navegar(origem + '/app/chamados.html');
     await b.esperar(() => !!document.querySelector('[data-editar]'));
     await b.clicar('#b-novo');
-    assert.equal(await b.avaliar(() => document.querySelector('#c-buscar-pasta')?.textContent), 'Buscar na pasta');
+    assert.equal(await b.avaliar(() => document.querySelector('#c-buscar-pasta')?.textContent), 'Anexar foto');
     await modal();
     assert.deepEqual(await b.avaliar(() => {
       const input = document.querySelector('#c-pasta');
@@ -54,7 +54,7 @@ export async function testarFotos(b, origem) {
     await b.preencher('#c-cliente', 'Demonstração Um');
     await b.esperar(() => !!document.querySelector('[data-contato="0"]')); await b.clicar('[data-contato="0"]');
     await b.esperar(() => document.querySelector('#c-locacao').options.length >= 2 && document.querySelectorAll('[data-atendimento]').length >= 1);
-    await b.preencher('#c-locacao', '0'); await b.preencher('#c-titulo', 'Fotos sintéticas F5');
+    await b.preencher('#c-locacao', '0'); await b.preencher('#c-descricao', 'Fotos sintéticas F5');
     await b.clicar('[data-atendimento="0"]'); await b.esperar(() => !document.querySelector('#c-carregar-fotos').disabled); await b.clicar('#c-carregar-fotos');
     await b.esperar(() => !!document.querySelector('[data-foto]')); await b.clicar('[data-foto]');
     assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes .gi-foto').length), 2);

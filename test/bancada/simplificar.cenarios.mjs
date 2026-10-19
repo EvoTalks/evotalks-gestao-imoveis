@@ -10,12 +10,12 @@ export async function testarSimplificacao(b, origem) {
   };
   const salvar = async () => { await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal')); };
   async function novo(nome = 'Demonstração Um') {
-    await b.clicar('#b-novo'); await b.esperar(() => !!document.querySelector('#c-titulo'));
+    await b.clicar('#b-novo'); await b.esperar(() => !!document.querySelector('#c-descricao'));
     assert.match(await texto('#c-atendimentos'), /Escolha o cliente para consultar os atendimentos/);
     await b.preencher('#c-cliente', nome); await b.esperar(() => !!document.querySelector('[data-contato="0"]'));
     await b.clicar('[data-contato="0"]');
     await b.esperar(() => !document.querySelector('#c-locacao').disabled && !document.querySelector('#c-atendimentos').textContent.includes('Buscando'));
-    await b.preencher('#c-locacao', '0'); await b.preencher('#c-titulo', 'Simplificação sintética');
+    await b.preencher('#c-locacao', '0'); await b.preencher('#c-descricao', 'Simplificação sintética');
   }
   await b.navegar(origem + '/app/chamados.html');
   await b.esperar(() => document.querySelectorAll('[data-editar]').length === 8);
@@ -27,7 +27,7 @@ export async function testarSimplificacao(b, origem) {
   await b.clicar('#b-limpar'); await b.esperar(() => document.querySelectorAll('[data-editar]').length === 8);
   await novo();
   assert.equal(await b.avaliar(() => document.querySelector('#c-mais')?.open), false);
-  assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-ok]').textContent), 'Salvar');
+  assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-ok]').textContent), 'Abrir chamado');
   assert.equal(await b.avaliar(() => document.querySelector('#c-vinculo').textContent.includes('#8801')), true);
   await b.clicar('#c-mais summary'); assert.equal(await b.avaliar(() => document.querySelector('#c-mais').open), true);
   await b.preencher('#c-atendente', '1'); await b.preencher('#c-categoria', 'eletrica');
@@ -41,7 +41,7 @@ export async function testarSimplificacao(b, origem) {
     };
   });
   await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('Categoria inválida'));
-  assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Simplificação sintética');
+  assert.equal(await b.avaliar(() => document.querySelector('#c-descricao').value), 'Simplificação sintética');
   await salvar();
   const criado = await b.avaliar(async () => (await GI.chamados({ busca: 'Simplificação sintética' })).rows[0]);
   assert.equal(criado.atendimento.chat_id, 8801); assert.equal(criado.atendente.user_id, 9998); assert.equal(criado.categoria, 'eletrica');
@@ -65,7 +65,7 @@ export async function testarSimplificacao(b, origem) {
   await b.avaliar(async () => GI.locacoesEncerrar(3, 'Encerramento concorrente sintético'));
   await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('encerrad'));
   assert.equal(await b.avaliar(() => document.querySelector('#c-locacao').value), '1');
-  assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Simplificação sintética'); await fechar();
+  assert.equal(await b.avaliar(() => document.querySelector('#c-descricao').value), 'Simplificação sintética'); await fechar();
   await abrir(criado.id); await b.preencher('#c-titulo', 'Edição preservada no conflito');
   await b.avaliar(async id => GI.chamadosStatus(id, 'concluido'), criado.id);
   await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('encerrad'));
@@ -141,7 +141,7 @@ export async function testarSimplificacao(b, origem) {
     await b.navegar(origem + '/app/chamados.html?perfil=' + perfil); await b.esperar(() => !!document.querySelector('[data-editar]'));
     await abrir(criado.id); await b.clicar('#c-trocar');
     await b.esperar(() => document.querySelectorAll('[data-atendimento]').length === 2);
-    assert.match(await texto('#c-atendimentos'), /Fila Supervisor.*DEMO-SUPERVISOR/);
+    assert.match(await texto('#c-atendimentos'), /DEMO-SUPERVISOR.*Fila Supervisor/);
     await b.clicar('[data-atendimento="0"]'); await b.esperar(() => document.querySelector('#c-vinculo').textContent.includes('DEMO-SUPERVISOR'));
     await b.esperar(() => !document.querySelector('#c-tirar-vinculo').disabled);
     assert.equal((await b.avaliar(async id => GI.chamadosObter(id), criado.id)).chamado.atendimento.chat_id, 8805); await fechar();

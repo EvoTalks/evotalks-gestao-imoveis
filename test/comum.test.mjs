@@ -142,7 +142,7 @@ test('gestor libera só o id temporário e administradores, com navegação e ab
     GI.ctx = () => ({ user });
     assert.equal(GI.gestor(), true);
     for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
-      assert.ok(GI.cabecalho('gi-imoveis').includes(id));
+      assert.equal(GI.cabecalho('gi-imoveis').includes(id), id !== 'gi-prestadores');
       GI.abrirTela(id);
       assert.equal(abertos.at(-1), id);
     }

@@ -436,3 +436,92 @@ ajustando junto o verificador e os testes.
 Patch 0.23.1: o cockpit relê silenciosamente escritas de outras telas, preserva o rascunho e exibe um único ícone nos recados.
 
 0.24.0: botão Editar inline na O.S., grade de fotos selecionáveis e erros de rede legíveis com rascunho preservado. Escritas usam timeout de 30 s (leituras, 20 s); o host pode abortar antes e devolver status 0.
+
+### Fidelidade ao desenho (0.25.0)
+
+`node test/fidelidade/comparar.mjs` mede os nove recortes originais e o sucesso
+suplementar contra `~/design/tela.html` **lido ao vivo** (`TELA_HTML` sobrescreve o
+caminho). Usa o Chromium instalado da bancada, sem npm, rede externa ou instância.
+
+```sh
+node test/fidelidade/comparar.mjs --limite 0.5
+node test/fidelidade/comparar.mjs --original
+node test/fidelidade/comparar.mjs lista modal
+node test/fidelidade/comparar.mjs lista --so-desenho --limite 0
+node test/fidelidade/css-puro.mjs --variantes
+node test/fidelidade/estrutural.mjs
+node test/fidelidade/cockpit-variantes.mjs
+node --test test/fidelidade.test.mjs
+```
+
+A medida oficial usa **origem comum por padrão** (`--origem-comum` explícito
+continua válido). O canvas do desenho tem coordenadas fracionárias: no cockpit,
+y ≈ 7275,0625. A fase subpixel altera a rasterização das bordas e dos glifos,
+mesmo com geometria e estilos iguais. O comparador renderiza o DOM, CSS e sprite
+extraídos integralmente do desenho vivo em origem inteira; a extensão carrega
+somente seus próprios recursos. `--original` conserva a fase do canvas para
+auditoria. As duas medidas devem acompanhar a entrega; a meta de 0,5% vale para
+a oficial. Sem redimensionamento, alinhamento posterior ou nova máscara.
+
+Relatórios JSON/Markdown, PNGs e mapas de calor vermelhos ficam em
+`test/fidelidade/saida/` (ignorado). Por padrão o comparador apenas mede; somente
+`--limite` reprova por percentual. Tolerância: 8 por canal RGBA; diferenças de
+tamanho contam integralmente na área sem cobertura. A autocomparação gera
+relatórios separados e não substitui a linha de base. Para conservar ambas as
+medidas, copie cada `saida/relatorio.json` antes da próxima execução. O fechamento
+usa `saida/s3/oficial.json` e `saida/s3/original.json`; com esses arquivos,
+`node test/fidelidade/relatorio.mjs` reúne imagens, tabela S0/S3, resíduos e
+capturas em `relatorio-fidelidade/` dentro da worktree. O coordenador pode copiar
+essa pasta ao destino externo da frente após a revisão.
+
+Os seletores `data-evox` identificam `.gi` nas páginas e `.gi-modal` nos modais;
+overlay, sombra externa, título e legenda do quadro ficam fora do recorte.
+No cockpit recorta-se `.phone .panel`: o telefone mede 317 px e o painel 315 px,
+por causa das bordas de 1 px do host. O iframe usa os mesmos 315 px; também se
+validam 260/300/317/334 px, em claro e escuro. Scrollbars ficam ocultas via CDP
+nas duas capturas. A largura do canvas é descoberta pelo CSS (atualmente 1440 px,
+cartões de 1360 px). Os modais usam a largura do recorte mais 32 px e viewport
+alto o bastante para não limitar a captura em 70vh; a rolagem real permanece.
+Margens automáticas do modal têm valores computados diferentes porque seu palco
+e o iframe têm larguras diferentes; isso é relatado na comparação estrutural,
+sem excluir a propriedade ou esconder a diferença.
+
+O fixture `test/fidelidade/dados-desenho.json` contém textos, valores e células,
+sem HTML/CSS. `fixture-desenho.mjs` traduz esses dados para o portal de mentira e
+o host (`?fixture=desenho`); a validação acusa valores ausentes do desenho vivo.
+Relógio: **17/10/2026 20:41 em Brasília**, injetado antes dos scripts, deduzido de
+“atualizado às 20:41” e das datas relativas. Intervalos ficam congelados; timeouts
+funcionais continuam ativos. O desenho também mostra 21:12 no mesmo dia e prazos
+incompatíveis entre telas; o fixture registra essas contradições. Não se inventam
+imóveis, campos, gênero, histórico ou fotografias para completar o desenho.
+
+Exceções e decisões preservadas:
+
+- Só o botão final “Abrir chamado” do cockpit Chamados é mascarado (9440 px), por
+  pedido explícito; a abertura fica na aba Novo. Nenhuma outra região é excluída.
+- Confirmação e sucesso são estados sucessivos, comparados separadamente; o sucesso
+  é o décimo recorte suplementar, sem alterar os nove originais.
+- Novo deriva o título da primeira frase/linha da descrição, até 80 caracteres,
+  com reserva “Reparo de <categoria>”; Editar mantém o campo Título em Mais opções.
+- A barra segue Imóveis · Locados · Chamados · Campos · Histórico · Configurações.
+  Prestadores continua acessível pelo menu do host, sem aba na barra.
+- Contagens e prazos vêm do contrato do portal. Sem gênero no SDK, a tela usa
+  Locatário/cliente; a ação existente é Vincular outra residência. Editar, Mais
+  ações e Usar última mensagem do cliente continuam disponíveis.
+- O portal aceita fotos, sem vídeo. Os tiles do fixture têm nomes, sem bytes.
+  O desenho não fornece os outros 1751 imóveis, as definições dos 11 campos,
+  uma meta contratual de três cotações ou contagens de serviços dos prestadores.
+  Subtextos históricos ausentes do banco não são reconstruídos com dados atuais.
+
+`alcancavel: false` registra essas limitações de dado/ação, mesmo quando o
+percentual passa. O relatório não transforma a exceção de até 2% em aprovação
+do objetivo estrito de 0,5%.
+
+`css-puro.mjs` usa DOM e sprite vivos, somente os CSS reais na ordem das páginas
+e a fase fracionária original. `--variantes` valida os quatro estados em
+260/300/317/334 px, claro/escuro e com tokens do host. `estrutural.mjs` compara
+57 pares, inclusive largura e altura. Autocomparação 0%, deslocamento real de
+1 px, tolerância, máscara e tamanhos diferentes são verificados nos testes.
+O desenho não cobre vazios, falhas, carregamento, demonstração, edição inline,
+filtros extras, muitos chamados, múltiplas residências ou miniaturas carregadas;
+as bancadas verificam esses estados preservando os componentes e tokens.

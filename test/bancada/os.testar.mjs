@@ -23,9 +23,35 @@ try {
   if (falhasAlvo.length) throw new AggregateError(falhasAlvo, 'F18 isolamento de alvo: ' + falhasAlvo.length);
   for (const fonte of ['alvo=1', 'chamado=1']) {
     await abrir(fonte); await pronto();
-    assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /OS-1001/);
+    assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /Editar chamado 1001/);
     assert.equal(await b.avaliar(async () => await omni.storage.get('gi-os-alvo') ?? null), null);
   }
+  const antesFecharDireto = await b.avaliar(() => ({
+    fechamentos: bancada.fechamentos,
+    consultasLista: bancada.chamadas.filter(c => /chamados/.test(c.caminho) && !/\/1(?:\/|$)/.test(c.caminho)).length
+  }));
+  await b.clicar('.gi-modal [data-cancelar]');
+  await b.esperar(() => window.bancada.fechamentos > 0);
+  assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => /chamados/.test(c.caminho) && !/\/1(?:\/|$)/.test(c.caminho)).length), antesFecharDireto.consultasLista, 'Fechar o formulário direto não carrega a listagem');
+  await abrir('chamado=1'); await pronto();
+  await b.avaliar(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const dt = new DataTransfer(); dt.items.add(new File([blob], 'rascunho.png', { type: 'image/png' }));
+    const input = document.querySelector('#c-pasta'); input.files = dt.files; input.dispatchEvent(new Event('change'));
+  });
+  await b.esperar(() => document.querySelectorAll('#c-pendentes img').length === 1);
+  const fechamentosAntesConfirmacao = await b.avaliar(() => bancada.fechamentos);
+  await b.clicar('.gi-modal [data-cancelar]');
+  await b.esperar(() => !document.querySelector('#c-descarte').hidden);
+  assert.equal(await b.avaliar(() => bancada.fechamentos), fechamentosAntesConfirmacao, 'rascunho pendente exige confirmação antes de fechar');
+  await b.clicar('#c-descartar');
+  await b.esperar(() => window.bancada.fechamentos > 0);
+  await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));
+  await b.clicar('[data-os="1"]'); await pronto();
+  assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-cancelar]').textContent.trim()), 'Voltar à lista');
+  await b.clicar('.gi-modal [data-cancelar]');
+  await b.esperar(() => !!document.querySelector('[data-os]') && !document.querySelector('.gi-modal'));
   process.stdout.write('OK F18 alvo por storage/params exige contato selecionado; divergente, sem contato e sem atendimento descartados; mesmo contato edita\n');
   // RC3: o carregamento não pode roubar foco nem emitir erro antes da resposta.
   await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));
@@ -106,7 +132,7 @@ try {
   await abrir('alvo=1&idade=61000'); await b.esperar(() => !!document.querySelector('[data-os]'));
   assert.equal(await b.avaliar(() => !!document.querySelector('#c-status')), false);
   await abrir('alvo=1&chamado=2'); await pronto();
-  assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /OS-1002/);
+  assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /Editar chamado 1002/);
   await abrir('alvo=-1'); await b.esperar(() => !!document.querySelector('[data-os]'));
   await abrir('alvo=1&idade=-10000'); await b.esperar(() => !!document.querySelector('[data-os]'));
   await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));
@@ -161,12 +187,12 @@ try {
     await b.esperar(() => !!document.querySelector('[data-gestao]'));
     assert.equal(await b.avaliar(() => !!document.querySelector('[data-lista-completa]')), perfil === 'admin');
     await b.avaliar(() => { bancada.navegarContribuicao = false; });
-    await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('details').querySelector('[data-gestao]').click());
+    await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('[data-os-id]').querySelector('[data-gestao]').click());
     await b.esperar(() => bancada.aberturas.length === 1);
     const a = await b.avaliar(async () => ({ abertura: bancada.aberturas[0], alvo: await omni.storage.get('gi-os-alvo') }));
     assert.equal(a.abertura.id, 'gi-os'); assert.equal(a.abertura.params.chamadoId, 1); assert.equal(a.abertura.params.contatoId, 9901); assert.equal(a.abertura.params.locacaoId, 1);
     assert.equal(a.alvo.chamadoId, 1); assert.equal(a.alvo.contatoId, 9901); assert.ok(Date.now() - a.alvo.em < 60000);
-    await b.avaliar(() => { bancada.falharContribuicao = 'not_found'; }); await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('details').querySelector('[data-gestao]').click());
+    await b.avaliar(() => { bancada.falharContribuicao = 'not_found'; }); await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('[data-os-id]').querySelector('[data-gestao]').click());
     await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Não foi possível abrir a gestão deste chamado. Atualize a extensão e tente de novo.'));
   }
   await b.navegar(origem + '/app/painel.html?perfil=agente');
@@ -177,16 +203,16 @@ try {
     bancada.navegarContribuicao = false;
     bancada.aberturas.length = 0;
   });
-  await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('details').querySelector('[data-gestao]').click()); await b.esperar(() => bancada.aberturas.length > 0);
+  await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('[data-os-id]').querySelector('[data-gestao]').click()); await b.esperar(() => bancada.aberturas.length > 0);
   assert.equal(await b.avaliar(() => bancada.aberturas.at(-1).params.contatoId), 9901, 'usa chat.contactId quando o SDK omite contato.id');
   process.stdout.write('OK gestão usa chat.contactId quando contacts.get não traz id\n');
   // Simula o host que perde params entre cockpit e diálogo: só o storage encontra a O.S.
   await b.navegar(origem + '/app/painel.html?perfil=agente&semparams=1');
   await b.esperar(() => !!document.querySelector('[data-gestao]'));
-  await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('details').querySelector('[data-gestao]').click());
+  await b.avaliar(() => document.querySelector('[data-detalhes="1"]').closest('[data-os-id]').querySelector('[data-gestao]').click());
   await pronto();
   assert.match(await b.avaliar(() => location.pathname), /os.html$/);
-  assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /OS-1001/);
+  assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /Editar chamado 1001/);
   assert.equal(await b.avaliar(async () => await omni.storage.get('gi-os-alvo') ?? null), null);
   await b.clicar('#b-fechar'); await b.esperar(() => bancada.fechamentos === 1);
   await b.navegar(origem + '/app/painel.html?perfil=admin');
