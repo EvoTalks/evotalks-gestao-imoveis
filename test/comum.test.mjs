@@ -219,7 +219,8 @@ test('RC7 escrita própria preserva marca externa pendente e invalida o snapshot
   } };
   GI.cockpitCarregadoEm = () => 100;
   await GI.invalidarSnapshots();
-  assert.deepEqual(armazenamento.get(GI.CHAVE_ESCRITA), { em: 200, por: 'outra-instancia-sintetica' });
+  assert.equal(armazenamento.get(GI.CHAVE_ESCRITA).por, GI.instanciaId);
+  assert.equal(GI.pendenciaExterna, 200, 'pendência fica em memória para permitir a publicação local');
   assert.equal(armazenamento.get(GI.CHAVE_SNAPSHOTS).rows.length, 0);
   GI.cockpitCarregadoEm = () => 200;
   await GI.invalidarSnapshots();
@@ -228,4 +229,26 @@ test('RC7 escrita própria preserva marca externa pendente e invalida o snapshot
   delete GI.cockpitCarregadoEm;
   await GI.invalidarSnapshots();
   assert.equal(armazenamento.get(GI.CHAVE_ESCRITA).por, GI.instanciaId, 'telas sem cockpit continuam publicando suas escritas');
+});
+
+test('F23 duas instâncias: escrita local publica marca nova sem perder a pendência externa', async () => {
+  const a = carregar(), b = carregar();
+  const armazenamento = new Map([[a.GI.CHAVE_ESCRITA, { em: 200, por: 'terceira-instancia' }]]);
+  for (const instancia of [a, b]) instancia.contexto.omni = { storage: {
+    get: async chave => armazenamento.get(chave),
+    set: async (chave, valor) => armazenamento.set(chave, valor)
+  } };
+  a.GI.cockpitCarregadoEm = () => 100;
+  b.GI.cockpitCarregadoEm = () => 300;
+  await a.GI.invalidarSnapshots();
+  const marca = armazenamento.get(a.GI.CHAVE_ESCRITA);
+  assert.equal(marca.por, a.GI.instanciaId, 'B precisa receber a escrita de A mesmo tendo consumido a anterior');
+  assert.ok(marca.em > b.GI.cockpitCarregadoEm());
+  assert.equal(a.GI.pendenciaExterna, 200, 'A continua devendo a leitura da alteração externa');
+  await a.GI.invalidarSnapshots();
+  assert.equal(a.GI.pendenciaExterna, 200, 'marca própria não apaga a pendência');
+  const ultimaMarca = armazenamento.get(a.GI.CHAVE_ESCRITA).em;
+  await b.GI.invalidarSnapshots();
+  assert.equal(armazenamento.get(b.GI.CHAVE_ESCRITA).por, b.GI.instanciaId);
+  assert.equal(b.GI.pendenciaExterna, ultimaMarca);
 });

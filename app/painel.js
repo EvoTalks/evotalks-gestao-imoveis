@@ -16,6 +16,18 @@
   var chaveSnapshot = GI.CHAVE_SNAPSHOTS, filasConhecidas = [], contatosComLocacao = {}, inicioTimer, atualizarTimer, ultimaAtualizacao = 0;
   var carregadoEm = 0, timerEscrita, relendoEscrita = false, ultimaEscritaTentada = '', ultimoToque = 0, escritasEmCurso = 0;
   GI.cockpitCarregadoEm = function () { return carregadoEm; };
+  function aplicarLeitura(em) {
+    carregadoEm = em;
+    if (GI.pendenciaExterna <= carregadoEm) GI.pendenciaExterna = 0;
+  }
+  function dadosObtidosEm(c, inicio) {
+    // Reutilizar uma resposta não muda a idade dos dados que ela trouxe.
+    ['/locacoes', '/chamados'].forEach(function (sufixo) {
+      var entrada = cache.get('/contatos/' + id(c.contactId) + sufixo);
+      if (entrada && entrada.obtidoEm) inicio = Math.min(inicio, entrada.obtidoEm);
+    });
+    return inicio;
+  }
   function pararVerificacao() { clearInterval(timerEscrita); timerEscrita = null; }
   function contatoCarregado() { return !destruido && !demo() && GI.modo === 'portal' && contato && chat && carregadoEm; }
   function naoOculto(el) {
@@ -40,9 +52,11 @@
     if (relendoEscrita || !painelOcioso()) return;
     var g = geracao, c = chat, versao = versaoDados;
     relendoEscrita = true;
-    Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).then(function (v) {
-      if (g !== geracao || !painelOcioso() || !v || v.por === GI.instanciaId || !(v.em > carregadoEm)) return;
-      var chave = String(v.por) + ':' + String(v.em);
+    Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).catch(function () { return null; }).then(function (v) {
+      var externaEm = v && v.por !== GI.instanciaId ? Number(v.em) || 0 : 0;
+      var pendenteEm = Math.max(externaEm, GI.pendenciaExterna);
+      if (g !== geracao || !painelOcioso() || !(pendenteEm > carregadoEm)) return;
+      var chave = String(pendenteEm);
       if (chave === ultimaEscritaTentada) return;
       return atual(g, c).then(function (valido) {
         if (!valido || !painelOcioso()) return;
@@ -66,7 +80,7 @@
             selecionada = indice;
             validarImovelNovo();
             contatosComLocacao[c.contactId] = locacoes.length > 0;
-            carregadoEm = inicioLeitura; atualizadoEm = Date.now();
+            aplicarLeitura(dadosObtidosEm(c, inicioLeitura)); atualizadoEm = Date.now();
             cabecalho();
             // Novo e a confirmação conservam o próprio DOM, foco, fotos e rascunho.
             if (aba === 'novo') atualizarEscolhaNovo();
@@ -129,7 +143,15 @@
     if (post && !/^\/locacoes(?:\/\d+)?$/.test(rota) && !escrita()) return Promise.reject(new Error('Abertura de chamados desligada neste cockpit.'));
     if (post && GI.modo !== 'portal') return Promise.reject(new Error('Manutenção exige o portal conectado.'));
     var agora = Date.now(), anterior = cache.get(rota);
-    if (!post && anterior && agora - anterior.em < 60000) return anterior.promessa;
+    if (!post && anterior && agora - anterior.em < 60000) {
+      return Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).catch(function () { return null; }).then(function (marca) {
+        if (marca && marca.por !== GI.instanciaId && marca.em > anterior.obtidoEm) {
+          cache.delete(rota);
+          return GI.chamarPortal(rota, op);
+        }
+        return anterior.promessa;
+      });
+    }
     requisicoes = requisicoes.filter(function (t) { return agora - t < 60000; });
     if (agora < esperarAte || requisicoes.length >= 30) return Promise.reject(limite());
     requisicoes.push(agora);
@@ -143,12 +165,17 @@
       operacao = fila.then(enviar);
       fila = operacao.catch(function () {});
     } else operacao = Promise.resolve().then(enviar);
-    var promessa = operacao.catch(function (err) {
+    var entrada = { em: agora, obtidoEm: agora };
+    var promessa = operacao.then(function (r) {
+      entrada.obtidoEm = Date.now();
+      return r;
+    }).catch(function (err) {
       cache.delete(rota);
       if (err.status === 429 || err.code === 'rate_limit' || err.code === 'rate_limited' || /rate.limit/i.test(err.message)) { esperarAte = Date.now() + 60000; throw limite(); }
       throw err;
     });
-    if (!post) cache.set(rota, { em: agora, promessa: promessa });
+    entrada.promessa = promessa;
+    if (!post) cache.set(rota, entrada);
     else cache.clear();
     if (post) return promessa.then(function (r) { --escritasEmCurso; return r; }, function (err) { --escritasEmCurso; throw err; });
     return promessa;
@@ -283,7 +310,7 @@
       var snapshot = forcar ? null : await lerSnapshot(c);
       if (!await atual(g, c)) return;
       if (snapshot) {
-        locacoes = snapshot.dados.locacoes; chamados = snapshot.dados.chamados; atualizadoEm = snapshot.em; carregadoEm = snapshot.em; iniciarVerificacao();
+        locacoes = snapshot.dados.locacoes; chamados = snapshot.dados.chamados; atualizadoEm = snapshot.em; aplicarLeitura(snapshot.em); iniciarVerificacao();
         contatosComLocacao[c.contactId] = locacoes.length > 0; cabecalho(); render(); return;
       }
       var versaoConsulta = versaoDados, inicioLeitura = Date.now();
@@ -297,7 +324,7 @@
       if (!await atual(g, c)) return;
       contatosComLocacao[c.contactId] = linhas(lr).length > 0;
       if (versaoConsulta !== versaoDados) return; // Uma gravação posterior vence a leitura que já estava em voo.
-      chat = c; contato = pessoa; locacoes = linhas(lr); chamados = linhas(cr); carregadoEm = inicioLeitura; atualizadoEm = Date.now(); iniciarVerificacao();
+      chat = c; contato = pessoa; locacoes = linhas(lr); chamados = linhas(cr); aplicarLeitura(dadosObtidosEm(c, inicioLeitura)); atualizadoEm = Date.now(); iniciarVerificacao();
       cabecalho();
       if (!snapshot || aba === 'chamados') render();
       await guardarSnapshot(c);
@@ -442,7 +469,7 @@
       aba = 'imovel'; cabecalho(); render(); recado('Residência vinculada.', 'sucesso');
       var cr = await GI.chamadosPorContato(c.contactId);
       if (!await atual(g, c)) return;
-      chamados = linhas(cr); carregadoEm = inicioLeitura; atualizadoEm = Date.now(); cabecalho();
+      chamados = linhas(cr); aplicarLeitura(dadosObtidosEm(c, inicioLeitura)); atualizadoEm = Date.now(); cabecalho();
     } catch (err) {
       if (g !== geracao) return;
       if (gravou) { residencia = null; cabecalho(); render(); recado('Residência vinculada. Não foi possível atualizar a consulta. Use Atualizar para consultar o vínculo.', 'erro'); }
@@ -869,7 +896,7 @@
         if (!await atual(g, c)) return;
         var ch = demo() ? { rows: chamados } : await GI.chamadosPorContato(c.contactId);
         if (!await atual(g, c)) return;
-        locacoes = linhas(l); chamados = linhas(ch); carregadoEm = inicioLeitura; atualizadoEm = Date.now(); cabecalho();
+        locacoes = linhas(l); chamados = linhas(ch); aplicarLeitura(dadosObtidosEm(c, inicioLeitura)); atualizadoEm = Date.now(); cabecalho();
       } catch (_) { if (g === geracao) recado('Chamado aberto. Não foi possível atualizar a lista; consulte novamente.', 'erro'); }
     } catch (err) {
       if (g === geracao) {

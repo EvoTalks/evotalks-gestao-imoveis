@@ -91,7 +91,7 @@ no diálogo `gi-os`; administrador e usuário 531 veem **Lista completa** (`gi-c
 
 Exigem o portal conectado e as rotas das Fatias 2 e 4 em `/api/ext`. O storage guarda apenas o alvo temporário da abertura do diálogo e snapshots de consulta do cockpit (máximo 8 contatos, 10 minutos, menos de 60 mil caracteres no conjunto; sem credenciais, fotos ou arquivos). A fonte das gravações continua sendo o portal. Sem portal, as telas avisam e bloqueiam ações.
 O imóvel é o ponto focal; a locação conserva seu snapshot e o contato é o vínculo.
-Uma escrita do cockpit preserva a marca externa ainda não vista, para a próxima releitura consultar também a alteração feita em outra tela.
+Cada escrita do cockpit publica uma marca nova e preserva em memória a pendência externa ainda não vista, para que ambas as telas releiam as alterações.
 
 **Chamados**: escolher o status na lista ou no modal grava na hora, atualiza a linha,
 o prazo e o resumo. A recusa do portal devolve o seletor ao status anterior e explica

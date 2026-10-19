@@ -265,13 +265,14 @@
   GI.CHAVE_SNAPSHOTS = 'gi-cockpit-snapshots-v1';
   GI.CHAVE_ESCRITA = 'gi-ultima-escrita';
   GI.instanciaId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  GI.pendenciaExterna = 0;
   GI.invalidarSnapshots = function () {
     // A marca independe da leitura/invalidação do cache: cada operação é opcional.
     var marca, invalidacao;
     function publicarMarca() { return omni.storage.set(GI.CHAVE_ESCRITA, { em: Date.now(), por: GI.instanciaId }); }
     try {
       marca = Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).then(function (v) {
-        if (typeof GI.cockpitCarregadoEm === 'function' && v && v.por !== GI.instanciaId && v.em > GI.cockpitCarregadoEm()) return;
+        if (typeof GI.cockpitCarregadoEm === 'function' && v && v.por !== GI.instanciaId && v.em > GI.cockpitCarregadoEm()) GI.pendenciaExterna = Math.max(GI.pendenciaExterna, v.em);
         return publicarMarca();
       }, publicarMarca).catch(function () {});
     } catch (_) { marca = Promise.resolve(); }

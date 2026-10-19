@@ -142,7 +142,8 @@ try {
     await abrir(); await mudarStatusExterno(); await marca(); await zerar();
     await b.preencher('[data-os-id] [data-rapida="prioridade"]', 'normal');
     await b.esperar(() => document.querySelector('[data-os-id] [data-salvo="prioridade"]').textContent === '✓ salvo');
-    assert.equal(await b.avaliar(async () => (await omni.storage.get(GI.CHAVE_ESCRITA)).por), 'outra-instancia-sintetica');
+    assert.equal(await b.avaliar(async () => (await omni.storage.get(GI.CHAVE_ESCRITA)).por), await b.avaliar(() => GI.instanciaId));
+    assert.ok(await b.avaliar(() => GI.pendenciaExterna > GI.cockpitCarregadoEm()), 'pendência externa preservada em memória');
     await b.avaliar(() => document.activeElement.blur()); await acionar();
     assert.equal(await consultas(), 2, 'gravação própria não esconde escrita externa pendente');
     assert.equal(await atualizado(), true);
