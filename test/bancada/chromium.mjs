@@ -82,7 +82,7 @@ export async function abrirChromium({ antesDeCarregar } = {}) {
       throw new Error('Condição não atingida: ' + fn.toString());
     }
     return {
-      avaliar, esperar, erros,
+      avaliar, esperar, erros, cdp: enviar,
       navegar: async url => {
         await enviar('Page.navigate', { url });
         await esperar(() => document.readyState === 'complete' && !!window.bancada);

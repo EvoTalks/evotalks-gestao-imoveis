@@ -436,3 +436,51 @@ ajustando junto o verificador e os testes.
 Patch 0.23.1: o cockpit relê silenciosamente escritas de outras telas, preserva o rascunho e exibe um único ícone nos recados.
 
 0.24.0: botão Editar inline na O.S., grade de fotos selecionáveis e erros de rede legíveis com rascunho preservado. Escritas usam timeout de 30 s (leituras, 20 s); o host pode abortar antes e devolver status 0.
+
+### Fidelidade ao desenho
+
+`node test/fidelidade/comparar.mjs` mede os nove recortes da extensão contra
+`~/design/tela.html` **lido ao vivo** (`TELA_HTML` sobrescreve o caminho). Usa o
+Chromium já instalado da bancada, sem npm, rede externa ou instância. Exemplos:
+
+```sh
+node test/fidelidade/comparar.mjs lista modal
+node test/fidelidade/comparar.mjs --limite 0.5
+node test/fidelidade/comparar.mjs lista --so-desenho --limite 0
+node test/fidelidade/estrutural.mjs
+node --test test/fidelidade.test.mjs
+```
+
+Relatórios JSON/Markdown, os PNGs e o mapa de calor vermelho ficam em
+`test/fidelidade/saida/` (ignorado). Por padrão o comparador apenas mede; somente
+`--limite` reprova por percentual. Tolerância: 8 por canal RGBA; diferenças de
+tamanho contam integralmente na área sem cobertura, sem redimensionar imagens.
+A autocomparação usa relatórios separados e não substitui a linha de base.
+
+Os seletores `data-evox` identificam o cartão `.gi` nas páginas e `.gi-modal` nos
+modais: o overlay, sombra fora da caixa, título e legenda do quadro não entram.
+No cockpit recorta-se `.phone .panel`, excluindo barra e borda do host e a
+legenda: o telefone mede 317 px; seu painel mede 315 px pelos dois pixels da
+borda. O iframe da extensão tem 317 px; ambos os tamanhos ficam no relatório,
+sem ajuste artificial. Scrollbars são ocultadas via CDP nas duas capturas.
+O viewport de referência é descoberto pelo CSS do canvas (atualmente 1440 px,
+cartões de 1360 px). As páginas da extensão usam a largura do cartão e sua
+altura como viewport; os modais usam o viewport de 1360×1100, preservando a
+rolagem interna real. O roteiro nunca aplica o CSS do desenho na extensão.
+
+O fixture fixo em `test/fidelidade/dados-desenho.json` contém somente textos,
+valores e células extraídos do desenho, sem HTML/CSS. `fixture-desenho.mjs` faz a
+tradução para o contrato do portal de mentira e do host (`?fixture=desenho`);
+`test/fidelidade.test.mjs` aponta cada valor que sumiu quando o desenho muda.
+Relógio: 17/10/2026 20:41 em Brasília, injetado antes dos scripts; dedução e
+inconsistências ficam no fixture e no relatório. Intervalos ficam congelados e
+timeouts funcionais continuam ativos. Não se inventam imóveis, campos ou fotos
+para completar contagens ilustrativas do desenho.
+
+Estados que a versão atual não consegue reproduzir recebem `alcancavel: false`
+e motivo explícito. Confirmação e sucesso simultâneos não existem na 0.24.0:
+a confirmação é comparada e o sucesso OS-1052 ganha PNG suplementar. Somente o
+botão final “Abrir chamado” do cockpit Chamados é mascarado, por pedido explícito;
+o JSON informa seletor, coordenadas e quantidade de pixels excluídos. Os testes
+provam autocomparação 0%, sensibilidade a deslocamento real de 1 px, tolerância,
+máscara e penalização por tamanhos diferentes. Nenhum teste antigo é alterado.

@@ -195,4 +195,16 @@
       omni.chats.getSelected = function () { return new Promise(function () {}); };
     }
   })();
+  if (params.get('fixture') === 'desenho') {
+    var desenho = window.fixtureDesenho;
+    if (!desenho) throw new Error('Fixture desenho não injetado antes do stub.');
+    banner.remove();
+    contatos = copia(desenho.contatos); usuarios = copia(desenho.usuarios); chats = copia(desenho.chats);
+    ctx.user = usuarios[0]; ctx.config.marca = ''; ctx.config.prefixoCodigo = '535';
+    selecionado = 2660;
+    ctx.contribution.params = params.has('chamado') ? { chamadoId: params.get('chamado'), contatoId: 103 } : {};
+    omni.queues.list = function () { return Promise.resolve([{ id: 1, name: 'Fila Locação' }]); };
+    omni.chats.getMessages = function () { return Promise.resolve([]); };
+    bancada.historico = chats.map(function (c) { return { id: c.id, status: c.status === 'closed' ? 0 : 1, origin: c.channel, protocol: c.protocol, begintime: c.startedAt, qname: 'Fila Locação', queueId: 1 }; });
+  }
 })();

@@ -1,0 +1,2224 @@
+{
+  "lista": {
+    "campos": [
+      {
+        "rotulo": "Buscar por O.S., chamado, imóvel ou cliente",
+        "valor": ""
+      },
+      {
+        "rotulo": "Status",
+        "valor": "todos"
+      },
+      {
+        "rotulo": "Prioridade",
+        "valor": "todas"
+      },
+      {
+        "rotulo": "Por página",
+        "valor": "25"
+      }
+    ],
+    "folhas": [
+      "Chamados de manutenção",
+      "10 chamados abertos · 3 com prazo estourado · 2 aguardando o proprietário",
+      "Imóveis",
+      "Locados",
+      "Chamados",
+      "Campos",
+      "Histórico",
+      "Configurações",
+      "Buscar por O.S., chamado, imóvel ou cliente",
+      "Status",
+      "todos",
+      "Novo",
+      "Triagem",
+      "Orçamento",
+      "Aprovação",
+      "Agendado",
+      "Em execução",
+      "Concluído",
+      "Cancelado",
+      "Prioridade",
+      "todas",
+      "Emergência",
+      "Alta",
+      "Normal",
+      "Por página",
+      "25",
+      "50",
+      "100",
+      "Buscar",
+      "Limpar",
+      "Ordenados do mais novo para o mais antigo.",
+      "Novo chamado",
+      "O.S.",
+      "Chamado",
+      "Imóvel",
+      "Atendimento",
+      "Prioridade",
+      "Prazo",
+      "Prestador",
+      "Status",
+      "Funções",
+      "1051",
+      "17/10 · 19:42",
+      "Cheiro de gás na cozinha",
+      "Gás · via IA",
+      "Res. Aurora · ap. 12",
+      "Beatriz Lemos",
+      "#2658",
+      "WhatsApp · Tiago",
+      "Emergência",
+      "responder já",
+      "sem triagem",
+      "a definir",
+      "Novo",
+      "1049",
+      "17/10 · 17:10",
+      "Mancha de umidade no teto",
+      "Estrutura",
+      "Sobrado · Rua dos Ipês, 48",
+      "Paulo Reis",
+      "#2651",
+      "WebChat · Tiago",
+      "Alta",
+      "vence em 6h",
+      "solução em 72h",
+      "a definir",
+      "Novo",
+      "1044",
+      "17/10 · 16:25",
+      "Portão da garagem travado",
+      "Outros",
+      "Ed. Jasmim · ap. 103",
+      "Helena Prado",
+      "#2646",
+      "WhatsApp · Marina",
+      "Alta",
+      "vence em 3h",
+      "solução em 72h",
+      "a definir",
+      "Triagem",
+      "1042",
+      "17/10 · 14:20",
+      "Vazamento na pia da cozinha",
+      "Hidráulica · via IA",
+      "Ed. Jasmim · ap. 304",
+      "Carla Menezes",
+      "#2641",
+      "WhatsApp · Marina",
+      "Alta",
+      "vence em 1d 4h",
+      "solução em 72h",
+      "2 de 3 cotações",
+      "estimado R$ 280,00",
+      "Orçamento",
+      "1040",
+      "13/10 · 10:05",
+      "Telhas quebradas",
+      "Estrutura",
+      "Sobrado · Rua dos Ipês, 48",
+      "Paulo Reis",
+      "#2609",
+      "WhatsApp · Tiago",
+      "Alta",
+      "parada há 4d",
+      "espera o proprietário",
+      "Telhados e Lajes",
+      "R$ 4.200,00",
+      "Aprovação",
+      "1035",
+      "12/10 · 09:30",
+      "Troca do aquecedor",
+      "Hidráulica",
+      "Res. Aurora · ap. 41",
+      "Marcos Tavares",
+      "#2588",
+      "WhatsApp · Marina",
+      "Normal",
+      "parada há 1d",
+      "espera o proprietário",
+      "Hidro Sul",
+      "R$ 1.850,00",
+      "Aprovação",
+      "1031",
+      "11/10 · 15:48",
+      "Tomada da sala sem energia",
+      "Elétrica · via IA",
+      "Ed. Jasmim · ap. 304",
+      "Carla Menezes",
+      "#2561",
+      "WhatsApp · Marina",
+      "Alta",
+      "qua 21/10 · 09h",
+      "visita agendada",
+      "Eletro Pontual",
+      "R$ 180,00",
+      "Agendado",
+      "1018",
+      "06/10 · 11:12",
+      "Troca do piso da sala",
+      "Estrutura · na gestão",
+      "Ed. Jasmim · ap. 203",
+      "Rafael Duarte",
+      "sem atendimento",
+      "Tiago",
+      "Normal",
+      "até 21/10",
+      "dia 2 de 4",
+      "Reforma Zanella",
+      "R$ 2.300,00",
+      "Em execução",
+      "1012",
+      "01/10 · 08:40",
+      "Impermeabilização da laje",
+      "Estrutura",
+      "Sobrado · Rua dos Ipês, 48",
+      "Paulo Reis",
+      "#2431",
+      "Telefone · Tiago",
+      "Alta",
+      "atrasada há 2d",
+      "prazo era 15/10",
+      "Telhados e Lajes",
+      "R$ 3.100,00",
+      "Em execução",
+      "1010",
+      "30/09 · 13:02",
+      "Instalação de ar-condicionado",
+      "Elétrica · na gestão",
+      "Res. Aurora · ap. 41",
+      "Marcos Tavares",
+      "sem atendimento",
+      "Marina",
+      "Normal",
+      "entrega hoje",
+      "no imóvel",
+      "Clima Sul",
+      "R$ 650,00",
+      "Em execução",
+      "0902",
+      "05/09 · 14:50",
+      "Fechadura da porta de entrada",
+      "Chaveiro",
+      "Res. Aurora · ap. 22",
+      "Joana Matos",
+      "#2204",
+      "WhatsApp · Marina",
+      "Normal",
+      "cancelado 10/10",
+      "a pedido da cliente",
+      "—",
+      "Cancelado",
+      "0871",
+      "28/08 · 10:15",
+      "Troca do chuveiro",
+      "Elétrica",
+      "Ed. Jasmim · ap. 304",
+      "Carla Menezes",
+      "#2121",
+      "WhatsApp · Marina",
+      "Normal",
+      "concluído 02/09",
+      "dentro do prazo",
+      "Eletro Pontual",
+      "R$ 220,00",
+      "Concluído",
+      "← anterior",
+      "1",
+      "próxima →",
+      "12 nesta página · 12 no total",
+      "🟢",
+      "— o que você grava aqui aparece no cockpit do atendimento e para a assistente de IA.",
+      "Conectado ao portal"
+    ],
+    "tabelas": [
+      [
+        [
+          {
+            "texto": "1051\n17/10 · 19:42",
+            "principal": "1051",
+            "ajuda": "17/10 · 19:42"
+          },
+          {
+            "texto": "Cheiro de gás na cozinha\nGás · via IA",
+            "principal": "Cheiro de gás na cozinha",
+            "ajuda": "Gás · via IA"
+          },
+          {
+            "texto": "Res. Aurora · ap. 12\nBeatriz Lemos",
+            "principal": "Res. Aurora · ap. 12",
+            "ajuda": "Beatriz Lemos"
+          },
+          {
+            "texto": "#2658\nWhatsApp · Tiago",
+            "principal": "#2658",
+            "ajuda": "WhatsApp · Tiago"
+          },
+          {
+            "texto": "Emergência",
+            "principal": "Emergência",
+            "ajuda": ""
+          },
+          {
+            "texto": "responder já\nsem triagem",
+            "principal": "responder já",
+            "ajuda": "sem triagem"
+          },
+          {
+            "texto": "a definir",
+            "principal": "a definir",
+            "ajuda": ""
+          },
+          {
+            "texto": "Novo",
+            "principal": "Novo",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1049\n17/10 · 17:10",
+            "principal": "1049",
+            "ajuda": "17/10 · 17:10"
+          },
+          {
+            "texto": "Mancha de umidade no teto\nEstrutura",
+            "principal": "Mancha de umidade no teto",
+            "ajuda": "Estrutura"
+          },
+          {
+            "texto": "Sobrado · Rua dos Ipês, 48\nPaulo Reis",
+            "principal": "Sobrado · Rua dos Ipês, 48",
+            "ajuda": "Paulo Reis"
+          },
+          {
+            "texto": "#2651\nWebChat · Tiago",
+            "principal": "#2651",
+            "ajuda": "WebChat · Tiago"
+          },
+          {
+            "texto": "Alta",
+            "principal": "Alta",
+            "ajuda": ""
+          },
+          {
+            "texto": "vence em 6h\nsolução em 72h",
+            "principal": "vence em 6h",
+            "ajuda": "solução em 72h"
+          },
+          {
+            "texto": "a definir",
+            "principal": "a definir",
+            "ajuda": ""
+          },
+          {
+            "texto": "Novo",
+            "principal": "Novo",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1044\n17/10 · 16:25",
+            "principal": "1044",
+            "ajuda": "17/10 · 16:25"
+          },
+          {
+            "texto": "Portão da garagem travado\nOutros",
+            "principal": "Portão da garagem travado",
+            "ajuda": "Outros"
+          },
+          {
+            "texto": "Ed. Jasmim · ap. 103\nHelena Prado",
+            "principal": "Ed. Jasmim · ap. 103",
+            "ajuda": "Helena Prado"
+          },
+          {
+            "texto": "#2646\nWhatsApp · Marina",
+            "principal": "#2646",
+            "ajuda": "WhatsApp · Marina"
+          },
+          {
+            "texto": "Alta",
+            "principal": "Alta",
+            "ajuda": ""
+          },
+          {
+            "texto": "vence em 3h\nsolução em 72h",
+            "principal": "vence em 3h",
+            "ajuda": "solução em 72h"
+          },
+          {
+            "texto": "a definir",
+            "principal": "a definir",
+            "ajuda": ""
+          },
+          {
+            "texto": "Triagem",
+            "principal": "Triagem",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1042\n17/10 · 14:20",
+            "principal": "1042",
+            "ajuda": "17/10 · 14:20"
+          },
+          {
+            "texto": "Vazamento na pia da cozinha\nHidráulica · via IA",
+            "principal": "Vazamento na pia da cozinha",
+            "ajuda": "Hidráulica · via IA"
+          },
+          {
+            "texto": "Ed. Jasmim · ap. 304\nCarla Menezes",
+            "principal": "Ed. Jasmim · ap. 304",
+            "ajuda": "Carla Menezes"
+          },
+          {
+            "texto": "#2641\nWhatsApp · Marina",
+            "principal": "#2641",
+            "ajuda": "WhatsApp · Marina"
+          },
+          {
+            "texto": "Alta",
+            "principal": "Alta",
+            "ajuda": ""
+          },
+          {
+            "texto": "vence em 1d 4h\nsolução em 72h",
+            "principal": "vence em 1d 4h",
+            "ajuda": "solução em 72h"
+          },
+          {
+            "texto": "2 de 3 cotações\nestimado R$ 280,00",
+            "principal": "2 de 3 cotações",
+            "ajuda": "estimado R$ 280,00"
+          },
+          {
+            "texto": "Orçamento",
+            "principal": "Orçamento",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1040\n13/10 · 10:05",
+            "principal": "1040",
+            "ajuda": "13/10 · 10:05"
+          },
+          {
+            "texto": "Telhas quebradas\nEstrutura",
+            "principal": "Telhas quebradas",
+            "ajuda": "Estrutura"
+          },
+          {
+            "texto": "Sobrado · Rua dos Ipês, 48\nPaulo Reis",
+            "principal": "Sobrado · Rua dos Ipês, 48",
+            "ajuda": "Paulo Reis"
+          },
+          {
+            "texto": "#2609\nWhatsApp · Tiago",
+            "principal": "#2609",
+            "ajuda": "WhatsApp · Tiago"
+          },
+          {
+            "texto": "Alta",
+            "principal": "Alta",
+            "ajuda": ""
+          },
+          {
+            "texto": "parada há 4d\nespera o proprietário",
+            "principal": "parada há 4d",
+            "ajuda": "espera o proprietário"
+          },
+          {
+            "texto": "Telhados e Lajes\nR$ 4.200,00",
+            "principal": "Telhados e Lajes",
+            "ajuda": "R$ 4.200,00"
+          },
+          {
+            "texto": "Aprovação",
+            "principal": "Aprovação",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1035\n12/10 · 09:30",
+            "principal": "1035",
+            "ajuda": "12/10 · 09:30"
+          },
+          {
+            "texto": "Troca do aquecedor\nHidráulica",
+            "principal": "Troca do aquecedor",
+            "ajuda": "Hidráulica"
+          },
+          {
+            "texto": "Res. Aurora · ap. 41\nMarcos Tavares",
+            "principal": "Res. Aurora · ap. 41",
+            "ajuda": "Marcos Tavares"
+          },
+          {
+            "texto": "#2588\nWhatsApp · Marina",
+            "principal": "#2588",
+            "ajuda": "WhatsApp · Marina"
+          },
+          {
+            "texto": "Normal",
+            "principal": "Normal",
+            "ajuda": ""
+          },
+          {
+            "texto": "parada há 1d\nespera o proprietário",
+            "principal": "parada há 1d",
+            "ajuda": "espera o proprietário"
+          },
+          {
+            "texto": "Hidro Sul\nR$ 1.850,00",
+            "principal": "Hidro Sul",
+            "ajuda": "R$ 1.850,00"
+          },
+          {
+            "texto": "Aprovação",
+            "principal": "Aprovação",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1031\n11/10 · 15:48",
+            "principal": "1031",
+            "ajuda": "11/10 · 15:48"
+          },
+          {
+            "texto": "Tomada da sala sem energia\nElétrica · via IA",
+            "principal": "Tomada da sala sem energia",
+            "ajuda": "Elétrica · via IA"
+          },
+          {
+            "texto": "Ed. Jasmim · ap. 304\nCarla Menezes",
+            "principal": "Ed. Jasmim · ap. 304",
+            "ajuda": "Carla Menezes"
+          },
+          {
+            "texto": "#2561\nWhatsApp · Marina",
+            "principal": "#2561",
+            "ajuda": "WhatsApp · Marina"
+          },
+          {
+            "texto": "Alta",
+            "principal": "Alta",
+            "ajuda": ""
+          },
+          {
+            "texto": "qua 21/10 · 09h\nvisita agendada",
+            "principal": "qua 21/10 · 09h",
+            "ajuda": "visita agendada"
+          },
+          {
+            "texto": "Eletro Pontual\nR$ 180,00",
+            "principal": "Eletro Pontual",
+            "ajuda": "R$ 180,00"
+          },
+          {
+            "texto": "Agendado",
+            "principal": "Agendado",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1018\n06/10 · 11:12",
+            "principal": "1018",
+            "ajuda": "06/10 · 11:12"
+          },
+          {
+            "texto": "Troca do piso da sala\nEstrutura · na gestão",
+            "principal": "Troca do piso da sala",
+            "ajuda": "Estrutura · na gestão"
+          },
+          {
+            "texto": "Ed. Jasmim · ap. 203\nRafael Duarte",
+            "principal": "Ed. Jasmim · ap. 203",
+            "ajuda": "Rafael Duarte"
+          },
+          {
+            "texto": "sem atendimento\nTiago",
+            "principal": "sem atendimento",
+            "ajuda": "Tiago"
+          },
+          {
+            "texto": "Normal",
+            "principal": "Normal",
+            "ajuda": ""
+          },
+          {
+            "texto": "até 21/10\ndia 2 de 4",
+            "principal": "até 21/10",
+            "ajuda": "dia 2 de 4"
+          },
+          {
+            "texto": "Reforma Zanella\nR$ 2.300,00",
+            "principal": "Reforma Zanella",
+            "ajuda": "R$ 2.300,00"
+          },
+          {
+            "texto": "Em execução",
+            "principal": "Em execução",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1012\n01/10 · 08:40",
+            "principal": "1012",
+            "ajuda": "01/10 · 08:40"
+          },
+          {
+            "texto": "Impermeabilização da laje\nEstrutura",
+            "principal": "Impermeabilização da laje",
+            "ajuda": "Estrutura"
+          },
+          {
+            "texto": "Sobrado · Rua dos Ipês, 48\nPaulo Reis",
+            "principal": "Sobrado · Rua dos Ipês, 48",
+            "ajuda": "Paulo Reis"
+          },
+          {
+            "texto": "#2431\nTelefone · Tiago",
+            "principal": "#2431",
+            "ajuda": "Telefone · Tiago"
+          },
+          {
+            "texto": "Alta",
+            "principal": "Alta",
+            "ajuda": ""
+          },
+          {
+            "texto": "atrasada há 2d\nprazo era 15/10",
+            "principal": "atrasada há 2d",
+            "ajuda": "prazo era 15/10"
+          },
+          {
+            "texto": "Telhados e Lajes\nR$ 3.100,00",
+            "principal": "Telhados e Lajes",
+            "ajuda": "R$ 3.100,00"
+          },
+          {
+            "texto": "Em execução",
+            "principal": "Em execução",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "1010\n30/09 · 13:02",
+            "principal": "1010",
+            "ajuda": "30/09 · 13:02"
+          },
+          {
+            "texto": "Instalação de ar-condicionado\nElétrica · na gestão",
+            "principal": "Instalação de ar-condicionado",
+            "ajuda": "Elétrica · na gestão"
+          },
+          {
+            "texto": "Res. Aurora · ap. 41\nMarcos Tavares",
+            "principal": "Res. Aurora · ap. 41",
+            "ajuda": "Marcos Tavares"
+          },
+          {
+            "texto": "sem atendimento\nMarina",
+            "principal": "sem atendimento",
+            "ajuda": "Marina"
+          },
+          {
+            "texto": "Normal",
+            "principal": "Normal",
+            "ajuda": ""
+          },
+          {
+            "texto": "entrega hoje\nno imóvel",
+            "principal": "entrega hoje",
+            "ajuda": "no imóvel"
+          },
+          {
+            "texto": "Clima Sul\nR$ 650,00",
+            "principal": "Clima Sul",
+            "ajuda": "R$ 650,00"
+          },
+          {
+            "texto": "Em execução",
+            "principal": "Em execução",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "0902\n05/09 · 14:50",
+            "principal": "0902",
+            "ajuda": "05/09 · 14:50"
+          },
+          {
+            "texto": "Fechadura da porta de entrada\nChaveiro",
+            "principal": "Fechadura da porta de entrada",
+            "ajuda": "Chaveiro"
+          },
+          {
+            "texto": "Res. Aurora · ap. 22\nJoana Matos",
+            "principal": "Res. Aurora · ap. 22",
+            "ajuda": "Joana Matos"
+          },
+          {
+            "texto": "#2204\nWhatsApp · Marina",
+            "principal": "#2204",
+            "ajuda": "WhatsApp · Marina"
+          },
+          {
+            "texto": "Normal",
+            "principal": "Normal",
+            "ajuda": ""
+          },
+          {
+            "texto": "cancelado 10/10\na pedido da cliente",
+            "principal": "cancelado 10/10",
+            "ajuda": "a pedido da cliente"
+          },
+          {
+            "texto": "—",
+            "principal": "—",
+            "ajuda": ""
+          },
+          {
+            "texto": "Cancelado",
+            "principal": "Cancelado",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "0871\n28/08 · 10:15",
+            "principal": "0871",
+            "ajuda": "28/08 · 10:15"
+          },
+          {
+            "texto": "Troca do chuveiro\nElétrica",
+            "principal": "Troca do chuveiro",
+            "ajuda": "Elétrica"
+          },
+          {
+            "texto": "Ed. Jasmim · ap. 304\nCarla Menezes",
+            "principal": "Ed. Jasmim · ap. 304",
+            "ajuda": "Carla Menezes"
+          },
+          {
+            "texto": "#2121\nWhatsApp · Marina",
+            "principal": "#2121",
+            "ajuda": "WhatsApp · Marina"
+          },
+          {
+            "texto": "Normal",
+            "principal": "Normal",
+            "ajuda": ""
+          },
+          {
+            "texto": "concluído 02/09\ndentro do prazo",
+            "principal": "concluído 02/09",
+            "ajuda": "dentro do prazo"
+          },
+          {
+            "texto": "Eletro Pontual\nR$ 220,00",
+            "principal": "Eletro Pontual",
+            "ajuda": "R$ 220,00"
+          },
+          {
+            "texto": "Concluído",
+            "principal": "Concluído",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ]
+      ]
+    ]
+  },
+  "novo": {
+    "campos": [
+      {
+        "rotulo": "Cliente",
+        "valor": "Carla Menezes · (47) 9 ••••-1234"
+      },
+      {
+        "rotulo": "Imóvel locado",
+        "valor": "Ed. Jasmim · ap. 304 · contrato 2290"
+      },
+      {
+        "rotulo": "Atendente",
+        "valor": "Marina"
+      },
+      {
+        "rotulo": "Como o chamado chegou",
+        "valor": "Atendimento do EvoTalks"
+      },
+      {
+        "rotulo": "Categoria",
+        "valor": "Elétrica"
+      },
+      {
+        "rotulo": "Prioridade",
+        "valor": "Normal"
+      },
+      {
+        "rotulo": "Descrição",
+        "valor": "Chuveiro do banheiro parou de esquentar."
+      },
+      {
+        "rotulo": "Quando dá para entrar",
+        "valor": "seg a sex, após 18h"
+      },
+      {
+        "rotulo": "Entrar sem a cliente",
+        "valor": "Não"
+      }
+    ],
+    "folhas": [
+      "Novo chamado",
+      "×",
+      "Cliente e imóvel",
+      "o imóvel vem dos locados do cliente",
+      "Cliente",
+      "Imóvel locado",
+      "Ed. Jasmim · ap. 304 · contrato 2290",
+      "Atendimento",
+      "quem atende e a conversa que originou o chamado",
+      "Atendente",
+      "Marina",
+      "Como o chamado chegou",
+      "Atendimento do EvoTalks",
+      "Atendimento #2660",
+      "WhatsApp",
+      "aberto agora",
+      "Fila Locação · Marina · hoje às 21:12",
+      "“Boa noite, o chuveiro do banheiro parou de esquentar.”",
+      "Atendimento #2641",
+      "WhatsApp",
+      "encerrado",
+      "já vinculado à O.S. 1042",
+      "Fila Locação · Marina · 17/10 às 14:08",
+      "“A pia da cozinha está vazando embaixo, pinga o dia todo e já molhou o armário.”",
+      "Atendimento #2121",
+      "WhatsApp",
+      "encerrado",
+      "já vinculado à O.S. 0871",
+      "Fila Locação · Tiago · 28/08 às 10:02",
+      "“Preciso trocar o chuveiro do banheiro.”",
+      "Não vincular a um atendimento",
+      "Use quando o pedido chegou por telefone, e-mail ou na imobiliária.",
+      "Os atendimentos mais recentes de Carla Menezes.",
+      "Buscar por protocolo",
+      "O que aconteceu",
+      "com o atendimento vinculado, o resumo vem pronto",
+      "Categoria",
+      "Elétrica",
+      "Prioridade",
+      "Normal",
+      "Descrição",
+      "Chuveiro do banheiro parou de esquentar.",
+      "Quando dá para entrar",
+      "Entrar sem a cliente",
+      "Não",
+      "· Nenhuma foto no atendimento #2660.",
+      "Usar o resumo do atendimento",
+      "Anexar foto ou vídeo",
+      "Nada é gravado antes de você confirmar.",
+      "Cancelar",
+      "Abrir chamado"
+    ],
+    "tabelas": []
+  },
+  "modal": {
+    "campos": [
+      {
+        "rotulo": "Status",
+        "valor": "Orçamento"
+      },
+      {
+        "rotulo": "Prioridade",
+        "valor": "Alta"
+      },
+      {
+        "rotulo": "Categoria",
+        "valor": "Hidráulica"
+      },
+      {
+        "rotulo": "Atendente",
+        "valor": "Marina"
+      },
+      {
+        "rotulo": "Solicitante",
+        "valor": "Carla Menezes · (47) 9 ••••-1234"
+      },
+      {
+        "rotulo": "Proprietário",
+        "valor": "Roberto Alves"
+      },
+      {
+        "rotulo": "Quem paga",
+        "valor": "Proprietário"
+      },
+      {
+        "rotulo": "Valor estimado",
+        "valor": "280,00"
+      },
+      {
+        "rotulo": "Prestador",
+        "valor": "Hidro Sul"
+      },
+      {
+        "rotulo": "Visita",
+        "valor": "ter 20/10 · 14h às 16h"
+      },
+      {
+        "rotulo": "Quando dá para entrar",
+        "valor": "seg a sex, após 18h"
+      },
+      {
+        "rotulo": "Entrar sem a cliente",
+        "valor": "Não"
+      },
+      {
+        "rotulo": "O que a cliente contou",
+        "valor": "A pia da cozinha está vazando embaixo, pinga o dia todo e já molhou o armário. Fechei o registro, mas o cano continua pingando."
+      },
+      {
+        "rotulo": "Observação",
+        "valor": ""
+      }
+    ],
+    "folhas": [
+      "Editar chamado 1042",
+      "×",
+      "Vazamento na pia da cozinha",
+      "1042 · Hidráulica · Ed. Jasmim · ap. 304 · Carla Menezes · aberto em 17/10 às 14:20 pela Williane (IA)",
+      "Status",
+      "avance quando o passo estiver feito",
+      "Novo",
+      "17/10 · 14:20",
+      "Triagem",
+      "17/10 · 15:05",
+      "Orçamento",
+      "2 de 3 cotações",
+      "Aprovação",
+      "acima da alçada",
+      "Agendado",
+      "visita do prestador",
+      "Em execução",
+      "Concluído",
+      "Atendimento vinculado",
+      "a conversa que originou o chamado",
+      "Atendimento #2641",
+      "WhatsApp",
+      "encerrado",
+      "Fila Locação · Marina · 17/10 às 14:08 · Carla Menezes",
+      "“A pia da cozinha está vazando embaixo, pinga o dia todo e já molhou o armário.”",
+      "Abrir atendimento",
+      "Trocar",
+      "Dados do chamado",
+      "o que muda aqui vai para o histórico",
+      "Status",
+      "Orçamento",
+      "Prioridade",
+      "Alta",
+      "Categoria",
+      "Hidráulica",
+      "Atendente",
+      "Marina",
+      "Solicitante",
+      "Proprietário",
+      "Quem paga",
+      "Proprietário",
+      "Valor estimado",
+      "Prestador",
+      "Hidro Sul",
+      "Visita",
+      "Quando dá para entrar",
+      "Entrar sem a cliente",
+      "Não",
+      "Lançar no repasse do proprietário",
+      "fica registrado aqui; a baixa financeira segue no sistema da imobiliária",
+      "Relato do cliente",
+      "resumo da Williane (IA) a partir do WhatsApp ·",
+      "ver a conversa",
+      "O que a cliente contou",
+      "A pia da cozinha está vazando embaixo, pinga o dia todo e já molhou o armário. Fechei o registro, mas o cano continua pingando.",
+      "sifao.jpg",
+      "armario.jpg",
+      "registro.jpg",
+      "+ Anexar",
+      "foto ou vídeo",
+      "Orçamentos",
+      "2 de 3 recebidos",
+      "Prestador",
+      "Valor",
+      "Prazo",
+      "Visita",
+      "Ação",
+      "Hidro Sul",
+      "12 serviços com a imobiliária",
+      "R$ 280,00",
+      "1 dia",
+      "ter 20/10",
+      "Escolhido",
+      "Mestre Encanador",
+      "4 serviços com a imobiliária",
+      "R$ 340,00",
+      "2 dias",
+      "qua 21/10",
+      "Escolher",
+      "+ Pedir a terceira cotação",
+      "5 prestadores de Hidráulica cadastrados",
+      "Aprovação do proprietário · ainda não enviada",
+      "O valor passa da alçada de R$ 250,00. O proprietário recebe valor, fotos e prazo no WhatsApp e responde com um toque.",
+      "Enviar ao proprietário",
+      "Histórico",
+      "do mais antigo ao mais novo",
+      "17/10 · 14:20",
+      "Chamado aberto pela Williane (IA)",
+      "Hidráulica e prioridade Alta sugeridas · 3 fotos anexadas da conversa",
+      "17/10 · 15:05",
+      "Status: Novo para Triagem, por Marina",
+      "Quem paga: proprietário · solução em 72h",
+      "17/10 · 16:40",
+      "Status: Triagem para Orçamento, por Marina",
+      "Cotação de Hidro Sul: R$ 280,00",
+      "17/10 · 17:10",
+      "Cotação de Mestre Encanador: R$ 340,00",
+      "17/10 · 17:25",
+      "Nota interna de Marina",
+      "“Cliente só atende depois das 18h.”",
+      "Nota interna",
+      "só a equipe vê",
+      "Observação",
+      "Avisar a cliente no WhatsApp",
+      "Última alteração: Marina · 17/10 às 17:25",
+      "Cancelar",
+      "Atualizar"
+    ],
+    "tabelas": [
+      [
+        [
+          {
+            "texto": "Hidro Sul\n12 serviços com a imobiliária",
+            "principal": "Hidro Sul",
+            "ajuda": "12 serviços com a imobiliária"
+          },
+          {
+            "texto": "R$ 280,00",
+            "principal": "R$ 280,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "1 dia",
+            "principal": "1 dia",
+            "ajuda": ""
+          },
+          {
+            "texto": "ter 20/10",
+            "principal": "ter 20/10",
+            "ajuda": ""
+          },
+          {
+            "texto": "Escolhido",
+            "principal": "Escolhido",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Mestre Encanador\n4 serviços com a imobiliária",
+            "principal": "Mestre Encanador",
+            "ajuda": "4 serviços com a imobiliária"
+          },
+          {
+            "texto": "R$ 340,00",
+            "principal": "R$ 340,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "2 dias",
+            "principal": "2 dias",
+            "ajuda": ""
+          },
+          {
+            "texto": "qua 21/10",
+            "principal": "qua 21/10",
+            "ajuda": ""
+          },
+          {
+            "texto": "Escolher",
+            "principal": "Escolher",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "+ Pedir a terceira cotação 5 prestadores de Hidráulica cadastrados",
+            "principal": "+ Pedir a terceira cotação",
+            "ajuda": "5 prestadores de Hidráulica cadastrados"
+          }
+        ]
+      ]
+    ]
+  },
+  "locados": {
+    "campos": [
+      {
+        "rotulo": "Buscar por imóvel, locatário, proprietário ou contrato",
+        "valor": ""
+      },
+      {
+        "rotulo": "Contrato",
+        "valor": "todos"
+      },
+      {
+        "rotulo": "Origem",
+        "valor": "todas"
+      },
+      {
+        "rotulo": "Por página",
+        "valor": "25"
+      }
+    ],
+    "folhas": [
+      "Imóveis locados",
+      "8 imóveis locados · 1 contrato vence em 60 dias · 10 chamados abertos",
+      "Imóveis",
+      "Locados",
+      "Chamados",
+      "Campos",
+      "Histórico",
+      "Configurações",
+      "Buscar por imóvel, locatário, proprietário ou contrato",
+      "Contrato",
+      "todos",
+      "Vigentes",
+      "Vencendo em 60 dias",
+      "Encerrados",
+      "Origem",
+      "todas",
+      "Manual",
+      "Imogestão",
+      "Por página",
+      "25",
+      "50",
+      "100",
+      "Buscar",
+      "Limpar",
+      "Cadastro da própria imobiliária. A coluna Origem mostra de onde veio cada locação.",
+      "Novo locado",
+      "Imóvel",
+      "Locatário",
+      "Proprietário",
+      "Contrato",
+      "Vigência",
+      "Aluguel",
+      "Origem",
+      "Chamados",
+      "Funções",
+      "Ed. Jasmim · ap. 101",
+      "fora do catálogo",
+      "Silvia Rocha",
+      "(47) 9 ••••-7741",
+      "Marcelo Tonet",
+      "2310",
+      "Caução",
+      "01/08/2025 a 31/07/2028",
+      "vence em 21 meses",
+      "R$ 1.450,00",
+      "Manual",
+      "nenhum",
+      "Ed. Jasmim · ap. 103",
+      "cód. 0420",
+      "Helena Prado",
+      "(47) 9 ••••-3308",
+      "Rita Boos",
+      "2297",
+      "Fiador",
+      "01/12/2025 a 30/11/2028",
+      "vence em 25 meses",
+      "R$ 1.700,00",
+      "Manual",
+      "1 aberto",
+      "Ed. Jasmim · ap. 203",
+      "cód. 0377",
+      "Rafael Duarte",
+      "(47) 9 ••••-5190",
+      "Lúcia Prado",
+      "2271",
+      "Seguro fiança",
+      "15/11/2023 a 14/11/2026",
+      "vence em 28 dias",
+      "R$ 1.600,00",
+      "Manual",
+      "1 aberto",
+      "Ed. Jasmim · ap. 304",
+      "cód. 0412",
+      "Carla Menezes",
+      "(47) 9 ••••-1234",
+      "Roberto Alves",
+      "2290",
+      "Fiador",
+      "01/04/2026 a 31/03/2027",
+      "vence em 5 meses",
+      "R$ 1.850,00",
+      "Manual",
+      "2 abertos",
+      "Res. Aurora · ap. 12",
+      "cód. 0911",
+      "Beatriz Lemos",
+      "(47) 9 ••••-8826",
+      "Ana Weber",
+      "2255",
+      "Fiador",
+      "10/02/2025 a 09/02/2028",
+      "vence em 15 meses",
+      "R$ 2.100,00",
+      "Manual",
+      "1 aberto",
+      "Res. Aurora · ap. 22",
+      "fora do catálogo",
+      "Joana Matos",
+      "(47) 9 ••••-4417",
+      "Carlos Zimmer",
+      "2289",
+      "Seguro fiança",
+      "20/03/2024 a 19/03/2027",
+      "vence em 5 meses",
+      "R$ 1.980,00",
+      "Manual",
+      "nenhum",
+      "Res. Aurora · ap. 41",
+      "cód. 0845",
+      "Marcos Tavares",
+      "(47) 9 ••••-9052",
+      "Paulo Hering",
+      "2301",
+      "Título de capitalização",
+      "01/06/2026 a 31/05/2029",
+      "vence em 31 meses",
+      "R$ 2.350,00",
+      "Manual",
+      "2 abertos",
+      "Sobrado · Rua dos Ipês, 48",
+      "cód. 1266",
+      "Paulo Reis",
+      "(47) 9 ••••-2760",
+      "Edson Kuhnen",
+      "2262",
+      "Fiador",
+      "05/09/2025 a 04/09/2028",
+      "vence em 22 meses",
+      "R$ 3.200,00",
+      "Manual",
+      "3 abertos",
+      "← anterior",
+      "1",
+      "próxima →",
+      "8 nesta página · 8 no total",
+      "🟢",
+      "— os locados aparecem no cockpit pelo contato do locatário e saem das buscas da assistente de IA.",
+      "Conectado ao portal"
+    ],
+    "tabelas": [
+      [
+        [
+          {
+            "texto": "Ed. Jasmim · ap. 101\nfora do catálogo",
+            "principal": "Ed. Jasmim · ap. 101",
+            "ajuda": "fora do catálogo"
+          },
+          {
+            "texto": "Silvia Rocha\n(47) 9 ••••-7741",
+            "principal": "Silvia Rocha",
+            "ajuda": "(47) 9 ••••-7741"
+          },
+          {
+            "texto": "Marcelo Tonet",
+            "principal": "Marcelo Tonet",
+            "ajuda": ""
+          },
+          {
+            "texto": "2310\nCaução",
+            "principal": "2310",
+            "ajuda": "Caução"
+          },
+          {
+            "texto": "01/08/2025 a 31/07/2028\nvence em 21 meses",
+            "principal": "01/08/2025 a 31/07/2028",
+            "ajuda": "vence em 21 meses"
+          },
+          {
+            "texto": "R$ 1.450,00",
+            "principal": "R$ 1.450,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "nenhum",
+            "principal": "nenhum",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Ed. Jasmim · ap. 103\ncód. 0420",
+            "principal": "Ed. Jasmim · ap. 103",
+            "ajuda": "cód. 0420"
+          },
+          {
+            "texto": "Helena Prado\n(47) 9 ••••-3308",
+            "principal": "Helena Prado",
+            "ajuda": "(47) 9 ••••-3308"
+          },
+          {
+            "texto": "Rita Boos",
+            "principal": "Rita Boos",
+            "ajuda": ""
+          },
+          {
+            "texto": "2297\nFiador",
+            "principal": "2297",
+            "ajuda": "Fiador"
+          },
+          {
+            "texto": "01/12/2025 a 30/11/2028\nvence em 25 meses",
+            "principal": "01/12/2025 a 30/11/2028",
+            "ajuda": "vence em 25 meses"
+          },
+          {
+            "texto": "R$ 1.700,00",
+            "principal": "R$ 1.700,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "1 aberto",
+            "principal": "1 aberto",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Ed. Jasmim · ap. 203\ncód. 0377",
+            "principal": "Ed. Jasmim · ap. 203",
+            "ajuda": "cód. 0377"
+          },
+          {
+            "texto": "Rafael Duarte\n(47) 9 ••••-5190",
+            "principal": "Rafael Duarte",
+            "ajuda": "(47) 9 ••••-5190"
+          },
+          {
+            "texto": "Lúcia Prado",
+            "principal": "Lúcia Prado",
+            "ajuda": ""
+          },
+          {
+            "texto": "2271\nSeguro fiança",
+            "principal": "2271",
+            "ajuda": "Seguro fiança"
+          },
+          {
+            "texto": "15/11/2023 a 14/11/2026\nvence em 28 dias",
+            "principal": "15/11/2023 a 14/11/2026",
+            "ajuda": "vence em 28 dias"
+          },
+          {
+            "texto": "R$ 1.600,00",
+            "principal": "R$ 1.600,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "1 aberto",
+            "principal": "1 aberto",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Ed. Jasmim · ap. 304\ncód. 0412",
+            "principal": "Ed. Jasmim · ap. 304",
+            "ajuda": "cód. 0412"
+          },
+          {
+            "texto": "Carla Menezes\n(47) 9 ••••-1234",
+            "principal": "Carla Menezes",
+            "ajuda": "(47) 9 ••••-1234"
+          },
+          {
+            "texto": "Roberto Alves",
+            "principal": "Roberto Alves",
+            "ajuda": ""
+          },
+          {
+            "texto": "2290\nFiador",
+            "principal": "2290",
+            "ajuda": "Fiador"
+          },
+          {
+            "texto": "01/04/2026 a 31/03/2027\nvence em 5 meses",
+            "principal": "01/04/2026 a 31/03/2027",
+            "ajuda": "vence em 5 meses"
+          },
+          {
+            "texto": "R$ 1.850,00",
+            "principal": "R$ 1.850,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "2 abertos",
+            "principal": "2 abertos",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Res. Aurora · ap. 12\ncód. 0911",
+            "principal": "Res. Aurora · ap. 12",
+            "ajuda": "cód. 0911"
+          },
+          {
+            "texto": "Beatriz Lemos\n(47) 9 ••••-8826",
+            "principal": "Beatriz Lemos",
+            "ajuda": "(47) 9 ••••-8826"
+          },
+          {
+            "texto": "Ana Weber",
+            "principal": "Ana Weber",
+            "ajuda": ""
+          },
+          {
+            "texto": "2255\nFiador",
+            "principal": "2255",
+            "ajuda": "Fiador"
+          },
+          {
+            "texto": "10/02/2025 a 09/02/2028\nvence em 15 meses",
+            "principal": "10/02/2025 a 09/02/2028",
+            "ajuda": "vence em 15 meses"
+          },
+          {
+            "texto": "R$ 2.100,00",
+            "principal": "R$ 2.100,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "1 aberto",
+            "principal": "1 aberto",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Res. Aurora · ap. 22\nfora do catálogo",
+            "principal": "Res. Aurora · ap. 22",
+            "ajuda": "fora do catálogo"
+          },
+          {
+            "texto": "Joana Matos\n(47) 9 ••••-4417",
+            "principal": "Joana Matos",
+            "ajuda": "(47) 9 ••••-4417"
+          },
+          {
+            "texto": "Carlos Zimmer",
+            "principal": "Carlos Zimmer",
+            "ajuda": ""
+          },
+          {
+            "texto": "2289\nSeguro fiança",
+            "principal": "2289",
+            "ajuda": "Seguro fiança"
+          },
+          {
+            "texto": "20/03/2024 a 19/03/2027\nvence em 5 meses",
+            "principal": "20/03/2024 a 19/03/2027",
+            "ajuda": "vence em 5 meses"
+          },
+          {
+            "texto": "R$ 1.980,00",
+            "principal": "R$ 1.980,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "nenhum",
+            "principal": "nenhum",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Res. Aurora · ap. 41\ncód. 0845",
+            "principal": "Res. Aurora · ap. 41",
+            "ajuda": "cód. 0845"
+          },
+          {
+            "texto": "Marcos Tavares\n(47) 9 ••••-9052",
+            "principal": "Marcos Tavares",
+            "ajuda": "(47) 9 ••••-9052"
+          },
+          {
+            "texto": "Paulo Hering",
+            "principal": "Paulo Hering",
+            "ajuda": ""
+          },
+          {
+            "texto": "2301\nTítulo de capitalização",
+            "principal": "2301",
+            "ajuda": "Título de capitalização"
+          },
+          {
+            "texto": "01/06/2026 a 31/05/2029\nvence em 31 meses",
+            "principal": "01/06/2026 a 31/05/2029",
+            "ajuda": "vence em 31 meses"
+          },
+          {
+            "texto": "R$ 2.350,00",
+            "principal": "R$ 2.350,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "2 abertos",
+            "principal": "2 abertos",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "Sobrado · Rua dos Ipês, 48\ncód. 1266",
+            "principal": "Sobrado · Rua dos Ipês, 48",
+            "ajuda": "cód. 1266"
+          },
+          {
+            "texto": "Paulo Reis\n(47) 9 ••••-2760",
+            "principal": "Paulo Reis",
+            "ajuda": "(47) 9 ••••-2760"
+          },
+          {
+            "texto": "Edson Kuhnen",
+            "principal": "Edson Kuhnen",
+            "ajuda": ""
+          },
+          {
+            "texto": "2262\nFiador",
+            "principal": "2262",
+            "ajuda": "Fiador"
+          },
+          {
+            "texto": "05/09/2025 a 04/09/2028\nvence em 22 meses",
+            "principal": "05/09/2025 a 04/09/2028",
+            "ajuda": "vence em 22 meses"
+          },
+          {
+            "texto": "R$ 3.200,00",
+            "principal": "R$ 3.200,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "Manual",
+            "principal": "Manual",
+            "ajuda": ""
+          },
+          {
+            "texto": "3 abertos",
+            "principal": "3 abertos",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ]
+      ]
+    ]
+  },
+  "marcar": {
+    "campos": [
+      {
+        "rotulo": "Locatário",
+        "valor": "Carla Menezes · (47) 9 ••••-1234"
+      },
+      {
+        "rotulo": "Proprietário",
+        "valor": "Roberto Alves"
+      },
+      {
+        "rotulo": "Número do contrato",
+        "valor": "2290"
+      },
+      {
+        "rotulo": "Garantia",
+        "valor": "Fiador"
+      },
+      {
+        "rotulo": "Início do contrato",
+        "valor": "01/04/2026"
+      },
+      {
+        "rotulo": "Fim do contrato",
+        "valor": "31/03/2027"
+      },
+      {
+        "rotulo": "Valor do aluguel",
+        "valor": "1.850,00"
+      },
+      {
+        "rotulo": "Dia do vencimento",
+        "valor": "10"
+      },
+      {
+        "rotulo": "Observação",
+        "valor": ""
+      }
+    ],
+    "folhas": [
+      "Marcar imóvel como locado",
+      "×",
+      "Imóvel do catálogo",
+      "Imóvel fora do catálogo",
+      "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 304",
+      "0412 · Apartamento · Centro · Brusque · R$ 1.850,00 · código interno 5350412",
+      "Em “fora do catálogo” (imóvel administrado que nunca foi anúncio), estes dados são digitados: endereço, tipo, bairro e cidade.",
+      "Locação",
+      "o locatário é um contato do EvoTalks: é por ele que o cockpit acha o imóvel",
+      "Locatário",
+      "Proprietário",
+      "Número do contrato",
+      "Garantia",
+      "Fiador",
+      "Início do contrato",
+      "Fim do contrato",
+      "Valor do aluguel",
+      "Dia do vencimento",
+      "Observação",
+      "Enquanto estiver locado, o imóvel sai das buscas da assistente de IA e passa a aparecer em Locados, onde os chamados de manutenção encontram o imóvel e o locatário.",
+      "Fica no histórico com o seu nome.",
+      "Cancelar",
+      "Marcar como locado"
+    ],
+    "tabelas": []
+  },
+  "imoveis": {
+    "campos": [
+      {
+        "rotulo": "Buscar por código, título ou bairro",
+        "valor": ""
+      },
+      {
+        "rotulo": "Situação",
+        "valor": "todas"
+      },
+      {
+        "rotulo": "Estado",
+        "valor": "todos"
+      },
+      {
+        "rotulo": "Por página",
+        "valor": "25"
+      }
+    ],
+    "folhas": [
+      "Imóveis",
+      "11 campos em uso · 0 imóveis com informação preenchida · 6 locados do catálogo",
+      "Imóveis",
+      "Locados",
+      "Chamados",
+      "Campos",
+      "Histórico",
+      "Configurações",
+      "Buscar por código, título ou bairro",
+      "Situação",
+      "todas",
+      "Disponíveis",
+      "Locados",
+      "Estado",
+      "todos",
+      "Pendentes",
+      "Verificados",
+      "Por página",
+      "25",
+      "50",
+      "100",
+      "Buscar",
+      "Limpar",
+      "Código",
+      "Imóvel",
+      "Bairro",
+      "Valor",
+      "Preenchido",
+      "Status",
+      "Situação",
+      "Funções",
+      "0060",
+      "5350060",
+      "APARTAMENTO A VENDA 2 DORMITORIOS SENDO 1 SUITE , BAIRRO SOUZA CRUZ, 1 GARAGEM",
+      "Apartamento",
+      "Souza Cruz",
+      "R$ 690.000,00",
+      "nada ainda",
+      "Pendente",
+      "Disponível",
+      "0069",
+      "5350069",
+      "AMPLO TERRENO NO CEDRO ALTO",
+      "Terreno",
+      "São João",
+      "R$ 534.900,00",
+      "nada ainda",
+      "Pendente",
+      "Disponível",
+      "2038",
+      "5352038",
+      "AMPLO TERRENO PARA LOCAÇÃO - LIMEIRA",
+      "Terreno",
+      "Limeira Baixa",
+      "R$ 3.500,00",
+      "nada ainda",
+      "Pendente",
+      "Disponível",
+      "2443",
+      "5352443",
+      "SALA COMERCIAL PARA LOCAÇÃO NO CENTRO DE BRUSQUE",
+      "Office",
+      "Centro",
+      "R$ 1.600,00",
+      "nada ainda",
+      "Pendente",
+      "Disponível",
+      "0377",
+      "5350377",
+      "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 203",
+      "Apartamento",
+      "Centro",
+      "R$ 1.600,00",
+      "nada ainda",
+      "Pendente",
+      "Locado",
+      "contrato 2271 · Rafael Duarte",
+      "0412",
+      "5350412",
+      "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 304",
+      "Apartamento",
+      "Centro",
+      "R$ 1.850,00",
+      "nada ainda",
+      "Pendente",
+      "Locado",
+      "contrato 2290 · Carla Menezes",
+      "← anterior",
+      "1",
+      "próxima →",
+      "6 nesta página · 1757 no total · dos quais 6 locados"
+    ],
+    "tabelas": [
+      [
+        [
+          {
+            "texto": "0060\n5350060",
+            "principal": "0060",
+            "ajuda": "5350060"
+          },
+          {
+            "texto": "APARTAMENTO A VENDA 2 DORMITORIOS SENDO 1 SUITE , BAIRRO SOUZA CRUZ, 1 GARAGEM\nApartamento",
+            "principal": "APARTAMENTO A VENDA 2 DORMITORIOS SENDO 1 SUITE , BAIRRO SOUZA CRUZ, 1 GARAGEM",
+            "ajuda": "Apartamento"
+          },
+          {
+            "texto": "Souza Cruz",
+            "principal": "Souza Cruz",
+            "ajuda": ""
+          },
+          {
+            "texto": "R$ 690.000,00",
+            "principal": "R$ 690.000,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "nada ainda",
+            "principal": "nada ainda",
+            "ajuda": ""
+          },
+          {
+            "texto": "Pendente",
+            "principal": "Pendente",
+            "ajuda": ""
+          },
+          {
+            "texto": "Disponível",
+            "principal": "Disponível",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "0069\n5350069",
+            "principal": "0069",
+            "ajuda": "5350069"
+          },
+          {
+            "texto": "AMPLO TERRENO NO CEDRO ALTO\nTerreno",
+            "principal": "AMPLO TERRENO NO CEDRO ALTO",
+            "ajuda": "Terreno"
+          },
+          {
+            "texto": "São João",
+            "principal": "São João",
+            "ajuda": ""
+          },
+          {
+            "texto": "R$ 534.900,00",
+            "principal": "R$ 534.900,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "nada ainda",
+            "principal": "nada ainda",
+            "ajuda": ""
+          },
+          {
+            "texto": "Pendente",
+            "principal": "Pendente",
+            "ajuda": ""
+          },
+          {
+            "texto": "Disponível",
+            "principal": "Disponível",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "2038\n5352038",
+            "principal": "2038",
+            "ajuda": "5352038"
+          },
+          {
+            "texto": "AMPLO TERRENO PARA LOCAÇÃO - LIMEIRA\nTerreno",
+            "principal": "AMPLO TERRENO PARA LOCAÇÃO - LIMEIRA",
+            "ajuda": "Terreno"
+          },
+          {
+            "texto": "Limeira Baixa",
+            "principal": "Limeira Baixa",
+            "ajuda": ""
+          },
+          {
+            "texto": "R$ 3.500,00",
+            "principal": "R$ 3.500,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "nada ainda",
+            "principal": "nada ainda",
+            "ajuda": ""
+          },
+          {
+            "texto": "Pendente",
+            "principal": "Pendente",
+            "ajuda": ""
+          },
+          {
+            "texto": "Disponível",
+            "principal": "Disponível",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "2443\n5352443",
+            "principal": "2443",
+            "ajuda": "5352443"
+          },
+          {
+            "texto": "SALA COMERCIAL PARA LOCAÇÃO NO CENTRO DE BRUSQUE\nOffice",
+            "principal": "SALA COMERCIAL PARA LOCAÇÃO NO CENTRO DE BRUSQUE",
+            "ajuda": "Office"
+          },
+          {
+            "texto": "Centro",
+            "principal": "Centro",
+            "ajuda": ""
+          },
+          {
+            "texto": "R$ 1.600,00",
+            "principal": "R$ 1.600,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "nada ainda",
+            "principal": "nada ainda",
+            "ajuda": ""
+          },
+          {
+            "texto": "Pendente",
+            "principal": "Pendente",
+            "ajuda": ""
+          },
+          {
+            "texto": "Disponível",
+            "principal": "Disponível",
+            "ajuda": ""
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "0377\n5350377",
+            "principal": "0377",
+            "ajuda": "5350377"
+          },
+          {
+            "texto": "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 203\nApartamento",
+            "principal": "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 203",
+            "ajuda": "Apartamento"
+          },
+          {
+            "texto": "Centro",
+            "principal": "Centro",
+            "ajuda": ""
+          },
+          {
+            "texto": "R$ 1.600,00",
+            "principal": "R$ 1.600,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "nada ainda",
+            "principal": "nada ainda",
+            "ajuda": ""
+          },
+          {
+            "texto": "Pendente",
+            "principal": "Pendente",
+            "ajuda": ""
+          },
+          {
+            "texto": "Locado\ncontrato 2271 · Rafael Duarte",
+            "principal": "Locado",
+            "ajuda": "contrato 2271 · Rafael Duarte"
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ],
+        [
+          {
+            "texto": "0412\n5350412",
+            "principal": "0412",
+            "ajuda": "5350412"
+          },
+          {
+            "texto": "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 304\nApartamento",
+            "principal": "APARTAMENTO PARA LOCAÇÃO, 2 DORMITÓRIOS, CENTRO · ED. JASMIM AP. 304",
+            "ajuda": "Apartamento"
+          },
+          {
+            "texto": "Centro",
+            "principal": "Centro",
+            "ajuda": ""
+          },
+          {
+            "texto": "R$ 1.850,00",
+            "principal": "R$ 1.850,00",
+            "ajuda": ""
+          },
+          {
+            "texto": "nada ainda",
+            "principal": "nada ainda",
+            "ajuda": ""
+          },
+          {
+            "texto": "Pendente",
+            "principal": "Pendente",
+            "ajuda": ""
+          },
+          {
+            "texto": "Locado\ncontrato 2290 · Carla Menezes",
+            "principal": "Locado",
+            "ajuda": "contrato 2290 · Carla Menezes"
+          },
+          {
+            "texto": "",
+            "principal": "",
+            "ajuda": ""
+          }
+        ]
+      ]
+    ]
+  },
+  "cockpit-chamados": {
+    "campos": [],
+    "folhas": [
+      "Carla Menezes",
+      "CPF ***.456.789-**",
+      "Inquilina",
+      "2 abertos · 1 concluído ·",
+      "atualizado às 20:41",
+      "Ed. Jasmim · ap. 304",
+      "Não é esta pessoa?",
+      "Chamados (2)",
+      "Imóvel",
+      "Novo",
+      "OS-1042",
+      "Orçamento",
+      "Vazamento na pia da cozinha",
+      "aberta há 6 horas · prioridade alta",
+      "Status",
+      "3 de 7",
+      "Orçamento",
+      "Atendimento",
+      "#2641 · WhatsApp",
+      "Quem paga",
+      "Proprietário",
+      "Valor estimado",
+      "R$ 280,00",
+      "Próximo passo",
+      "Enviar ao proprietário",
+      "Prazo de solução",
+      "ter 20/10 · 15:05",
+      "Abrir na gestão",
+      "OS-1031",
+      "Agendado",
+      "Tomada da sala sem energia",
+      "visita qua 21/10 · 09h às 11h",
+      "OS-0871",
+      "Concluído",
+      "Troca do chuveiro",
+      "concluída em 02/09",
+      "Abrir chamado",
+      "Chamados dos últimos 12 meses."
+    ],
+    "tabelas": []
+  },
+  "cockpit-novo": {
+    "campos": [],
+    "folhas": [
+      "Carla Menezes",
+      "CPF ***.456.789-**",
+      "Inquilina",
+      "2 abertos · 1 concluído ·",
+      "atualizado às 20:41",
+      "Chamados (2)",
+      "Imóvel",
+      "Novo",
+      "Atendimento",
+      "Este · #2660 · WhatsApp",
+      "vinculado",
+      "O chamado fica ligado a esta conversa.",
+      "Imóvel",
+      "Ed. Jasmim · ap. 304",
+      "Locados deste contato.",
+      "O que aconteceu?",
+      "Hidráulica",
+      "Elétrica",
+      "Gás",
+      "Estrutura",
+      "Esquadrias",
+      "Pintura",
+      "Chaveiro",
+      "Outro",
+      "Urgência",
+      "Normal",
+      "Alta",
+      "Emergência",
+      "Emergência avisa a equipe na hora: gás, vazamento forte, curto-circuito.",
+      "Descrição",
+      "Chuveiro do banheiro parou de esquentar.",
+      "Usar o resumo da conversa",
+      "Fotos",
+      "Nenhuma foto nesta conversa. Anexe depois, na gestão.",
+      "Quando dá para entrar",
+      "seg a sex, após 18h",
+      "Autoriza entrar sem a inquilina",
+      "Revisar e abrir chamado",
+      "Nada é gravado antes da confirmação."
+    ],
+    "tabelas": []
+  },
+  "cockpit-confirma": {
+    "campos": [],
+    "folhas": [
+      "Confirme antes de abrir",
+      "Cliente",
+      "Carla Menezes",
+      "Imóvel",
+      "Ed. Jasmim · ap. 304",
+      "Atendimento",
+      "#2660 · este",
+      "Categoria",
+      "Elétrica",
+      "Urgência",
+      "Normal",
+      "Fotos",
+      "nenhuma",
+      "Prazo de solução",
+      "5 dias",
+      "Conferi os dados com a cliente",
+      "Voltar e editar",
+      "Abrir chamado",
+      "depois de confirmar",
+      "Protocolo copiado. A equipe vê o chamado com o status Novo.",
+      "OS-1052 aberta",
+      "Ver na gestão"
+    ],
+    "tabelas": []
+  }
+}

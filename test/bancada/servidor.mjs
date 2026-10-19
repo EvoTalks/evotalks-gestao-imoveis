@@ -8,7 +8,8 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL } = {}) {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null } = {}) {
+  if (fixture && portalRealUrl) throw new Error('Fixture não pode usar portal real.');
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
   const produtos = [
@@ -64,6 +65,13 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
     function json(status, corpo) { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(corpo)); }
     const url = new URL(req.url, 'http://localhost');
     try {
+      if (fixture && (url.pathname.startsWith('/bancada/sdk/') || url.pathname.startsWith('/api/ext/'))) {
+        if (url.pathname.startsWith('/api/ext/') && req.headers.authorization !== 'Bearer bancada-sintetica') return json(401, { erro: 'nao_autorizado' });
+        let body;
+        if (req.method === 'POST') { let texto = ''; for await (const chunk of req) { texto += chunk; if (texto.length > 256 * 1024) return json(413, { erro: 'corpo_grande' }); } body = JSON.parse(texto || '{}'); }
+        const r = fixture.responder(req.method, url, body);
+        return json(r.status, r.corpo);
+      }
       if (url.pathname.startsWith('/bancada/sdk/')) {
         if (req.method !== 'GET') return json(405, { erro: 'somente_leitura' });
         const nome = url.pathname.slice('/bancada/sdk/'.length);
