@@ -8,7 +8,10 @@ test('F11: diálogo gi-os acessível aos três perfis e edição compartilhada',
   assert.ok(os, 'contribuição gi-os ausente');
   assert.equal(os.type, 'chatMenu'); assert.equal(os.url, 'app/os.html');
   assert.deepEqual(os.visibility.userTypes, [0, 1, 2]);
-  assert.deepEqual(os.presentation, { mode: 'dialog', size: 'xl' });
-  for (const tela of ['chamados', 'os']) assert.match(ler('app/' + tela + '.html'), /chamado-form\.js\?v=0\.25\.3/);
+  assert.deepEqual(os.presentation, { mode: 'dialog', size: 'full' });
+  assert.match(ler('app/os.html'), /id="b-fechar"/);
+  assert.match(ler('app/os.js'), /Voltar ao cockpit/);
+  assert.match(ler('app/os.css'), /\.gi-form-inline \.gi-modal-corpo \{[^}]*overflow-y:auto/);
+  for (const tela of ['chamados', 'os']) assert.match(ler('app/' + tela + '.html'), /chamado-form\.js\?v=0\.26\.0/);
   for (const nome of ['app/os.js', 'app/painel.js', 'app/chamado-form.js']) assert.doesNotMatch(ler(nome), /\bopenHtml\b|\b(?:prompt|confirm|alert)\s*\(/);
 });

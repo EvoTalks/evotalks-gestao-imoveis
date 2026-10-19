@@ -151,7 +151,7 @@ test('F9: ajustes após o teste real, sem instância', async t => {
     });
     await t.test('6b: cockpit exige revisão e ação explícita mesmo com conferência pré-marcada', async () => {
       await navegar('painel', '?escrita=1'); await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-      await b.preencher('#cp-descricao', 'Cockpit Sintético F9');
+      await b.preencher('#cp-titulo', 'Cockpit Sintético F9'); await b.preencher('#cp-descricao', 'Relato sintético F9');
       const escritas = () => b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST' && c.caminho.endsWith('/chamados')).length);
       const antes = await escritas();
       assert.equal(await b.avaliar(() => !!document.querySelector('#cp-confirmar')), false);

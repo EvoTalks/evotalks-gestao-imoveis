@@ -126,13 +126,13 @@ try {
       await b.clicar('[data-categoria="eletrica"]'); await b.clicar('[data-prioridade="alta"]');
       await b.clicar('[data-foto]'); await b.clicar('#cp-mais-detalhes summary'); await b.preencher('#cp-disponibilidade', 'Após 18h');
       await capturar(largura + '-' + tema + '-novo-vinculado');
-      await b.clicar('#cp-revisar');
+      if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
       assert.match(await texto('#cp-conteudo'), /Confirme antes de abrir/);
       assert.equal(await b.avaliar(() => cenario.posts), 0);
       await capturar(largura + '-' + tema + '-confirmacao');
       await b.clicar('#cp-voltar');
       assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Relato de teste sintético.');
-      await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+      if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
       await b.esperar(() => document.querySelector('#cp-sucesso')?.textContent.includes('aberta'));
       assert.equal(await b.avaliar(() => !!document.querySelector('#cp-ver-gestao')), true);
       const criacao = await b.avaliar(() => JSON.parse(bancada.chamadas.find(c => c.method === 'POST').body));
@@ -192,7 +192,10 @@ try {
 
   await b.navegar(base + '?cenario=fixo'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await new Promise(r => setTimeout(r, 200));
-  assert.equal(await b.avaliar(() => cenario.alturas.length), 1);
+  const pedidosFixos = await b.avaliar(() => cenario.alturas.length);
+  assert.ok(pedidosFixos > 0, 'o host recebe o ajuste inicial de altura');
+  await new Promise(r => setTimeout(r, 500));
+  assert.equal(await b.avaliar(() => cenario.alturas.length), pedidosFixos, 'applied:false encerra novas tentativas no slot fixo');
   prova('resize applied:false encerra pedidos para slot fixo');
 
   await b.navegar(base); await pronto();
@@ -208,21 +211,21 @@ try {
 
   await b.navegar(base + '?escrita=1&cenario=recusar'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Preservar no erro');
-  await b.clicar('#cp-revisar');
+  if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
   await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Título recusado'));
   await b.clicar('#cp-voltar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Preservar no erro');
   await b.avaliar(() => { cenario.tipo = 'semreleitura'; });
-  await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+  if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Chamado aberto'));
   assert.equal(await b.avaliar(() => !!document.querySelector('#cp-confirmar')), false);
   prova('422 preserva formulário; releitura recusada após POST mantém sucesso e evita nova gravação');
 
   await b.navegar(base + '?escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-  await b.preencher('#cp-descricao', 'Abertura incerta sintética'); await b.clicar('#cp-revisar');
+  await b.preencher('#cp-descricao', 'Abertura incerta sintética'); if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
   await b.avaliar(() => { cenario.tipo = 'erro'; bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
   const postsIncerta = await b.avaliar(() => cenario.posts);
@@ -237,7 +240,7 @@ try {
   // Releitura recusada mantém conferência; trocar de atendimento abandona a incerteza antiga.
   await b.navegar(base + '?escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-  await b.preencher('#cp-descricao', 'Incerta só no atendimento original RC3'); await b.clicar('#cp-revisar');
+  await b.preencher('#cp-descricao', 'Incerta só no atendimento original RC3'); if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
   await b.avaliar(() => { cenario.tipo = 'erro'; bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
   await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
   const postsFalha = await b.avaliar(() => cenario.posts);
@@ -268,7 +271,7 @@ try {
   // Sem chamado na releitura, só a tentativa explícita pode mandar outro POST.
   await b.navegar(base + '?escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-  await b.preencher('#cp-descricao', 'POST não chegou ao portal RC3'); await b.clicar('#cp-revisar');
+  await b.preencher('#cp-titulo', 'POST não chegou ao portal RC3'); await b.preencher('#cp-descricao', 'POST não chegou ao portal RC3'); if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
   await b.avaliar(() => {
     const http = omni.http.request;
     omni.http.request = async op => {
@@ -291,7 +294,7 @@ try {
   for (const mudanca of ['chat', 'contato', 'conferencia-tardia']) {
     await b.navegar(base + '?escrita=1'); await pronto();
     await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-    await b.preencher('#cp-descricao', 'Isolamento da incerteza RC3 ' + mudanca); await b.clicar('#cp-revisar');
+    await b.preencher('#cp-descricao', 'Isolamento da incerteza RC3 ' + mudanca); if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
     await b.avaliar(() => { cenario.tipo = 'erro'; bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
     await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
     const anteriores = await b.avaliar(() => ({ posts: cenario.posts, locacoes: bancada.chamadas.filter(c => c.caminho.endsWith('/locacoes')).length }));
@@ -326,7 +329,7 @@ try {
 
   await b.navegar(base + '?escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Não abrir no chat errado');
-  await b.clicar('#cp-revisar');
+  if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
   await b.avaliar(async () => {
     const user = omni.session.getUser;
     omni.session.getUser = async () => { await omni.chats.select(8802); return user(); };
@@ -346,7 +349,7 @@ try {
 
   await b.navegar(base + '?demonstracao=1&escrita=1'); await pronto();
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Chamado sintético');
-  await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+  if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => !!document.querySelector('#cp-sucesso'));
   assert.equal(await b.avaliar(() => cenario.tentativasRede), 0);
   assert.equal(await b.avaliar(() => bancada.rede.length + bancada.chamadas.length), 0);
@@ -368,7 +371,7 @@ try {
     assert.equal(await b.avaliar(() => window.__xss), undefined);
   }
   await b.preencher('#cp-descricao', '<img src=x onerror="window.__xss=1">');
-  await b.clicar('#cp-revisar');
+  if (!await b.avaliar(() => document.querySelector('#cp-titulo')?.value)) await b.preencher('#cp-titulo', 'Chamado sintético Cockpit'); await b.clicar('#cp-revisar');
   await capturar('hostil-confirmacao');
   assert.equal(await b.avaliar(() => document.querySelectorAll('#gi-cockpit img').length), 0);
   assert.equal(await b.avaliar(() => window.__xss), undefined);

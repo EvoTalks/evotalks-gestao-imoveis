@@ -99,16 +99,18 @@ try {
   });
   await caso('gravação de Novo e criação incerta impedem releitura', async () => {
     await abrir(); await b.clicar('#cp-tab-novo'); await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-    await b.preencher('#cp-descricao', 'Incerta F19'); await b.clicar('#cp-revisar');
+    await b.preencher('#cp-titulo', 'Incerta F19'); await b.preencher('#cp-descricao', 'Incerta F19'); await b.clicar('#cp-revisar');
+    assert.match(await b.avaliar(() => document.querySelector('#cp-conteudo').textContent), /Incerta F19/);
     await b.avaliar(() => {
       const http = omni.http.request;
       omni.http.request = op => {
-        if (op.method === 'POST') return new Promise((resolve, reject) => { bancada.recusar = () => reject(Object.assign(new Error('Resposta perdida'), { code: 'timeout' })); });
+        if (op.method === 'POST') { bancada.postTentado = JSON.parse(op.body); return new Promise((resolve, reject) => { bancada.recusar = () => reject(Object.assign(new Error('Resposta perdida'), { code: 'timeout' })); }); }
         if (op.url.endsWith('/chamados')) return Promise.reject(new Error('Conferência fora'));
         return http(op);
       };
     });
     await b.clicar('#cp-confirmar'); await b.esperar(() => !!bancada.recusar);
+    assert.equal(await b.avaliar(() => bancada.postTentado.titulo), 'Incerta F19');
     await zerar(); await marca(); await acionar(); assert.equal((await consultas()).length, 0);
     await b.avaliar(() => bancada.recusar());
     await b.esperar(() => document.querySelector('#cp-confirmar').textContent === 'Conferir se abriu');

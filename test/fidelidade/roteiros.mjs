@@ -43,6 +43,7 @@ export async function abrirExtensao(q, tamanho) {
       } else {
         await b.clicar('#cp-tab-novo'); await b.esperar(() => !!document.querySelector('#cp-descricao'));
         await b.clicar('[data-categoria="eletrica"]'); await b.clicar('[data-prioridade="normal"]');
+        await b.preencher('#cp-titulo', 'Cano quebrado na cozinha');
         await b.preencher('#cp-descricao',formulario.descricao);
         await b.preencher('#cp-disponibilidade',formulario.disponibilidade);
         if (q === 'cockpit-confirma' || q === 'cockpit-sucesso') {

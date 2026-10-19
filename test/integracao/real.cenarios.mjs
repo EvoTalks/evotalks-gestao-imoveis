@@ -199,7 +199,7 @@ export async function testarReal(b, origem, real) {
       await b.esperar(() => !!document.querySelector('[data-chamado]'));
       assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true);
       assert.match(await texto('#cp-conteudo'), /Reparo Sintético Integração/);
-      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Cockpit Sintético Integração');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração'); await b.preencher('#cp-descricao', 'Cockpit Sintético Integração');
       await b.captura('integracao-i-novo-vinculado');
       await b.clicar('#cp-revisar'); await b.captura('integracao-i-confirmacao'); await b.clicar('#cp-confirmar');
       await b.esperar(() => !!document.querySelector('#cp-sucesso'));

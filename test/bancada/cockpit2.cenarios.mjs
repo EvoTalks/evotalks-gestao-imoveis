@@ -116,9 +116,9 @@ export async function testarCockpit2(b, base) {
   await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
   assert.equal(await b.avaliar(() => document.querySelector('#cp-mais-detalhes').open), false);
   await b.clicar('#cp-ultima'); await b.esperar(() => document.querySelector('#cp-descricao').value.includes('Relato sintético'));
-  assert.equal(await b.avaliar(() => !!document.querySelector('#cp-titulo')), false);
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').getAttribute('aria-required') === 'true'), true);
   await b.clicar('[data-categoria="eletrica"]');
-  await b.clicar('#cp-revisar'); assert.match(await texto('[data-kv="Categoria"]'), /Elétrica/);
+  await b.preencher('#cp-titulo', 'Reparo sintético Cockpit 2'); await b.clicar('#cp-revisar'); assert.match(await texto('[data-kv="Categoria"]'), /Elétrica/);
   await b.clicar('#cp-voltar');
   await b.avaliar(() => { omni.chats.getMessages = async () => []; }); await b.clicar('#cp-ultima'); await b.esperar(() => document.querySelector('#cp-ultima-recado').textContent.includes('Nenhuma mensagem'));
   await b.avaliar(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));

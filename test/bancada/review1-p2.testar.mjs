@@ -40,7 +40,7 @@ for (const [telefone, nome] of [['00000000002', '00000000002'], ['', 'Contato #9
     assert.equal(await b.avaliar(() => bancada.aberturas[0].params.nome), nome);
     assert.equal(await b.avaliar(() => bancada.aberturas[0].params.contatoId), 9902);
     await b.clicar('#cp-tab-novo');
-    await b.preencher('#cp-descricao', 'Reparo sintético para contato sem nome');
+    await b.preencher('#cp-titulo', 'Reparo sintético para contato sem nome'); await b.preencher('#cp-descricao', 'Reparo sintético para contato sem nome');
     await b.clicar('#cp-revisar');
     assert.doesNotMatch(await b.avaliar(() => document.querySelector('#cp-conteudo').textContent), /Locatário Demonstração Um/);
     await b.clicar('#cp-confirmar');
