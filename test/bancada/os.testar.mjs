@@ -26,6 +26,32 @@ try {
     assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /Editar chamado 1001/);
     assert.equal(await b.avaliar(async () => await omni.storage.get('gi-os-alvo') ?? null), null);
   }
+  const antesFecharDireto = await b.avaliar(() => ({
+    fechamentos: bancada.fechamentos,
+    consultasLista: bancada.chamadas.filter(c => /chamados/.test(c.caminho) && !/\/1(?:\/|$)/.test(c.caminho)).length
+  }));
+  await b.clicar('.gi-modal [data-cancelar]');
+  await b.esperar(() => window.bancada.fechamentos > 0);
+  assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => /chamados/.test(c.caminho) && !/\/1(?:\/|$)/.test(c.caminho)).length), antesFecharDireto.consultasLista, 'Fechar o formulário direto não carrega a listagem');
+  await abrir('chamado=1'); await pronto();
+  await b.avaliar(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const dt = new DataTransfer(); dt.items.add(new File([blob], 'rascunho.png', { type: 'image/png' }));
+    const input = document.querySelector('#c-pasta'); input.files = dt.files; input.dispatchEvent(new Event('change'));
+  });
+  await b.esperar(() => document.querySelectorAll('#c-pendentes img').length === 1);
+  const fechamentosAntesConfirmacao = await b.avaliar(() => bancada.fechamentos);
+  await b.clicar('.gi-modal [data-cancelar]');
+  await b.esperar(() => !document.querySelector('#c-descarte').hidden);
+  assert.equal(await b.avaliar(() => bancada.fechamentos), fechamentosAntesConfirmacao, 'rascunho pendente exige confirmação antes de fechar');
+  await b.clicar('#c-descartar');
+  await b.esperar(() => window.bancada.fechamentos > 0);
+  await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));
+  await b.clicar('[data-os="1"]'); await pronto();
+  assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-cancelar]').textContent.trim()), 'Voltar à lista');
+  await b.clicar('.gi-modal [data-cancelar]');
+  await b.esperar(() => !!document.querySelector('[data-os]') && !document.querySelector('.gi-modal'));
   process.stdout.write('OK F18 alvo por storage/params exige contato selecionado; divergente, sem contato e sem atendimento descartados; mesmo contato edita\n');
   // RC3: o carregamento não pode roubar foco nem emitir erro antes da resposta.
   await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));

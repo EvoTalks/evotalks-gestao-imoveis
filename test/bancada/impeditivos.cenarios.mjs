@@ -139,7 +139,7 @@ export async function testarImpeditivos(b, origem, real) {
       const obter = GI.chamadosObter;
       GI.chamadosObter = async n => { const d = await obter(n); d.chamado.atendimento.iniciado_em = '1970-01-21T12:00:00Z'; return d; };
     });
-    await b.clicar('[data-cancelar]');
+    await b.navegar(origem + '/app/os.html?perfil=supervisor');
     await b.esperar(() => !!document.querySelector('[data-os]'));
     await b.clicar('[data-os="' + c1.id + '"]');
   }

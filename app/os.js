@@ -25,9 +25,11 @@
     if (g !== geracao) return;
     recado('', 'info'); el('os-listagem').hidden = true; el('os-edicao').hidden = false;
     var form = GI.criarChamadoForm({ apresentar: function (op) { return g === geracao ? apresentar(op) : Promise.resolve(null); }, contatoInicial: contato });
-    form.formulario(detalhe).then(function () {
+    form.formulario(detalhe).then(function (resultado) {
       if (g !== geracao) return;
-      fecharEdicao = null; voltar();
+      fecharEdicao = null;
+      if (resultado === null && !listaVista) { fecharHost = false; fechar(); return; }
+      voltar();
     }).catch(function () { if (g === geracao) recado('Não foi possível editar este chamado. Tente novamente.', 'erro'); });
   }
   function abrir(n) {
