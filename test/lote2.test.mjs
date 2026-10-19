@@ -74,7 +74,7 @@ test('lote 2: regressões no navegador', async t => {
     });
     await t.test('18c: troca silenciosa antes do POST reabilita confirmação', async () => {
       await cockpit('?escrita=1');
-      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-descricao', 'Reparo sintético');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value)); await b.preencher('#cp-titulo', 'Reparo sintético'); await b.preencher('#cp-descricao', 'Relato sintético');
       await b.clicar('#cp-revisar');
       await b.avaliar(() => { omni.session.getUser = async () => { omni.chats.getSelected = async () => ({ id: 8802, contactId: 9902 }); return { id: 9999 }; }; });
       await b.clicar('#cp-confirmar');

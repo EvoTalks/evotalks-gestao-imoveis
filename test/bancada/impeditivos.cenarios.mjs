@@ -92,7 +92,7 @@ export async function testarImpeditivos(b, origem, real) {
   const indice = await b.avaliar(() => Array.from(document.querySelector('#cp-novo-imovel').options).find(o => o.textContent.includes('F14-BETA')).value);
   await b.preencher('#cp-novo-imovel', indice);
   assert.match(await texto('.gi-cp-imovel-novo'), /Residência Beta Sintética F14.*F14-BETA/);
-  await b.preencher('#cp-descricao', 'Novo Segundos Sintético F14'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
+  await b.preencher('#cp-titulo', 'Novo Segundos Sintético F14'); await b.preencher('#cp-descricao', 'Novo Segundos Sintético F14'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => !!document.querySelector('#cp-sucesso'));
   const criado = (await api('/contatos/9901/chamados')).rows.find(c => c.titulo === 'Novo Segundos Sintético F14');
   assert.equal(criado.locacao_id, l2.id); assert.equal(new Date(criado.atendimento.iniciado_em).toISOString(), '2025-10-09T08:53:20.000Z');

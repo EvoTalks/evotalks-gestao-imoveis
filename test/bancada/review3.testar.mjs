@@ -94,6 +94,7 @@ try {
     await caso(remover ? 'locação removida (' + remover + ') preserva rascunho e exige nova escolha explícita' : 'reordenar locações conserva seleção por ID no Novo e no cabeçalho', async () => {
       await abrir(); await b.clicar('#cp-tab-novo');
       await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
+      await b.preencher('#cp-titulo', 'Contrato C1 sintético');
       await b.preencher('#cp-descricao', 'Texto do contrato C1');
       await b.avaliar(() => { document.querySelector('#cp-mais-detalhes').open = true; });
       await b.preencher('#cp-chaves', 'Portaria');
@@ -130,7 +131,7 @@ try {
           assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Texto do contrato C1');
           assert.equal(await b.avaliar(() => document.querySelector('#cp-revisar').disabled), false);
           await b.clicar('#cp-revisar');
-          assert.match(await b.avaliar(() => document.querySelector('[data-kv="Contrato"] .v').textContent), /^DEMO-C3$/);
+          assert.equal(await b.avaliar(() => document.querySelector('[data-kv="Imóvel"] .v').textContent), 'Contrato Vencido Demonstração');
         }
       } else {
         assert.equal(await b.avaliar(() => document.querySelector('#cp-novo-imovel').value), '1');
@@ -138,7 +139,7 @@ try {
         assert.equal(await b.avaliar(() => document.querySelector('#cp-imovel').value), '1');
         assert.deepEqual(await b.avaliar(() => [...document.querySelector('#cp-imovel').options].map(o => o.value)), ['3', '1']);
         await b.clicar('#cp-revisar');
-        assert.match(await b.avaliar(() => document.querySelector('[data-kv="Contrato"] .v').textContent), /^DEMO-C1$/);
+        assert.match(await b.avaliar(() => document.querySelector('[data-kv="Imóvel"] .v').textContent), /DEMO-C1/);
       }
     });
   }

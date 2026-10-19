@@ -2,13 +2,16 @@
 (function () {
   'use strict';
   var el = function (id) { return document.getElementById(id); }, e = GI.escapar;
-  var geracao = 0, contato = null, fecharEdicao = null, fecharHost = false, listaVista = false, demoItens = [];
+  var geracao = 0, contato = null, fecharEdicao = null, fecharHost = false, listaVista = false, veioDoCockpit = false, demoItens = [];
   function id(v) { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; }
   function mapa(m, k) { return Object.hasOwn(m, k) ? m[k] : 'Não informado'; }
   function demo() { return GI.cfg('modoDemonstracao', false) === true; }
   function recado(t, tipo) { el('os-recado').textContent = t || ''; GI.recado(t, tipo || 'info'); }
   function fechar() {
     Promise.resolve().then(function () { return omni.ui.close(); }).catch(function () { recado('Não foi possível fechar. Feche pela janela do atendimento.', 'erro'); });
+  }
+  function solicitarFechamento() {
+    if (fecharEdicao) { fecharHost = true; fecharEdicao(false); } else fechar();
   }
   function voltar() {
     if (fecharEdicao) { fecharEdicao(false); return; }
@@ -75,6 +78,7 @@
     return Promise.resolve().then(function () { return omni.storage.get('gi-os-alvo'); }).then(function (valor) {
       return Promise.resolve().then(function () { return omni.storage.remove('gi-os-alvo'); }).then(function () { return valor; });
     }).catch(function () { return null; }).then(function (valor) {
+      if (valor) veioDoCockpit = true;
       var idade = valor && typeof valor.em === 'number' && valor.em > 0 ? Date.now() - valor.em : NaN;
       var destino = direto ? params : Number.isFinite(idade) && idade >= 0 && idade <= 60000 ? valor : null;
       if (!destino || !id(destino.chamadoId) || !id(destino.contatoId)) return null;
@@ -88,7 +92,7 @@
     }).catch(function () { return null; });
   }
   el('b-voltar').onclick = voltar;
-  el('b-fechar').onclick = function () { if (fecharEdicao) { fecharHost = true; fecharEdicao(false); } else fechar(); };
+  el('b-fechar').onclick = solicitarFechamento;
   el('b-atualizar').onclick = carregar;
   el('b-novo').onclick = function () { if (GI.modo === 'portal' && contato) editar(null, ++geracao); };
   GI.pronto(function (ctx) {
@@ -103,7 +107,14 @@
       });
       omni.on('destroy', function () { ++geracao; if (fecharEdicao) fecharEdicao(true); });
     }
+    var params = ctx && ctx.contribution && ctx.contribution.params;
     var g = geracao;
-    return alvo(ctx).then(function (n) { if (g !== geracao) return; if (n && !demo() && GI.modo === 'portal') abrir(n); else return carregar(); });
+    veioDoCockpit = !!id(params && params.chatId);
+    return alvo(ctx).then(function (n) {
+      if (g !== geracao) return;
+      veioDoCockpit = veioDoCockpit || !!n;
+      el('b-fechar').textContent = veioDoCockpit ? '← Voltar ao cockpit' : 'Fechar';
+      if (n && !demo() && GI.modo === 'portal') abrir(n); else return carregar();
+    });
   });
 })();

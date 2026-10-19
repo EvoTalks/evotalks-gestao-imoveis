@@ -62,6 +62,7 @@ async function novo(msgs) {
   if (msgs) await b.avaliar(msgs => { bancada.msgs = msgs; }, msgs);
   await b.clicar('#cp-tab-novo');
   if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
+  await b.preencher('#cp-titulo', 'Chamado sintético F24');
   await b.esperar(() => !!document.querySelector('[data-foto]'));
 }
 async function salvarEdicao() { await b.clicar('#cp-edit-salvar'); await b.esperar(() => !document.querySelector('#cp-edit-form')); }
@@ -207,21 +208,22 @@ try {
     await b.clicar('#cp-fotos-limpar'); assert.match(await texto('#cp-fotos-contador'), /0 foto/);
     assert.equal(await b.avaliar(() => [...document.querySelectorAll('[data-foto]')].every(el => el.classList.contains('ph'))), true);
     await b.clicar('[data-foto="F24-24"]'); await b.clicar('[data-foto="F24-erro"]');
-    await b.preencher('#cp-descricao', 'Fotos F24'); await b.clicar('#cp-revisar'); assert.match(await texto('#cp-conteudo'), /2 foto\(s\)/);
+    await b.preencher('#cp-descricao', 'Fotos F24'); await b.clicar('#cp-revisar'); assert.match(await texto('#cp-conteudo'), /2 foto\(s\)/); assert.match(await texto('#cp-conteudo'), /Chamado sintético F24/);
     await b.clicar('#cp-voltar'); assert.equal(await b.avaliar(() => document.querySelector('[data-foto="F24-24"]').getAttribute('aria-checked')), 'true');
     await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
     assert.deepEqual(await b.avaliar(() => JSON.parse(bancada.chamadas.find(r => r.method === 'POST' && /\/chamados$/.test(r.caminho)).body).anexos.map(a => a.file_ref)), ['F24-24', 'F24-erro']);
     assert.equal(await b.avaliar(() => bancada.getMessages.filter(x => x.limit === 50).length), 1);
   });
   await caso('POST sem resposta confere ausência, preserva fotos e retry cria só um chamado', async () => {
-    await novo(); await b.clicar('[data-foto]');  await b.preencher('#cp-descricao', 'Preservar relato');
+    await novo(); await b.clicar('[data-foto]'); await b.preencher('#cp-titulo', 'Retry sintético F24'); await b.preencher('#cp-descricao', 'Preservar relato');
     await b.avaliar(() => { bancada.semResposta = true; }); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
     await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Tentar de novo');
     assert.match(await texto('#cp-recado'), /Não consegui falar com o servidor\. O chamado não foi aberto\. Confira sua conexão e tente de novo\./);
-    await b.clicar('#cp-voltar'); assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Preservar relato');
+    await b.clicar('#cp-voltar'); assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Preservar relato'); assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), 'Retry sintético F24');
     assert.equal(await b.avaliar(() => document.querySelector('[data-foto]').getAttribute('aria-checked')), 'true');
     await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
     assert.equal(await b.avaliar(() => bancada.chamadas.filter(r => r.method === 'POST' && /\/chamados$/.test(r.caminho)).length), 1);
+    assert.equal(await b.avaliar(() => JSON.parse(bancada.chamadas.find(r => r.method === 'POST' && /\/chamados$/.test(r.caminho)).body).titulo), 'Retry sintético F24');
     assert.equal(await b.avaliar(() => bancada.chamadas.find(r => r.method === 'POST' && /\/chamados$/.test(r.caminho)).timeout), 30000);
     await novo([{ direction: 'out', text: 'Só assistente', fileRef: 'F24-0', mimetype: 'image/png' }]); await b.clicar('#cp-ultima');
     await b.esperar(() => document.querySelector('#cp-ultima-recado').textContent !== '');

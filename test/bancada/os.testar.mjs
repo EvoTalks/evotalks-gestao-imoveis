@@ -123,6 +123,35 @@ try {
     assert.equal(await b.avaliar(() => document.documentElement.scrollWidth <= innerWidth), true);
     await b.captura('os-' + largura + '-' + tema);
   }
+  for (const tema of ['claro', 'escuro']) for (const [largura, altura] of [[1366, 900], [1366, 720]]) {
+    await b.viewport(largura, altura); await abrir('chamado=1&targetchat=8802&tema=' + tema); await pronto();
+    assert.equal(await b.avaliar(() => document.querySelector('#b-fechar').textContent.trim()), '← Voltar ao cockpit', 'abertura pelo cockpit oferece retorno');
+    const caixas = await b.avaliar(() => {
+      const corpo = document.querySelector('.gi-modal-corpo'), rodape = document.querySelector('.gi-modal-rodape');
+      const prestador = document.querySelector('#c-prestador-campo');
+      const ultima = document.querySelector('#c-ultima');
+      const r = n => { const x = n.getBoundingClientRect(); return { top:x.top, bottom:x.bottom }; };
+      return { overflow:getComputedStyle(corpo).overflowY, corpo:r(corpo), rodape:r(rodape), prestador:r(prestador), ultima:r(ultima) };
+    });
+    assert.equal(caixas.overflow, 'auto', 'corpo do formulário rola');
+    assert.ok(caixas.rodape.top >= caixas.corpo.top && caixas.rodape.bottom <= altura, 'rodapé permanece dentro da janela: ' + JSON.stringify(caixas));
+    assert.ok(caixas.rodape.top >= caixas.corpo.bottom, 'rodapé não cobre o corpo rolável');
+    await b.captura('os-0260-' + largura + 'x' + altura + '-' + tema);
+    if (tema === 'escuro' && altura === 720) {
+      await b.avaliar(async () => {
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2;
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const dt = new DataTransfer(); dt.items.add(new File([blob], 'rascunho-retorno.png', { type: 'image/png' }));
+        const input = document.querySelector('#c-pasta'); input.files = dt.files; input.dispatchEvent(new Event('change'));
+      });
+      await b.esperar(() => document.querySelectorAll('#c-pendentes img').length === 1);
+      await b.clicar('#b-fechar');
+      await b.esperar(() => !document.querySelector('#c-descarte').hidden);
+      assert.equal(await b.avaliar(() => bancada.fechamentos), 0, 'retorno ao cockpit respeita alterações não salvas');
+      await b.clicar('#c-descartar'); await b.esperar(() => bancada.fechamentos > 0);
+    }
+  }
+  process.stdout.write('OK N2 diálogo: tela full, retorno ao cockpit; rodapé fora do corpo rolável; capturas 1366×900/720 claro/escuro\n');
   process.stdout.write('OK F11 params: edição completa inline, status, prioridade, nota, orçamento; capturas 1280/390 claro/escuro\n');
   await abrir('alvo=1'); await pronto();
   assert.equal(await b.avaliar(async () => await omni.storage.get('gi-os-alvo') ?? null), null);

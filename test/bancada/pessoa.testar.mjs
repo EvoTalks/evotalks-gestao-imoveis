@@ -29,6 +29,7 @@ try {
   assert.match(await b.avaliar(() => document.querySelector('#cp-conteudo').textContent), /Imóvel Avulso/);
   assert.equal(await b.avaliar(() => document.querySelector('#cp-vincular-residencia').hidden), false);
   await b.clicar('#cp-tab-novo');
+  await b.preencher('#cp-titulo', 'Reparo para pessoa escolhida');
   await b.preencher('#cp-descricao', 'Reparo para pessoa escolhida');
   // A lista do host já contém o nome real, mas a sessão pode devolvê-lo vazio.
   await b.avaliar(() => { omni.session.getUser = async () => ({ id: 9999, name: '' }); });
@@ -116,7 +117,7 @@ try {
   for (const [query, esperado] of [['semnome=1','Agente Demonstração'], ['semnome=1&semusuarios=1','Usuário 9999'], ['', 'Agente Demonstração']]) {
     await b.navegar(base + '/app/painel.html?escrita=1&chat=8802&' + query);
     await b.esperar(() => !!document.querySelector('[data-chamado]'));
-    await b.clicar('#cp-tab-novo'); await b.preencher('#cp-descricao', 'Nome do atendente sintético ' + query);
+    await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Nome do atendente sintético ' + query); await b.preencher('#cp-descricao', 'Nome do atendente sintético ' + query);
     await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
     assert.equal(await b.avaliar(() => JSON.parse(bancada.chamadas.find(r => r.method === 'POST' && r.caminho === '/api/ext/chamados').body).atendente.nome), esperado);
   }

@@ -39,10 +39,11 @@ test('cockpit: componentes do desenho e acesso real ao status e Editar', async (
   } finally { await s.fechar(); }
 });
 
-test('cockpit: Novo sem campo Título e confirmação/sucesso sucessivos', async () => {
+test('cockpit: Novo exige Título e confirmação/sucesso sucessivos', async () => {
   const s = await abrirExtensao('cockpit-novo', { largura: 315, altura: 911 });
   try {
-    assert.equal(await s.b.avaliar(() => !!document.querySelector('#cp-titulo')), false);
+    assert.equal(await s.b.avaliar(() => document.querySelector('#cp-titulo').getAttribute('aria-required') === 'true'), true);
+    await s.b.preencher('#cp-titulo', 'Chuveiro do banheiro');
     await s.b.clicar('#cp-revisar');
     assert.equal(await s.b.avaliar(() => document.querySelector('#cp-cabecalho').hidden && document.querySelector('#cp-abas').hidden), true);
     assert.equal(await s.b.avaliar(() => !!document.querySelector('#cp-sucesso')), false);
@@ -53,7 +54,8 @@ test('cockpit: Novo sem campo Título e confirmação/sucesso sucessivos', async
     await s.b.clicar('#cp-conferencia');
     await s.b.clicar('#cp-confirmar');
     await s.b.esperar(() => !!document.querySelector('#cp-sucesso'));
-    assert.equal(s.portal.dados.chamados[0].titulo, 'Chuveiro do banheiro parou de esquentar');
+    assert.equal(s.portal.dados.chamados[0].titulo, 'Chuveiro do banheiro');
+    assert.match(await s.b.avaliar(() => document.querySelector('#cp-sucesso').textContent), /Chuveiro do banheiro/);
     assert.equal(await s.b.avaliar(() => !!document.querySelector('#cp-confirmar')), false);
     assert.deepEqual(s.b.erros, []);
   } finally { await s.fechar(); }

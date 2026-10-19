@@ -20,6 +20,14 @@ da administração) e que precisam chegar a quem atende.
 | `/login`, `/usuarios`, CSRF, sessão | some: a extensão herda o usuário logado do EvoTalks |
 | espelho Postgres + sync 6h + XML | some: o catálogo já está na instância (`products`) |
 
+## Pedidos do Marco de 19/10/2026
+
+Na versão 0.26.0, o cockpit pede Título obrigatório e mostra o valor na revisão e no sucesso; a Gestão abre em diálogo maior com retorno ao cockpit e rodapé sem sobreposição; botões, abas e chips do cockpit e da Gestão seguem os tokens do tema EvoTalks. Esses pedidos explícitos prevalecem sobre o desenho nos quatro itens.
+
+O tema dos controles está em `app/controles-atendimento.css`, carregado apenas pelo cockpit e pelo diálogo (`#gi-os`, incluindo seus modais). Fontes de 13–14 px, peso 500 (600 na seleção), ícones secundários de 32×32 px, abas/chips ativos com fundo suave, foco visível e estados hover/ativo/desabilitado substituem a tipografia pequena, a caixa alta e as pílulas escuras do desenho. A fonte dos controles é a família enviada pelo host. Isso altera as dimensões dos recortes do cockpit; nenhuma máscara ou tolerância de fidelidade foi ampliada. As páginas de Gestão fora do atendimento conservam seus estilos.
+
+`node test/bancada/tema0260.testar.mjs` valida estilos computados e contraste mínimo de 4,5:1 das cores do texto nos temas medidos do host, inclusive nos modais de confirmação. O vermelho claro puro `--ext-color-error` não atinge essa razão sobre branco: o texto de perigo combina 72% desse token com `--ext-color-text`; a borda conserva o token de erro. A confirmação usa esse tom no fundo e `--ext-color-on-primary` no texto. Os controles desabilitados seguem a opacidade de 55% pedida (a razão calculada é a das cores declaradas, antes dessa opacidade). As capturas e os relatórios antes/depois ficam em `test/fidelidade/saida/capturas-0260/` (ignorado pelo Git).
+
 ## Arquivos
 
 ```
