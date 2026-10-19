@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var e = GI.escapar, el = function (id) { return document.getElementById(id); };
-  var pagina = 1, geracao = 0, total = 0, itens = [], resumoAtual = {};
+  var pagina = 1, geracao = 0, total = 0, itens = [], resumoAtual = {}, configManutencao = null;
   var form = GI.criarChamadoForm({ carregar: carregar, atualizarLinha: atualizarLinha, itens: function () { return itens; } });
   var abrirEdicao = form.abrirEdicao, formulario = form.formulario, cancelar = form.cancelar;
   var controleStatus = form.controleStatus, ligarControleStatus = form.ligarControleStatus;
@@ -27,9 +27,10 @@
     var atual = ++geracao;
     el('gi-erro').style.display = 'none';
     el('gi-corpo').innerHTML = '<tr><td colspan="9">buscando chamados…</td></tr>';
-    return GI.chamados({ busca: el('f-busca').value.trim(), status: el('f-status').value, prioridade: el('f-prioridade').value,
-      pagina: pagina, por_pagina: el('f-porpagina').value }).then(function (r) {
+    return Promise.all([GI.chamados({ busca: el('f-busca').value.trim(), status: el('f-status').value, prioridade: el('f-prioridade').value,
+      pagina: pagina, por_pagina: el('f-porpagina').value }), GI.manutencaoConfig().catch(function () { return null; })]).then(function (rs) {
       if (atual !== geracao) return;
+      var r = rs[0]; configManutencao = rs[1];
       itens = r.rows || []; total = numero(r.total);
       resumoAtual = r.resumo || {}; desenharResumo();
       el('gi-pagina').textContent = String(pagina); el('gi-total').textContent = itens.length + ' nesta página · ' + total + ' no total';
@@ -67,9 +68,9 @@
     else if (texto.indexOf('pausado') === 0) { texto = texto.replace('pausado', 'parada').split(' · ')[0].replace(/(\d+d).*/, '$1'); legenda = 'espera o proprietário'; classe = 'gi-prazo--warn'; }
     else if (texto.indexOf('atrasado') === 0) { texto = texto.replace('atrasado', 'atrasada').replace(/(\d+d).*/, '$1'); legenda = 'prazo era ' + data(c.sla && c.sla.prazo_solucao_em).split(' · ')[0]; classe = 'gi-prazo--bad'; }
     else if (texto === 'responder já') { legenda = c.status === 'novo' ? 'sem triagem' : ''; classe = 'gi-prazo--bad'; }
-    else if (c.status === 'agendado' && c.visita && c.visita.inicio) { texto = new Date(c.visita.inicio).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '') + ' ' + data(c.visita.inicio).replace(':00', 'h'); legenda = 'visita agendada'; }
+    else if (c.status === 'agendado' && c.visita && c.visita.inicio) { texto = GI.janelaVisita(c.visita.inicio); legenda = 'visita agendada'; }
     else if (c.status === 'execucao' && c.sla && c.sla.prazo_solucao_em) texto = 'até ' + data(c.sla.prazo_solucao_em).split(' · ')[0];
-    else if (texto.indexOf('vence em') === 0) { legenda = c.prioridade === 'alta' ? 'solução em 72h' : ''; if (Date.parse(c.sla && c.sla.prazo_solucao_em) - Date.now() <= 6 * 3600000) classe = 'gi-prazo--warn'; }
+    else if (texto.indexOf('vence em') === 0) { var duracao = GI.slaSolucaoTexto(configManutencao, c.prioridade); legenda = c.prioridade === 'alta' && duracao ? 'solução em ' + duracao : ''; if (Date.parse(c.sla && c.sla.prazo_solucao_em) - Date.now() <= 6 * 3600000) classe = 'gi-prazo--warn'; }
     return '<span title="' + e(original) + '"' + (classe ? ' class="' + classe + '"' : '') + '>' + e(texto) + '</span>' + (legenda ? '<div class="gi-ajuda">' + e(legenda) + '</div>' : '');
   }
   function ligarLinha(tr) {

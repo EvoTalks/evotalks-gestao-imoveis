@@ -827,6 +827,20 @@
     return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  GI.janelaVisita = function (inicio, fim) {
+    var a = new Date(inicio), b = new Date(fim);
+    if (!inicio || !Number.isFinite(a.getTime())) return '';
+    function dia(d) { return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '') + ' ' + d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); }
+    function hora(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(/:00$/, 'h').replace(':', 'h'); }
+    return dia(a) + ' · ' + hora(a) + (fim && Number.isFinite(b.getTime()) ? ' às ' + (a.toLocaleDateString('pt-BR') !== b.toLocaleDateString('pt-BR') ? dia(b) + ' · ' : '') + hora(b) : '');
+  };
+
+  GI.slaSolucaoTexto = function (config, prioridade) {
+    var sla = config && config.sla, regra = sla && Object.hasOwn(sla, prioridade) && sla[prioridade];
+    var horas = regra && Number(regra.solucao_h);
+    return Number.isFinite(horas) && horas > 0 ? horas + 'h' : '';
+  };
+
   GI.escapar = function (s) {
     return String(s === undefined || s === null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

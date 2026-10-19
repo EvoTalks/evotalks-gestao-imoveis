@@ -140,7 +140,7 @@
       var contato = editando ? { id: c.solicitante.contato_id, name: c.solicitante.nome, phone: c.solicitante.telefone } : null;
       var usuariosCarregados = false, locacoes = [], usuarios = c.atendente ? [{ id: c.atendente.user_id, name: c.atendente.nome }] : [], atendimentos = [];
       var consultaAtendimentos = null, limiteAtendimentos = editando ? 10 : 3, mensagensAtendimentos = Object.create(null), primeirasMensagens = Object.create(null);
-      var selecionado = c.atendimento || null, modoAtendimento = selecionado ? 'atual' : 'nenhum';
+      var selecionado = c.atendimento || null, modoAtendimento = selecionado ? 'atual' : 'nenhum', semAtendimentoEscolhido = false;
       var caixa, no, montando = null, mudou = false, ocupado = false, versaoContato = 0, versaoFotos = 0, timerBusca, anexos = [], enviado = rascunhoNota && rascunhoNota.enviado || null;
       var avisoNotaFinal = '', fecharAposFotos = false, envioFotos = false, cancelarFotos = false, confirmarVolume = false, criacaoIncerta = false;
       var pendentes = restantes || [], retomada = null, fotosInteiras = {}, notaConfirmada = rascunhoNota && rascunhoNota.confirmada || null;
@@ -256,7 +256,7 @@
           midia.innerHTML = '<button class="gi-link" type="button" id="c-usar-resumo">Usar o resumo do atendimento</button> · <span id="c-resumo-fotos">Escolha um atendimento para consultar as fotos.</span> ';
           conteudo.appendChild(midia); midia.appendChild(no('buscar-pasta')); no('buscar-pasta').className = 'gi-link'; no('buscar-pasta').textContent = 'Anexar foto';
           conteudo.appendChild(no('fotos')); conteudo.appendChild(no('pendentes'));
-          no('origem').onchange = function () { if (this.value === 'gestao') aplicarAtendimento(null); no('escolha-atendimento').hidden = this.value === 'gestao'; };
+          no('origem').onchange = function () { semAtendimentoEscolhido = this.value === 'gestao'; if (semAtendimentoEscolhido) aplicarAtendimento(null); no('escolha-atendimento').hidden = this.value === 'gestao'; };
           no('usar-resumo').onclick = function () {
             var atual = atendimentos.find(function (a) { return selecionado && Number(a.chat_id) === Number(selecionado.chat_id); });
             if (atual && (atual.ultima || atual.primeira)) no('descricao').value = atual.ultima || atual.primeira;
@@ -616,6 +616,7 @@
         }).catch(function () { if (caixa.isConnected && v === versaoAviso) avisoDica('Não foi possível consultar o atendimento. Escolha outro atendimento.'); });
       }
       function aplicarAtendimento(a) {
+        semAtendimentoEscolhido = !a;
         return guardado(function () {
           return (editando ? GI.chamadosAtualizar(c.id, { atendimento: a }) : Promise.resolve()).then(function (r) {
             selecionado = a; if (editando) mensagem('Atendimento vinculado.', 'sucesso'); modoAtendimento = a ? 'atual' : 'nenhum';
@@ -643,6 +644,7 @@
       }
       function redesenharAtendimentos() {
         atualizarBotoesAtendimento();
+        if (!editando) no('escolha-atendimento').hidden = no('origem').value === 'gestao';
         var admin = GI.ctx() && GI.ctx().user && GI.ctx().user.type === 0;
         if (no('atendimentos-legenda')) no('atendimentos-legenda').firstChild.textContent = contato ? 'Os atendimentos mais recentes de ' + contato.name + '.' : '';
         var termoProtocolo = no('busca-atendimento') && no('busca-atendimento').value.trim().toLowerCase();
@@ -701,7 +703,7 @@
           atualizarConversa();
           redesenharAtendimentos(); lerMensagensVisiveis();
           no('atendimento-aviso').textContent = historico ? '' : 'Não foi possível carregar o histórico completo deste cliente.';
-          if (!editando && atendimentos.length === 1 && atendimentos[0].vivo && !selecionado && modoAtendimento === 'nenhum') {
+          if (!editando && !semAtendimentoEscolhido && atendimentos.length === 1 && atendimentos[0].vivo && !selecionado && modoAtendimento === 'nenhum') {
             var a = atendimentos[0]; selecionado = { chat_id: a.chat_id, protocolo: a.protocolo, canal: a.canal, fila: a.fila, iniciado_em: a.iniciado_em };
             modoAtendimento = 'atual'; no('vinculo').textContent = atendimentoTexto(selecionado); redesenharAtendimentos(); buscarFotos(true);
           }
@@ -988,7 +990,7 @@
           }
           redesenharAtendimentos();
           no('trocar').onclick = function () {
-            no('escolha-atendimento').hidden = false;
+            no('escolha-atendimento').hidden = !editando && no('origem').value === 'gestao';
             if (contato) carregarAtendimentos(contato.id, versaoContato).catch(function (err) { mensagem(erro(err), 'erro'); });
           };
           no('tirar-vinculo').onclick = function () { aplicarAtendimento(null); };
