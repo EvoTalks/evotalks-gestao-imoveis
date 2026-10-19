@@ -41,7 +41,8 @@
   };
 
   /* A plataforma conserva o contato do chat; esta preferência só é da extensão. */
-  var pessoas = Object.create(null), leituraPessoas = null;
+  var pessoas = Object.create(null);
+  var pessoasPendentes = Object.create(null);
   function podarPessoas() {
     Object.keys(pessoas).forEach(function (k) {
       var p = pessoas[k], idade = p && Date.now() - Number(p.em);
@@ -51,14 +52,19 @@
   GI.pessoas = {
     ler: function (semStorage) {
       if (semStorage) return Promise.resolve();
-      if (!leituraPessoas) leituraPessoas = Promise.resolve().then(function () { return omni.storage.get('gi-pessoa-v1'); }).then(function (r) {
+      return Promise.resolve().then(function () { return omni.storage.get('gi-pessoa-v1'); }).then(function (r) {
+        var atuais = Object.create(null);
         Object.keys(r || {}).forEach(function (k) {
           var p = r[k];
-          if (p && GI.id(p.contactId)) pessoas[k] = { contactId: GI.id(p.contactId), nome: String(p.nome || ''), em: p.em };
+          if (p && GI.id(p.contactId)) atuais[k] = { contactId: GI.id(p.contactId), nome: String(p.nome || ''), em: p.em };
         });
+        Object.keys(pessoasPendentes).forEach(function (k) {
+          if (Object.hasOwn(pessoas, k)) atuais[k] = pessoas[k];
+          else delete atuais[k];
+        });
+        pessoas = atuais;
         podarPessoas();
       }).catch(function () {});
-      return leituraPessoas;
     },
     obter: function (c) { podarPessoas(); return c && pessoas[String(c.id)] || null; },
     escolher: function (c, p, semStorage) {
@@ -67,7 +73,9 @@
         if (p && GI.id(p.id)) pessoas[String(c.id)] = { contactId: GI.id(p.id), nome: GI.nomeContato(p), em: Date.now() };
         else delete pessoas[String(c.id)];
         podarPessoas();
-        if (!semStorage) return Promise.resolve().then(function () { return omni.storage.set('gi-pessoa-v1', pessoas); }).catch(function () {});
+        if (!semStorage) return Promise.resolve().then(function () { return omni.storage.set('gi-pessoa-v1', pessoas); }).then(function () {
+          delete pessoasPendentes[String(c.id)];
+        }).catch(function () { pessoasPendentes[String(c.id)] = true; });
       });
     }
   };
@@ -193,9 +201,11 @@
   GI.textoOuNull = function (v) { return typeof v !== 'string' && typeof v !== 'number' || typeof v === 'number' && !Number.isFinite(v) || String(v).trim() === '' ? null : String(v); };
   GI.nomeContato = function (pessoa, chat) {
     pessoa = pessoa || {}; chat = chat || {};
-    var valores = [pessoa.name, chat.contact && chat.contact.name, pessoa.phone, chat.contact && chat.contact.phone];
+    var contatoId = GI.id(pessoa.id) || GI.contatoEfetivo(chat), outro = contatoId && contatoId !== GI.id(chat.contactId);
+    var reserva = outro ? {} : chat.contact || {};
+    var valores = [pessoa.name, reserva.name, pessoa.phone, reserva.phone];
     for (var i = 0; i < valores.length; i++) if (GI.textoOuNull(valores[i])) return String(valores[i]).trim();
-    return 'Contato ' + (GI.id(pessoa.id || chat.contactId) || 'sem identificação');
+    return 'Contato ' + (outro && GI.id(chat.contactId) ? '#' : '') + (contatoId || 'sem identificação');
   };
   GI.dataDoChat = function (v) {
     if (typeof v === 'number') {

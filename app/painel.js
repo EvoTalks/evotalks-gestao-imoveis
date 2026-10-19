@@ -410,11 +410,12 @@
     $('cp-vendo-como').innerHTML = p ? 'Vendo como ' + e(contato.name) + ' · <button type="button" class="pc__link" id="cp-pessoa-voltar">Voltar ao contato do atendimento</button>' : '';
     if ($('cp-pessoa-voltar')) $('cp-pessoa-voltar').onclick = function () { escolherPessoa(null); };
   }
-  async function escolherPessoa(p) {
-    if (gravando || criacaoIncerta || !chat) return;
-    if (editando) { solicitarSaidaEdicao(function () { escolherPessoa(p); }); return; }
+  async function escolherPessoa(p, vigente) {
+    if (gravando || criacaoIncerta || !chat || vigente && !vigente()) return;
+    if (editando) { solicitarSaidaEdicao(function () { escolherPessoa(p, vigente); }); return; }
     var g = geracao, c = chat;
     if (!await atual(g, c)) return;
+    if (vigente && !vigente()) return;
     g = ++geracao; gravando = true; fecharPessoa(); mostrarPessoa();
     await GI.pessoas.escolher(c, p, demo());
     if (g !== geracao || destruido) return;
@@ -439,12 +440,16 @@
       timerPessoa = setTimeout(async function () {
         try {
           if (!vigente() || !await atual(g, c)) return;
+          if (!vigente()) return;
           var r = demo() ? pessoasDemo.filter(function (p) { return [p.name, p.phone, p.email, p.document].join(' ').toLowerCase().indexOf(termo.toLowerCase()) >= 0; }) : await omni.contacts.search(termo, { limit: 8 });
           if (!vigente() || !await atual(g, c)) return;
+          if (!vigente()) return;
           var ps = (Array.isArray(r) ? r : r && (r.contacts || r.rows) || GI.lista(r)).filter(function (p) { return p && id(p.id); }).slice(0, 8);
           alvo.innerHTML = ps.length ? ps.map(function (p, i) { return '<button type="button" class="opt" data-pessoa="' + i + '">' + e(GI.textoOuNull(p.name) || 'Contato ' + id(p.id)) + ' · ' + e(GI.telefoneDiscreto(p.phone) || '—') + ' · ' + e(GI.mascaraCpf(p.document || p.cpf)) + '</button>'; }).join('') : 'Nenhuma pessoa encontrada';
-          alvo.querySelectorAll('[data-pessoa]').forEach(function (b) { b.onclick = function () { escolherPessoa(ps[Number(b.dataset.pessoa)]); }; });
+          alvo.querySelectorAll('[data-pessoa]').forEach(function (b) { b.onclick = function () { escolherPessoa(ps[Number(b.dataset.pessoa)], vigente); }; });
         } catch (err) {
+          if (!vigente()) return;
+          try { if (!await atual(g, c)) return; } catch (_) { return; }
           if (!vigente()) return;
           var mensagem = GI.mensagemErro(err);
           alvo.textContent = /[Ll]imite de consultas|[Aa]guarde um minuto/.test(mensagem) ? 'Limite de consultas atingido. Aguarde um minuto e tente novamente.' : 'Não foi possível buscar as pessoas. Tente novamente.';
@@ -1247,14 +1252,14 @@
       }
       if (!u || !id(u.id)) throw new Error('Usuário da sessão indisponível. Tente novamente.');
       var d = { locacao_id: plano.locacao.id, titulo: f.titulo.trim(), descricao: f.descricao, categoria: f.categoria, prioridade: f.prioridade,
-        origem: 'atendimento', solicitante: { contato_id: GI.contatoEfetivo(c), nome: GI.nomeContato(plano.contato, c), telefone: GI.textoOuNull(plano.contato.phone) },
+        origem: 'atendimento', solicitante: { contato_id: id(plano.contato.id), nome: GI.nomeContato(plano.contato, c), telefone: GI.textoOuNull(plano.contato.phone) },
         atendente: { user_id: id(u.id), nome: GI.nomeDoUsuario(u) }, atendimento: GI.atendimentoPortal(c, filasConhecidas),
         acesso: { disponibilidade: f.disponibilidade, sem_cliente: f.sem_cliente, chaves: f.chaves },
         anexos: f.anexos.map(function (ref) { var m = fotos.find(function (foto) { return String(foto.fileRef) === ref; }); return { file_ref: String(m.fileRef), nome: m.fileName, mimetype: m.mimetype, origem: 'atendimento' }; }) };
       var r;
       if (demo()) { r = { chamado: Object.assign({}, d, { id: 9001, numero: 9001, status: 'novo', sla: {} }) }; chamados.unshift(r.chamado); }
       else {
-        operacaoCriacao = { chatId: id(c.id), chatContactId: id(c.contactId), contatoId: GI.contatoEfetivo(c), locacaoId: id(d.locacao_id), titulo: d.titulo, inicio: Date.now() };
+        operacaoCriacao = { chatId: id(c.id), chatContactId: id(c.contactId), contatoId: id(plano.contato.id), locacaoId: id(d.locacao_id), titulo: d.titulo, inicio: Date.now() };
         r = await GI.chamadosCriarSeguro(d);
       }
       criacaoIncerta = null;
@@ -1273,9 +1278,9 @@
       recado(GI.chamadoNumero(r.chamado.numero) + ' aberta ✓', 'sucesso'); document.querySelector('#cp-sucesso h2').focus();
       try {
         var inicioLeitura = Date.now();
-        var l = demo() ? { rows: locacoes } : await GI.chamarPortal('/contatos/' + GI.contatoEfetivo(c) + '/locacoes');
+        var l = demo() ? { rows: locacoes } : await GI.chamarPortal('/contatos/' + id(plano.contato.id) + '/locacoes');
         if (!await atual(g, c)) return;
-        var ch = demo() ? { rows: chamados } : await GI.chamadosPorContato(GI.contatoEfetivo(c));
+        var ch = demo() ? { rows: chamados } : await GI.chamadosPorContato(id(plano.contato.id));
         if (!await atual(g, c)) return;
         locacoes = linhas(l); chamados = linhas(ch); aplicarLeitura(dadosObtidosEm(c, inicioLeitura)); atualizadoEm = Date.now(); cabecalho();
       } catch (_) { if (g === geracao) recado('Chamado aberto. Não foi possível atualizar a lista; consulte novamente.', 'erro'); }
