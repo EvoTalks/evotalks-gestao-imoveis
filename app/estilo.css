@@ -290,3 +290,15 @@ body.gi-com-modal > *:not(.gi-modal-fundo) {
   .gi-linha-campo { grid-template-columns: minmax(200px, 1.2fr) minmax(160px, .9fr) minmax(140px, .7fr) minmax(240px, 1.4fr); }
   th, td { padding-left: 14px; padding-right: 14px; }
 }
+
+/* Feedback permanece visível mesmo com o formulário rolado. */
+.gi-recado { position: sticky; top: 0; z-index: 100; display: flex; gap: 8px; justify-content: space-between; padding: 12px; border: 1px solid var(--gi-borda); background: var(--gi-surface); color: var(--gi-texto); overflow-wrap: anywhere; }
+.gi-recado[hidden] { display: none !important; }
+.gi-recado--erro { border-color: var(--ext-color-error, var(--gi-erro)); color: var(--ext-color-error, var(--gi-erro)); }
+.gi-recado--sucesso { border-color: var(--ext-color-success, var(--gi-ok)); }
+.gi-recado button { border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.gi-modal > .gi-recado { flex-shrink: 0; }
+#cp-fotos img { max-width: 70px; max-height: 60px; object-fit: contain; }
+
+/* Faixa persistente em todas as contribuições durante a demonstração. */
+.gi-demo-global { position: sticky; top: 0; z-index: 10000; margin: 0; padding: 10px; background: var(--ext-color-error, #a11919); color: var(--ext-color-on-primary, #fff); font-weight: 700; text-align: center; overflow-wrap: anywhere; }

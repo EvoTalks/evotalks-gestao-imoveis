@@ -74,7 +74,7 @@ test('lote 2: regressões no navegador', async t => {
     });
     await t.test('18c: troca silenciosa antes do POST reabilita confirmação', async () => {
       await cockpit('?escrita=1');
-      await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Reparo sintético');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.preencher('#cp-titulo', 'Reparo sintético');
       await b.clicar('#cp-revisar');
       await b.avaliar(() => { omni.session.getUser = async () => { omni.chats.getSelected = async () => ({ id: 8802, contactId: 9902 }); return { id: 9999 }; }; });
       await b.clicar('#cp-confirmar');
@@ -123,7 +123,7 @@ test('lote 2: regressões no navegador', async t => {
       await cockpit('?perfil=admin');
       await b.avaliar(() => { omni.ui.openContribution = async (id, params) => { bancada.ultimaContribuicao = { id, params }; return { opened: true }; }; });
       await b.clicar('[data-gestao="0"]');
-      await b.esperar(() => bancada.ultimaContribuicao?.id === 'gi-chamados');
+      await b.esperar(() => bancada.ultimaContribuicao?.id === 'gi-os');
       assert.equal(await b.avaliar(() => bancada.ultimaContribuicao.params.chamadoId), 1);
       await abrir('chamados', '?lote2=gestao');
       await b.esperar(() => document.querySelector('.gi-modal h2')?.textContent.includes('OS-1002'));

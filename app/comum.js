@@ -5,7 +5,7 @@
   'use strict';
 
   var GI = {};
-  // TEMPORÁRIO (teste do Marco, 19/10/2026): remover junto com userIds do manifest
+  // Liberação temporária do teste: remover junto com userIds no manifest.
   GI.GESTORES_EXTRA = [531];
   var ctx = null;
 
@@ -65,6 +65,7 @@
     function arrancar(c) {
       ctx = c || null;
       aplicarTema(ctx);
+      GI.mostrarDemonstracao();
       Promise.resolve()
         .then(function () {
           // O nome de quem grava é decidido ANTES de qualquer escrita — senão
@@ -107,19 +108,131 @@
 
   /* ------------------------------------------------------------------- aviso */
 
+  var timerRecado;
   GI.aviso = function (texto, tipo) {
-    try { omni.ui.toast(String(texto), tipo || 'info'); }
-    catch (e) { console.log('[GI]', tipo || 'info', texto); }
+    try { var r = omni.ui.toast(String(texto), tipo || 'info'); if (r && r.catch) r.catch(function () {}); }
+    catch (_) { /* O host pode estar desmontando a contribuição. */ }
   };
-  GI.erroFatal = function (e) {
-    console.error('[GI]', e);
-    var box = document.getElementById('gi-erro');
-    if (box) {
-      box.style.display = 'block';
-      box.textContent = 'Falhou: ' + (e && e.message ? e.message : String(e));
+  GI.recado = function (texto, tipo, alvo) {
+    var box = alvo;
+    if (!box && document.querySelectorAll) {
+      var modais = document.querySelectorAll('.gi-modal'), modal = modais[modais.length - 1];
+      if (modal) {
+        box = modal.querySelector('[data-recado-form], [data-recado-modal]');
+        if (!box) { box = document.createElement('div'); box.setAttribute('data-recado-modal', ''); modal.insertBefore(box, modal.querySelector('.gi-modal-corpo')); }
+      }
     }
-    GI.ajustarAltura();
+    if (!box) box = document.getElementById('gi-recado');
+    if (!box && document.body) {
+      box = document.createElement('div'); box.id = 'gi-recado';
+      document.body.insertBefore(box, document.body.firstChild);
+    }
+    if (!box) return;
+    clearTimeout(timerRecado); box.textContent = ''; box.hidden = !texto;
+    if (!texto) return;
+    tipo = tipo || 'erro';
+    box.className = 'gi-recado gi-recado--' + tipo; box.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
+    box.setAttribute('tabindex', '-1');
+    var mensagem = document.createElement('span'), fechar = document.createElement('button');
+    mensagem.textContent = (tipo === 'erro' ? '! ' : tipo === 'sucesso' ? '✓ ' : '') + String(texto);
+    fechar.type = 'button'; fechar.textContent = '×'; fechar.setAttribute('aria-label', 'Fechar recado');
+    fechar.onclick = function () { box.hidden = true; };
+    box.appendChild(mensagem); box.appendChild(fechar);
+    if (tipo === 'erro') { box.focus(); if (box.scrollIntoView) box.scrollIntoView({ block: 'nearest' }); }
+    if (tipo === 'sucesso') timerRecado = setTimeout(function () { box.hidden = true; }, 8000);
+    if (tipo !== 'info') GI.aviso(texto, tipo === 'erro' ? 'error' : 'success');
   };
+  GI.erroFatal = function (err) {
+    var texto = GI.mensagemErro(err), box = document.getElementById('gi-erro');
+    if (box) { box.hidden = false; box.style.display = 'block'; box.textContent = texto; }
+    var modal = document.querySelector && document.querySelector('.gi-modal');
+    if (modal && modal.querySelector('.gi-modal-recado')) modal.querySelector('.gi-modal-recado').textContent = texto;
+    GI.recado(texto, 'erro', modal && modal.querySelector('[data-recado-form]')); GI.ajustarAltura();
+  };
+  GI.id = function (v) { var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; };
+  GI.textoOuNull = function (v) { return typeof v !== 'string' && typeof v !== 'number' || typeof v === 'number' && !Number.isFinite(v) || String(v).trim() === '' ? null : String(v); };
+  GI.nomeContato = function (pessoa, chat) {
+    pessoa = pessoa || {}; chat = chat || {};
+    var valores = [pessoa.name, chat.contact && chat.contact.name, pessoa.phone, chat.contact && chat.contact.phone];
+    for (var i = 0; i < valores.length; i++) if (GI.textoOuNull(valores[i])) return String(valores[i]).trim();
+    return 'Contato ' + (GI.id(pessoa.id || chat.contactId) || 'sem identificação');
+  };
+  GI.dataDoChat = function (v) {
+    if (typeof v === 'number') {
+      if (!Number.isFinite(v) || v <= 0) return null;
+      if (v < 1e11) v *= 1000;
+    } else if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(v) || !/(Z|[+-]\d{2}:?\d{2})$/i.test(v)) return null;
+    var d = new Date(v), ano = d.getUTCFullYear();
+    return Number.isFinite(d.getTime()) && ano >= 2000 && ano <= 2100 ? d.toISOString() : null;
+  };
+  GI.mostrarDemonstracao = function () {
+    var ativo = GI.cfg('modoDemonstracao', false) === true || new URLSearchParams(location.search).get('demonstracao') === '1';
+    var faixa = document.getElementById('gi-demo-global');
+    if (ativo && !faixa) {
+      faixa = document.createElement('p'); faixa.id = 'gi-demo-global'; faixa.className = 'gi-demo-global';
+      faixa.setAttribute('role', 'status'); faixa.textContent = 'DEMONSTRAÇÃO · dados fictícios';
+      document.body.insertBefore(faixa, document.body.firstChild);
+    }
+    if (faixa) faixa.hidden = !ativo;
+  };
+  GI.isoPortal = function (v) {
+    if (v == null || v === '' || typeof v !== 'number' && typeof v !== 'string') return null;
+    // Histórico legado sem fuso é UTC; não depender do fuso do navegador do agente.
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(v) && !/(Z|[+-]\d{2}:?\d{2})$/i.test(v)) v = v.replace(' ', 'T') + 'Z';
+    var d = new Date(v); return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+  };
+  GI.autorCabecalho = function (v) { return String(v || '').replace(/[^\x00-\xff]/g, '?').replace(/[\x00-\x20\x7f-\x9f]+/g, ' ').trim(); };
+  var errosPortal = {
+    locacao_encerrada: 'Esta locação foi encerrada. Escolha outra locação ativa.',
+    nao_encontrada: 'Esta locação não foi encontrada. Atualize a consulta.', nao_encontrado: 'Este registro não foi encontrado. Atualize a consulta.',
+    api_desabilitada: 'A conexão do portal está desabilitada. Verifique a configuração.', falha_interna: 'O portal não conseguiu concluir a operação. Tente de novo em instantes.',
+    imovel_ja_locado: 'Este imóvel já está locado. Inclua o contato na locação existente.',
+    aprovacao_pendente: 'Aguardando o proprietário. Registre a decisão em Gestão → Aprovação.',
+    aprovacao_recusada: 'O proprietário recusou o orçamento. Escolha outro orçamento antes de aprovar.',
+    aprovacao_nao_necessaria: 'Este orçamento não precisa de aprovação do proprietário.',
+    sem_visita: 'Agende a visita antes de mudar para Agendado.', sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.',
+    limite_anexos: 'O limite de fotos foi atingido. Envie menos arquivos.', arquivo_grande: 'Esta foto é muito grande. Escolha uma foto menor.',
+    orcamento_escolhido: 'O orçamento escolhido não pode ser removido. Escolha outro orçamento primeiro.',
+    chamado_encerrado: 'Este chamado está encerrado. Use Reabrir para voltar à Triagem.',
+    rate_limited: 'Limite de consultas atingido. Aguarde um minuto e tente novamente.', rate_limit: 'Limite de consultas atingido. Aguarde um minuto e tente novamente.'
+  };
+  var rotulosCampos = { titulo: 'Título', imovel: 'Imóvel', imovel_codigo: 'Imóvel', locacao_id: 'Imóvel', nome: 'Nome', telefone: 'Telefone', contato_id: 'Contato', solicitante: 'Solicitante',
+    valor: 'Valor', valor_centavos: 'Valor', valor_estimado_centavos: 'Valor estimado', canal: 'Canal', chat_id: 'Atendimento', protocolo: 'Protocolo', fila: 'Fila', iniciado_em: 'Início do atendimento',
+    user_id: 'Atendente', file_ref: 'Arquivo', descricao: 'Descrição', categoria: 'Categoria', prioridade: 'Prioridade', texto: 'Nota', inicio: 'Início', fim: 'Fim', contatos: 'Contatos', contrato_numero: 'Contrato', prestador_nome: 'Prestador', aluguel: 'Aluguel', valor_aluguel_centavos: 'Aluguel', dia_vencimento: 'Vencimento', garantia: 'Garantia', endereco: 'Endereço', bairro: 'Bairro', cidade: 'Cidade', tipo: 'Tipo', papel: 'Papel', email: 'E-mail', observacao: 'Observação' };
+  GI.mensagemErro = function (err) {
+    err = err || {}; var d = err.dados || {}, codigo = d.erro || err.code || err.message;
+    if (err.status === 429) codigo = 'rate_limited';
+    if (codigo === 'dados_invalidos' || (err.status === 422 || err.status === 400) && d.campos) {
+      if (!d.campos) return 'Confira os dados informados antes de salvar.';
+      if (d.campos.valor_estimado_centavos && /orçamento escolhido/i.test(String(d.campos.valor_estimado_centavos))) return 'Valor estimado: o valor vem do orçamento escolhido. Para mudar, escolha outro orçamento.';
+      return Object.keys(d.campos).map(function (k) {
+        var chave = k.split('.').pop(), rotulo = Object.hasOwn(rotulosCampos, chave) ? rotulosCampos[chave] : null;
+        if (!rotulo) return 'Não foi possível abrir o chamado. Confira os dados e tente de novo.';
+        var motivo = String(d.campos[k]);
+        if (/^Informe um texto/.test(motivo)) motivo = 'preencha este campo com texto válido.';
+        return rotulo + ': ' + motivo;
+      }).join(' · ');
+    }
+    if (Object.hasOwn(errosPortal, codigo)) return errosPortal[codigo];
+    if (err.status === 401) return 'A conexão do portal foi recusada. Verifique a configuração.';
+    if (err.semResposta || err.status === 0 || /timeout|network|fetch|rede|ECONN/i.test(codigo || '')) return 'O portal não respondeu. Tente de novo em instantes.';
+    if (typeof d.erro === 'string' && !/\bHTTP\b/i.test(d.erro) && /[ \u00c0-\u00ff]/.test(d.erro) && !/^[a-z_]+$/.test(d.erro)) return d.erro;
+    if (err.status || /\bHTTP\b/i.test(codigo || '') || /^[a-z_]+$/.test(codigo || '')) return 'Não foi possível concluir a operação. Tente de novo em instantes.';
+    return err.message || 'Não foi possível concluir a operação. Tente de novo em instantes.';
+  };
+  GI.criarFila = function (limite) {
+    var pendentes = [], ativos = 0;
+    function proxima() {
+      while (ativos < limite && pendentes.length) {
+        (function (tarefa) {
+          ativos++;
+          Promise.resolve().then(tarefa.fn).then(tarefa.resolve, tarefa.reject).finally(function () { ativos--; proxima(); });
+        })(pendentes.shift());
+      }
+    }
+    return function (fn) { return new Promise(function (resolve, reject) { pendentes.push({ fn: fn, resolve: resolve, reject: reject }); proxima(); }); };
+  };
+  GI.filaArquivos = GI.criarFila(4);
 
   /* --------------------------------------------------------------- guardados
 
@@ -148,6 +261,15 @@
 
   GI.usaPortal = function () { return !!(baseDoPortal() && tokenDoPortal()); };
 
+  GI.CHAVE_SNAPSHOTS = 'gi-cockpit-snapshots-v1';
+  GI.invalidarSnapshots = function () {
+    try {
+      return Promise.resolve(omni.storage.get(GI.CHAVE_SNAPSHOTS)).then(function (snapshot) {
+        if (snapshot) return omni.storage.set(GI.CHAVE_SNAPSHOTS, { origem: GI.cfg('portalUrl', ''), rows: [] });
+      }).catch(function () {});
+    } catch (_) { return Promise.resolve(); }
+  };
+
   /* Como a chamada sai daqui, e por que NÃO é sempre fetch.
      A CSP do contêiner libera em connect-src apenas o origin de onde o HTML
      veio (aqui, o GitHub Pages) mais o da própria aplicação. O portal fica em
@@ -173,13 +295,14 @@
     var err = new Error(msg);
     err.status = status;
     err.dados = dados;
+    err.message = GI.mensagemErro(err);
     return err;
   }
 
   function cabecalhos(temCorpo) {
     var cab = {
       "Authorization": "Bearer " + tokenDoPortal(),
-      "X-GI-Autor": GI.usuario(),
+      "X-GI-Autor": GI.autorCabecalho(GI.usuario()),
       "X-GI-User-Id": String((ctx && ctx.user && ctx.user.id) || "")
     };
     if (temCorpo) cab["Content-Type"] = "application/json";
@@ -188,7 +311,7 @@
 
   function viaFetch(url, opcoes) {
     return fetch(url, {
-      method: opcoes.corpo !== undefined ? "POST" : "GET",
+      method: opcoes.method || (opcoes.corpo !== undefined ? "POST" : "GET"),
       headers: cabecalhos(opcoes.corpo !== undefined),
       body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined
     }).then(function (r) {
@@ -203,7 +326,8 @@
   GI.criarCotaPortal = function (agora) {
     var usadas = [];
     agora = agora || function () { return Date.now(); };
-    return { reservar: function () {
+    function restantes() { var t = agora(); usadas = usadas.filter(function (em) { return t - em < 60000; }); return 30 - usadas.length; }
+    return { restantes: restantes, reservar: function () {
       var t = agora();
       usadas = usadas.filter(function (em) { return t - em < 60000; });
       if (usadas.length >= 30) {
@@ -222,7 +346,7 @@
     try { GI.cotaPortal.reservar(); } catch (err) { return Promise.reject(err); }
     return Promise.resolve(omni.http.request({
       url: url,
-      method: opcoes.corpo !== undefined ? "POST" : "GET",
+      method: opcoes.method || (opcoes.corpo !== undefined ? "POST" : "GET"),
       headers: cabecalhos(opcoes.corpo !== undefined),
       body: opcoes.corpo !== undefined ? JSON.stringify(opcoes.corpo) : undefined,
       timeout: 20000
@@ -238,7 +362,14 @@
   function chamar(caminho, opcoes) {
     opcoes = opcoes || {};
     var url = baseDoPortal() + caminho;
-    return mesmaOrigem() ? viaFetch(url, opcoes) : viaOmni(url, opcoes);
+    return Promise.resolve().then(function () { return mesmaOrigem() ? viaFetch(url, opcoes) : viaOmni(url, opcoes); }).then(function (r) {
+      var metodo = String(opcoes.method || (opcoes.corpo !== undefined ? 'POST' : 'GET')).toUpperCase();
+      if (/^(POST|PUT|PATCH|DELETE)$/.test(metodo)) return GI.invalidarSnapshots().then(function () { return r; });
+      return r;
+    }).catch(function (err) {
+      if (!err.status && !/rate_limit|forbidden|bad_args/.test(err.code || '')) err.semResposta = true;
+      err.message = GI.mensagemErro(err); throw err;
+    });
   }
   GI.chamarPortal = chamar;
 
@@ -266,11 +397,11 @@
       return Promise.reject(new Error('Busca de contatos indisponível neste perfil.'));
     }
     return Promise.resolve().then(function () {
-      return omni.contacts.search(String(termo || '').trim());
+      return omni.contacts.search(String(termo || '').trim(), { limit: 100 });
     }).then(function (r) {
       var lista = Array.isArray(r) ? r : (r && (r.contacts || r.rows)) || GI.lista(r);
-      return lista.filter(function (c) { return c && c.id !== undefined && c.name; }).map(function (c) {
-        return { id: c.id, name: c.name, phone: c.phone || '', email: c.email || '' };
+      return lista.filter(function (c) { return c && GI.id(c.id); }).map(function (c) {
+        return { id: GI.id(c.id), name: GI.nomeContato(c), phone: GI.textoOuNull(c.phone) || '', email: GI.textoOuNull(c.email) || '' };
       });
     });
   };
@@ -726,13 +857,17 @@
     return String(bruto) + (obs ? ' — ' + obs : '');
   };
 
-  GI.numeroValido = function (texto) {
-    if (texto === '' || texto === null || texto === undefined) return true;
-    return /^-?\d{1,12}([.,]\d{1,2})?$/.test(String(texto).trim());
-  };
-  GI.paraNumero = function (texto) {
-    if (texto === '' || texto === null || texto === undefined) return '';
-    return Number(String(texto).trim().replace(/\./g, '').replace(',', '.'));
+  function numeroReais(texto) {
+    var v = String(texto).trim().replace(/^R\$\s*/, '');
+    if (!/^-?(?:\d{1,3}(?:\.\d{3})+,\d{1,2}|\d{1,12}(?:[.,]\d{1,2})?)$/.test(v)) return NaN;
+    return Number(v.indexOf(',') >= 0 ? v.replace(/\./g, '').replace(',', '.') : v);
+  }
+  GI.numeroValido = function (v) { return v === '' || v == null || Number.isFinite(numeroReais(v)); };
+  GI.paraNumero = function (v) { return v === '' || v == null ? '' : numeroReais(v); };
+  GI.valorReais = function (v) {
+    var n = numeroReais(v), centavos = Math.round(n * 100);
+    if (!Number.isSafeInteger(centavos) || n < 0) throw new Error('Informe o valor em reais, por exemplo 1.500,00.');
+    return centavos;
   };
 
   /* ------------------------------------------------------------------ modal
@@ -785,9 +920,9 @@
     op = op || {};
     return new Promise(function (resolve) {
       var fundo = document.createElement('div');
-      fundo.className = 'gi-modal-fundo';
+      fundo.className = op.alvo ? 'gi-form-inline' : 'gi-modal-fundo';
       fundo.innerHTML =
-        '<div class="gi-modal" role="dialog" aria-modal="true"' +
+        '<div class="gi-modal"' + (op.alvo ? '' : ' role="dialog" aria-modal="true"') +
             (op.largura ? ' style="max-width:' + Number(op.largura) + 'px"' : '') + '>' +
           '<div class="gi-modal-topo">' +
             '<h2>' + GI.escapar(op.titulo || '') + '</h2>' +
@@ -810,15 +945,17 @@
       var recado = fundo.querySelector('.gi-modal-recado');
       var botaoOk = fundo.querySelector('[data-ok]');
 
-      var observador = null, confirmando = false;
+      var observador = null, confirmando = false, encerrado = false;
 
-      function fechar(valor) {
-        if (confirmando && valor === null && fundo.querySelector('[data-cancelar]').disabled) return;
-        if (valor === null && op.aoFechar && op.aoFechar(caixa) === false) return;
+      function fechar(valor, forcar) {
+        if (encerrado) return;
+        if (!forcar && confirmando && valor === null && !op.aoFechar) return;
+        if (!forcar && valor === null && op.aoFechar && op.aoFechar(caixa) === false) return;
+        encerrado = true;
         document.removeEventListener('keydown', naTecla);
         if (observador) observador.disconnect();
         if (fundo.parentNode) fundo.parentNode.removeChild(fundo);
-        modaisAbertos = Math.max(0, modaisAbertos - 1);
+        if (!op.alvo) modaisAbertos = Math.max(0, modaisAbertos - 1);
         if (!modaisAbertos) document.body.classList.remove('gi-com-modal');
         GI.ajustarAltura();
         resolve(valor);
@@ -838,7 +975,8 @@
             confirmando = false;
             botaoOk.disabled = false;
             recado.className = 'gi-modal-recado gi-pequeno gi-modal-recado-erro';
-            recado.textContent = e && e.message ? e.message : String(e);
+            recado.textContent = GI.mensagemErro(e);
+            GI.recado(GI.mensagemErro(e), 'erro', fundo.querySelector('[data-recado-form]'));
             GI.ajustarAltura();
           });
       }
@@ -848,14 +986,14 @@
       botaoOk.addEventListener('click', confirmar);
       document.addEventListener('keydown', naTecla);
 
-      document.body.appendChild(fundo);
-      document.body.classList.add('gi-com-modal');
-      modaisAbertos++;
+      (op.alvo || document.body).appendChild(fundo);
+      if (!op.alvo) { document.body.classList.add('gi-com-modal'); modaisAbertos++; }
+      if (op.aoControlar) op.aoControlar(function (forcar) { fechar(null, forcar); });
 
       if (op.aoAbrir) op.aoAbrir(caixa);
 
       /* Posicionar DEPOIS do conteúdo: a altura da caixa é o que centraliza. */
-      observador = posicionar(fundo, fundo.querySelector('.gi-modal'));
+      if (!op.alvo) observador = posicionar(fundo, fundo.querySelector('.gi-modal'));
       GI.ajustarAltura();
 
       var primeiro = caixa.querySelector('input, select, textarea');

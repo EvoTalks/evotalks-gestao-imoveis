@@ -199,6 +199,80 @@ Com `PORTAL_REAL_URL=http://127.0.0.1:PORTA`, a API `/api/ext/` é encaminhada a
 router real; estáticos e SDK seguem locais. Sem a variável, o simulador permanece.
 `node test/integracao/real.mjs` prepara e encerra sozinho o PGlite e ambos os
 servidores. Veja [a bancada de integração](../integracao/LEIA-ME.md).
-O cockpit agora é visível aos três perfis; só o administrador vê o atalho da gestão.
+O cockpit é visível aos três perfis; todos veem Gestão no diálogo `gi-os`.
+Administrador e usuário 531 veem Lista completa (`gi-chamados`).
 `atendente.cenarios.mjs` prova notas/avisos, confirmação, janela encerrada, retry
 sem duplicação e descarte de detalhe atrasado após troca de chat.
+
+## Diálogo da O.S. (0.23.0 — Parte G)
+
+```bash
+node test/bancada/os.testar.mjs
+```
+
+Abra `/app/os.html?perfil=agente&chamado=1` para a edição inline, ou sem `chamado`
+para a lista do contato. `?alvo=1` simula parâmetros vazios e o alvo no storage;
+`&idade=61000` prova expiração. `&tema=escuro`, `?modo=local`, `?modo=fora` e
+`?demonstracao=1` exercitam os estados. Só o stub interpreta esses parâmetros de teste.
+`ui.openContribution` registra id/params em `bancada.aberturas`; defina
+`bancada.navegarContribuicao=false` para inspecionar sem navegar, ou
+`bancada.falharContribuicao='not_found'` para recusa. `ui.close` registra fechamentos.
+
+O roteiro verifica edição completa por atendente (status, prioridade, nota e orçamento),
+lista e novo com contato/locação, storage consumido e vencido, precedência de parâmetros,
+ausência de atendimento/contato, troca durante espera, falhas e demonstração sem rede.
+Também prova os três perfis no cockpit e Lista completa exclusiva do administrador e do usuário 531.
+Capturas `capturas/os-{1280,390}-{claro,escuro}.png`, sem rolagem horizontal.
+
+
+## Cockpit 2 — Parte C (0.23.0)
+
+`node test/bancada/cockpit.testar.mjs` executa também `cockpit2.cenarios.mjs`:
+faixa/chips/busca, prioridade do vínculo atual, paginação de dez, edição rápida pelos
+três perfis, rollback de status/prioridade, cancelamento, gravações em série,
+1 POST por campo, cópia com execCommand, aviso editável confirmado e nota,
+janela encerrada/chat encerrado, vínculo em 1 POST, pessoas da residência,
+descrição pela última mensagem, placeholder de categoria e teclado.
+
+O stub aceita `?persistir=1` para conservar snapshots de consulta entre remontagens
+no mesmo navegador. `?semstorage=1` recusa storage; a edição continua funcionando.
+`?cenario=snapshot-lento&persistir=1` segura a leitura de locações para provar a
+pintura pelo cache antes da resposta, revalidação, expiração e invalidação ao gravar.
+O cache de produção é opcional, por contato, limitado a oito e dez minutos, abaixo
+de 60 mil caracteres no conjunto, sem arquivos/fotos/credenciais. O teste unitário
+confere limites e remoção de campos que não pertencem ao snapshot.
+
+Capturas `capturas/cockpit2-{260,300,334}-{claro,escuro}-{edicao,aviso,cancelamento}.png`
+cobrem os novos estados. Todos os nomes e telefones continuam sintéticos.
+
+Lote 1: os cenários compartilhados de `../bancada/lote1.cenarios.mjs` (na bancada,
+`lote1.cenarios.mjs`) exercitam dados numéricos/nulos, contato sem nome, imóvel fora do
+espelho, autoria com emoji, histórico sem ISO, valor brasileiro, resposta do POST perdida,
+faixa/toast/rodapé e erro hostil, nota WebChat e janela fechada, cinquenta prévias em fila
+de quatro, doze fotos com confirmação/cancelamento e limite de requisições, snapshot
+sem rede, atualização limitada e falhas de inicialização. O portal de bancada valida texto,
+ids seguros e datas com fuso com os mesmos nomes de campos do portal real.
+As expectativas anteriores de duas consultas sem residência, atualização automática de
+snapshot fresco, código cru de erro e texto antigo da janela foram atualizadas conforme
+este lote; as provas de gravação, preservação de rascunho e isolamento continuam.
+
+
+## Lote 2 — impeditivos (F14)
+
+`impeditivos.cenarios.mjs` é executado tanto pelo runner do cockpit quanto pela
+integração real. Cobre ausência de contato, portal fora/local com retry real de
+`/info`, consulta sem escrita, supervisor/531/600, duas residências com chamados,
+escolha explícita no Novo, segundos Unix, reabertura e 409, aprovação pendente e
+inclusão do contato na locação existente preservando todas as pessoas e o contrato.
+No portal real, a data gravada e a lista de contatos são conferidas no PGlite.
+Dado legado de 1970 permanece inalterado no banco e não aparece como data na tela.
+
+Capturas `f14-*.png` / `real-f14-*.png`: 48 estados por execução em 260/300/334 px,
+claro/escuro, incluindo reabertura, aprovação e conflito de locação. A faixa de
+DEMONSTRAÇÃO é vermelha e persistente em todas as telas. O stub inclui segundos,
+ms, ISO, zero, null e texto inválido; a API estrita recusa início fora de 2000–2100.
+As alterações de expectativas anteriores exigem escolha explícita de imóvel,
+restringem status terminal a Reabrir e preservam as demais provas de cada fluxo.
+
+Rodada isolada: `node test/bancada/impeditivos.testar.mjs`.
+As saídas literais são entregues no resultado do nó; não versionar logs de evidência.

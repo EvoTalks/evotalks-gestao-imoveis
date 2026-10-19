@@ -146,7 +146,7 @@
         if (!inquilino) throw new Error('Escolha o locatário na busca de contatos do EvoTalks.');
         if (!edicao && modo === 'catalogo' && !selecionado) throw new Error('Escolha um imóvel do catálogo.');
         if (!edicao && modo === 'fora' && !valor('titulo')) throw new Error('Informe o título do imóvel.');
-        if (valor('aluguel') && (!GI.numeroValido(valor('aluguel')) || Number(valor('aluguel').replace(',', '.')) < 0)) throw new Error('Informe um valor de aluguel válido.');
+        if (valor('aluguel') && (!GI.numeroValido(valor('aluguel')) || GI.paraNumero(valor('aluguel')) < 0)) throw new Error('Informe um valor de aluguel válido.');
         var vencimento = valor('vencimento');
         if (vencimento && (!/^\d+$/.test(vencimento) || Number(vencimento) < 1 || Number(vencimento) > 31)) throw new Error('O dia do vencimento deve estar entre 1 e 31.');
         if (valor('inicio') && valor('fim') && valor('fim') < valor('inicio')) throw new Error('O fim do contrato deve ser igual ou posterior ao início.');
@@ -158,12 +158,12 @@
         if (valor('proprietario')) lista.push(dono && dono.nome === valor('proprietario') ? dono : { papel: 'proprietario', nome: valor('proprietario') });
         var dados = { contrato_numero: valor('contrato') || null, garantia: valor('garantia') || null,
           inicio: valor('inicio') || null, fim: valor('fim') || null,
-          valor_aluguel_centavos: valor('aluguel') ? Math.round(Number(valor('aluguel').replace(',', '.')) * 100) : null,
+          valor_aluguel_centavos: valor('aluguel') ? GI.valorReais(valor('aluguel')) : null,
           dia_vencimento: vencimento ? Number(vencimento) : null, observacao: valor('observacao') || null, contatos: lista };
         if (!edicao) {
           if (modo === 'catalogo') {
             var cat = GI.partesCategoria(selecionado.category);
-            dados.imovel_codigo = selecionado.internalcode;
+            dados.imovel_codigo = String(selecionado.internalcode);
             dados.imovel = { titulo: selecionado.name, tipo: cat.tipo, bairro: cat.bairro, cidade: cat.cidade };
           } else dados.imovel = { titulo: valor('titulo'), endereco: valor('endereco'), tipo: valor('tipo'), bairro: valor('bairro'), cidade: valor('cidade') };
         }

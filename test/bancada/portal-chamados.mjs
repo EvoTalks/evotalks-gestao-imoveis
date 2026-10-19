@@ -10,7 +10,7 @@ const aberto = c => !['concluido', 'cancelado'].includes(c.status);
 const positivo = n => Number.isSafeInteger(n) && n > 0;
 const dinheiro = n => Number.isSafeInteger(n) && n >= 0;
 const texto = n => typeof n === 'string' && n.trim().length > 0;
-const iso = n => typeof n === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(n) && Number.isFinite(Date.parse(n));
+const iso = n => typeof n === 'string' && /^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:?\d{2})$/.test(n) && Number.isFinite(Date.parse(n));
 function erro(status, codigo, campos) { throw { status, corpo: { erro: codigo, ...(campos ? { campos } : {}) } }; }
 function validar(campos) { if (Object.keys(campos).length) erro(422, 'dados_invalidos', campos); }
 export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFixtures = false }) {
@@ -43,16 +43,20 @@ export function criarPortalChamados({ locacoes, agora = () => Date.now(), semFix
     if ((novo || 'categoria' in d) && !CATEGORIAS.includes(d.categoria)) campos.categoria = 'Categoria inválida.';
     if ('prioridade' in d && !Object.hasOwn(PADROES.sla, d.prioridade)) campos.prioridade = 'Prioridade inválida.';
     if ('origem' in d && !['atendimento', 'gestao', 'ia'].includes(d.origem)) campos.origem = 'Origem inválida.';
-    if ((novo || 'solicitante' in d) && (!texto(d.solicitante?.nome) || d.solicitante.contato_id != null && !positivo(d.solicitante.contato_id))) campos.solicitante = 'Informe o solicitante.';
-    if ('locacao_id' in d && !positivo(d.locacao_id) || novo && !locacao(d.locacao_id)) campos.locacao_id = 'Locação inválida.';
-    if (d.atendimento != null) {
-      if (d.atendimento.chat_id == null ? !texto(d.atendimento.protocolo) : !positivo(d.atendimento.chat_id)) campos.atendimento = 'Atendimento inválido.';
-      for (const k of ['canal', 'iniciado_em', 'protocolo', 'fila']) {
-        if (d.atendimento[k] != null && typeof d.atendimento[k] !== 'string') campos['atendimento.' + k] = 'Informe um texto.';
+    for (const [campo, chaveId, textos] of [['solicitante', 'contato_id', ['nome', 'telefone']], ['atendente', 'user_id', ['nome']], ['atendimento', 'chat_id', ['protocolo', 'canal', 'fila', 'iniciado_em']]]) {
+      const v = d[campo];
+      if (v == null && !(novo && campo === 'solicitante')) continue;
+      if (!v || typeof v !== 'object') { campos[campo] = 'Informe os dados em um objeto.'; continue; }
+      if (v[chaveId] != null && !positivo(v[chaveId]) || campo === 'atendente' && !positivo(v[chaveId])) campos[campo + '.' + chaveId] = 'Informe um identificador inteiro positivo.';
+      for (const chave of textos) {
+        if (v[chave] != null && typeof v[chave] !== 'string' || chave === 'nome' && !texto(v[chave])) campos[campo + '.' + chave] = chave === 'nome' ? 'Informe um texto não vazio.' : 'Informe um texto.';
       }
-      if (typeof d.atendimento.iniciado_em === 'string' && d.atendimento.iniciado_em && !iso(d.atendimento.iniciado_em)) campos['atendimento.iniciado_em'] = 'Informe uma data válida.';
+      if (campo === 'atendimento') {
+        if (v.chat_id == null && !texto(v.protocolo)) campos.atendimento = 'Informe chat_id ou protocolo do atendimento.';
+        if (typeof v.iniciado_em === 'string' && (!iso(v.iniciado_em) || new Date(v.iniciado_em).getUTCFullYear() < 2000 || new Date(v.iniciado_em).getUTCFullYear() > 2100)) campos['atendimento.iniciado_em'] = 'Informe uma data e hora ISO válida, com fuso.';
+      }
     }
-    if (d.atendente != null && (!positivo(d.atendente.user_id) || !texto(d.atendente.nome))) campos.atendente = 'Atendente inválido.';
+    if ('locacao_id' in d && !positivo(d.locacao_id) || novo && !locacao(d.locacao_id)) campos.locacao_id = 'Locação inválida.';
     if (d.acesso != null && (typeof d.acesso !== 'object' || 'sem_cliente' in d.acesso && typeof d.acesso.sem_cliente !== 'boolean')) campos.acesso = 'Acesso inválido.';
     if (d.quem_paga != null && !['proprietario', 'inquilino', 'imobiliaria'].includes(d.quem_paga)) campos.quem_paga = 'Pagador inválido.';
     if (d.valor_estimado_centavos != null && !dinheiro(d.valor_estimado_centavos)) campos.valor_estimado_centavos = 'Valor inválido.';

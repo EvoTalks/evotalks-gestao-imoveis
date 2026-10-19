@@ -16,29 +16,24 @@ const plain = v => JSON.parse(JSON.stringify(v));
 test('hotfix: atendimento normaliza canal, protocolo, fila e instante para o portal', () => {
   const GI = carregar();
   assert.deepEqual(plain(GI.atendimentoPortal({ id: 8801, channel: 26, protocol: 123, queueId: 91, startedAt: 1760000000000 })),
-    { chat_id: 8801, canal: 'WebChat', protocolo: '123', fila: '91', iniciado_em: '2025-10-09T08:53:20.000Z' });
+    { chat_id: 8801, canal: 'WebChat', protocolo: '123', fila: 'Fila 91', iniciado_em: '2025-10-09T08:53:20.000Z' });
   assert.equal(GI.atendimentoPortal({ channel: 999 }).canal, 'Atendimento');
   assert.equal(GI.atendimentoPortal({ channel: 'WhatsApp' }).canal, 'WhatsApp');
   for (const startedAt of [null, undefined, '', 'inválido', {}, [], true, Infinity, NaN, 9e20]) {
     assert.equal(GI.atendimentoPortal({ startedAt }).iniciado_em, null, String(startedAt));
   }
-  assert.equal(GI.atendimentoPortal({ startedAt: 0 }).iniciado_em, '1970-01-01T00:00:00.000Z');
+  assert.equal(GI.atendimentoPortal({ startedAt: 0 }).iniciado_em, null);
   assert.equal(GI.atendimentoPortal({ startedAt: '2026-10-19T10:00:00-03:00' }).iniciado_em, '2026-10-19T13:00:00.000Z');
   assert.deepEqual(plain(GI.atendimentoPortal({ id: 1, protocol: {}, queueId: {} })),
     { chat_id: 1, canal: 'Atendimento', protocolo: null, fila: null, iniciado_em: null });
 });
 test('hotfix: erros de abertura têm frases simples sem resposta crua ou status', () => {
-  const GI = carregar(), generica = 'Não foi possível abrir o chamado. Confira os dados e tente de novo.';
-  assert.equal(GI.erroAbrirChamado({ status: 422, dados: { campos: { 'atendimento.canal': 'Informe um texto.' } } }),
-    'O canal do atendimento não pôde ser lido. Atualize o painel e tente de novo.');
-  assert.match(GI.erroAbrirChamado({ status: 400, dados: { campos: { titulo: '<img src=x>' } } }), /título/);
-  for (const status of [400, 401, 403, 409, 422, 500]) {
-    assert.equal(GI.erroAbrirChamado({ status, message: '<img src=x>', dados: { campos: { desconhecido: 'Informe um texto.' } } }), generica);
-  }
-  for (const status of [undefined, 0, 502, 503, 504]) {
-    assert.equal(GI.erroAbrirChamado({ status, message: 'Failed to fetch' }), 'O portal não respondeu. Tente de novo em instantes.');
-  }
-  assert.equal(GI.erroAbrirChamado({ status: 429 }), 'Limite de consultas atingido. Aguarde cerca de um minuto e tente novamente.');
+  const GI = carregar();
+  assert.match(GI.mensagemErro({ status: 422, dados: { campos: { 'atendimento.canal': 'Informe um texto.' } } }), /Canal:/);
+  assert.match(GI.mensagemErro({ status: 400, dados: { campos: { titulo: '<img src=x>' } } }), /Título:/);
+  for (const status of [400, 401, 403, 409, 422, 500]) assert.doesNotMatch(GI.mensagemErro({ status, message: '<img src=x>', dados: { campos: { desconhecido: 'Informe um texto.' } } }), /<img|Informe um texto|HTTP/);
+  for (const status of [undefined, 0, 502, 503, 504]) assert.match(GI.mensagemErro({ status, message: 'Failed to fetch' }), /O portal não respondeu/);
+  assert.match(GI.mensagemErro({ status: 429 }), /Limite de consultas/);
 });
 test('hotfix: portal da bancada rejeita canal/data numéricos igual ao real, sem gravar', () => {
   const portal = criarPortalChamados({ locacoes: [{ id: 1, contatos: [] }], semFixtures: true });

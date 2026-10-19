@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<link rel="stylesheet" href="estilo.css?v=0.22.1">
+<link rel="stylesheet" href="estilo.css?v=0.23.0">
 
 <div class="gi-topo">
   <div>
@@ -75,8 +75,8 @@
 </p>
 
 <div class="gi-aviso" id="gi-locados-aviso" hidden></div>
-<script src="comum.js?v=0.22.1"></script>
-<script src="locacao.js?v=0.22.1"></script>
+<script src="comum.js?v=0.23.0"></script>
+<script src="locacao.js?v=0.23.0"></script>
 <script>
 (function () {
   'use strict';
@@ -86,6 +86,7 @@
     itens: [], campos: [], valores: {}, preenchidos: {}, locados: null
   };
   var geracao = 0;
+  function administrador() { var ctx = GI.ctx(); return !!(ctx && ctx.user && ctx.user.type === 0); }
 
   var el = function (id) { return document.getElementById(id); };
 
@@ -161,7 +162,7 @@
           '<div class="gi-acoes">' +
             '<button type="button" class="btn btn-slim btn-icone" title="Editar" aria-label="Editar" ' +
               'data-abrir="' + codigo + '">' + ICONE_ABRIR + '</button>' +
-            (GI.gestor() ? '<button type="button" class="btn btn-slim btn-icone" title="' + tituloLocacao + '" aria-label="' + tituloLocacao + '" ' +
+            (administrador() ? '<button type="button" class="btn btn-slim btn-icone" title="' + tituloLocacao + '" aria-label="' + tituloLocacao + '" ' +
               (estado.locados ? '' : 'disabled ') + 'data-locacao="' + codigo + '">' + GI.iconeLocacao(locacao ? 'ver' : 'chave') + '</button>' : '') +
             '<button type="button" class="btn btn-slim btn-icone btn-perigo" ' +
               'title="' + (n ? 'Excluir as informações preenchidas' : 'Nada preenchido para excluir') + '" ' +
@@ -180,7 +181,7 @@
     });
     Array.prototype.forEach.call(corpo.querySelectorAll('[data-locacao]'), function (b) {
       b.onclick = function () {
-        if (!GI.gestor()) return;
+        if (!administrador()) return;
         var codigo = b.getAttribute('data-locacao');
         var l = estado.locados && estado.locados[codigo];
         var acao = l ? GI.editarLocacao(l.locacao_id) : GI.modalLocacao({ imovel: estado.itens.filter(function (p) { return String(p.internalcode) === codigo; })[0] });

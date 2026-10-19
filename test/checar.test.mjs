@@ -63,7 +63,7 @@ test('25: rejeita cor fixa em estado; 27: exige ?v= igual ao manifest nos recurs
   } finally { rmSync(pasta, { recursive: true, force: true }); }
 });
 
-test('29: cockpit exige [0,1,2], gestão por ids exatos e demais telas preservadas', () => {
+test('29/F11: cockpit e diálogo exigem [0,1,2], gestão [0] e demais telas preservadas', () => {
   const pasta = mkdtempSync(path.join(raiz, '.checar-'));
   const app = path.join(pasta, 'app');
   const rodar = () => spawnSync(process.execPath, ['test/checar.mjs', pasta], { cwd: raiz, encoding: 'utf8' });
@@ -71,7 +71,7 @@ test('29: cockpit exige [0,1,2], gestão por ids exatos e demais telas preservad
     mkdirSync(app, { recursive: true });
     writeFileSync(path.join(pasta, 'manifest.json'), JSON.stringify({ version: '0.20.0', contributions: [
       { id: 'menu', items: ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'].map(id => ({ id })) },
-      { id: 'gi-cockpit' }
+      { id: 'gi-cockpit' }, { id: 'gi-os', visibility: { userTypes: [0, 1, 2] } }
     ] }));
     assert.notEqual(rodar().status, 0);
     assert.match(rodar().stderr, /deve restringir userIds/);
@@ -86,6 +86,11 @@ test('29: cockpit exige [0,1,2], gestão por ids exatos e demais telas preservad
       assert.notEqual(rodar().status, 0);
     }
     m.contributions[1].visibility.userTypes = [0, 1, 2];
+    m.contributions[2].visibility.userTypes = [0];
+    writeFileSync(path.join(pasta, 'manifest.json'), JSON.stringify(m));
+    assert.notEqual(rodar().status, 0);
+    assert.match(rodar().stderr, /gi-os deve definir userTypes/);
+    m.contributions[2].visibility.userTypes = [0, 1, 2];
     for (const item of m.contributions[0].items.slice(0, 3)) {
       for (const visibility of [{ userTypes: [0] }, { userIds: [1, 515, 528] }, { userIds: [1, 515, 528, 531, 600] }, { userIds: ['1', 515, 528, 531] }, { userIds: [1, 515, 528, 531], userTypes: [0] }]) {
         item.visibility = visibility;

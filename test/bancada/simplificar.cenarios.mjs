@@ -77,7 +77,7 @@ export async function testarSimplificacao(b, origem) {
   await abrir(criado.id); await b.clicar('#c-tirar-vinculo');
   await b.esperar(() => document.querySelector('#c-vinculo').textContent === 'Nenhum atendimento vinculado' && !document.querySelector('#c-tirar-vinculo').disabled);
   assert.equal(await b.avaliar(() => document.querySelector('#c-avisar').disabled), true);
-  assert.match(await texto('#c-aviso-dica'), /Escolha o atendimento acima/);
+  assert.match(await texto('#c-aviso-dica'), /Vincule um atendimento aberto/);
   await b.clicar('#c-trocar'); await b.esperar(() => !!document.querySelector('[data-atendimento="0"]'));
   await b.clicar('[data-atendimento="0"]');
   await b.esperar(() => !document.querySelector('#c-avisar').disabled && !document.querySelector('#c-tirar-vinculo').disabled);
@@ -100,16 +100,15 @@ export async function testarSimplificacao(b, origem) {
   d = await b.avaliar(async id => GI.chamadosObter(id), criado.id); assert.ok(d.eventos.some(ev => ev.texto === aviso && ev.notificou_cliente));
   await b.preencher('#c-nota', 'Nota que sobrevive ao forbidden'); await b.clicar('#c-avisar');
   await b.avaliar(() => { bancada.recusarEnvio = true; }); await b.clicar('#c-salvar-nota'); await b.clicar('#c-confirmar-acao');
-  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('24 horas'));
-  await b.clicar('#c-voltar'); await b.clicar('#c-avisar'); await b.clicar('#c-salvar-nota');
+  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Nota salva. O cliente não foi avisado porque a janela de 24 h fechou.'));
   await b.esperar(() => document.querySelector('#c-nota').value === '' && !document.querySelector('#c-salvar-nota').disabled);
-  assert.ok((await b.avaliar(async id => GI.chamadosObter(id), criado.id)).eventos.some(ev => (ev.texto || '').includes('sobrevive') && !ev.notificou_cliente));
+  assert.equal((await b.avaliar(async id => GI.chamadosObter(id), criado.id)).eventos.filter(ev => ev.texto === 'Nota que sobrevive ao forbidden' && !ev.notificou_cliente).length, 1);
   await b.avaliar(() => {
     bancada.recusarEnvio = false; const request = omni.http.request;
     omni.http.request = op => { if (op.method === 'POST' && op.url.endsWith('/notas')) { omni.http.request = request; return Promise.resolve({ status: 503, body: '{"erro":"indisponivel"}' }); } return request(op); };
   });
   await b.preencher('#c-nota', 'Aviso sem duplicar'); await b.clicar('#c-avisar'); await b.clicar('#c-salvar-nota'); await b.clicar('#c-confirmar-acao');
-  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('indisponivel'));
+  await b.esperar(() => document.querySelector('#c-mensagem').textContent.includes('Não foi possível concluir a operação'));
   const envios = await b.avaliar(() => bancada.mensagens.length); await b.clicar('#c-confirmar-acao');
   await b.esperar(() => document.querySelector('#c-nota').value === '' && !document.querySelector('#c-salvar-nota').disabled); assert.equal(await b.avaliar(() => bancada.mensagens.length), envios);
   // Chat fecha entre o check e o envio: revalida e não envia nem registra.
@@ -186,7 +185,7 @@ export async function testarSimplificacao(b, origem) {
   await b.clicar('#c-status-controle [data-status-confirmar]'); await b.esperar(() => !document.querySelector('#c-status').disabled); await fechar();
   await b.esperar(() => document.querySelector('#gi-resumo').textContent.includes('7 chamados abertos'));
   await abrir(criado.id); assert.equal(await b.avaliar(() => document.querySelector('#c-dados').disabled), true);
-  assert.deepEqual(await b.avaliar(() => Array.from(document.querySelector('#c-status').options, n => n.value).sort()), ['agendado', 'aprovacao', 'cancelado', 'concluido', 'execucao', 'novo', 'orcamento', 'triagem']);
+  assert.deepEqual(await b.avaliar(() => Array.from(document.querySelector('#c-status').options, n => n.value).sort()), ['cancelado', 'triagem']);
   await b.preencher('#c-status', 'triagem'); await b.esperar(() => !document.querySelector('#c-status').disabled);
   assert.equal(await b.avaliar(() => document.querySelector('#c-atendente').matches(':disabled')), false);
   assert.equal(await b.avaliar(() => document.querySelector('#c-buscar-pasta').matches(':disabled')), false);

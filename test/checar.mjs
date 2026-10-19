@@ -30,13 +30,14 @@ function auditarEstilosEVisibilidade() {
   const semRestricao = ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'];
   for (const id of restritos) {
     const visibilidade = porId.get(id)?.visibility;
-    if (JSON.stringify(visibilidade?.userIds) !== '[1,515,528,531]' || Object.hasOwn(visibilidade || {}, 'userTypes')) {
+    if (JSON.stringify(visibilidade) !== JSON.stringify({ userIds: [1, 515, 528, 531] })) {
       erros++; process.stderr.write('manifest.json: ' + id + ' deve restringir userIds exatamente a [1,515,528,531], sem userTypes.\n');
     }
   }
-  const cockpit = porId.get('gi-cockpit')?.visibility?.userTypes;
-  if (JSON.stringify(cockpit) !== '[0,1,2]') {
-    erros++; process.stderr.write('manifest.json: gi-cockpit deve definir userTypes exatamente a [0,1,2].\n');
+  for (const id of ['gi-cockpit', 'gi-os']) {
+    if (JSON.stringify(porId.get(id)?.visibility?.userTypes) !== '[0,1,2]') {
+      erros++; process.stderr.write('manifest.json: ' + id + ' deve definir userTypes exatamente a [0,1,2].\n');
+    }
   }
   for (const id of semRestricao) if (porId.get(id)?.visibility) {
     erros++; process.stderr.write('manifest.json: ' + id + ' não deve restringir visibilidade própria.\n');

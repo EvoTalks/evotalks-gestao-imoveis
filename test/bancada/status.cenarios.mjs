@@ -27,7 +27,11 @@ export async function testarStatus(b, origem) {
   assert.notEqual(await b.avaliar(() => document.querySelector('[data-editar="1"]').closest('tr').cells[5].textContent), 'Responder já');
   prova('lista grava com uma requisição, atualiza prazo/resumo e preserva os nós das linhas');
 
-  for (const [id, destino, anterior, frase] of [[4, 'execucao', 'aprovacao', 'pendente'], [2, 'agendado', 'triagem', 'visita'], [7, 'execucao', 'concluido', 'encerrado']]) {
+  for (const [id, destino, anterior, frase] of [[4, 'execucao', 'aprovacao', 'Gestão → Aprovação'], [2, 'agendado', 'triagem', 'visita'], [7, 'execucao', 'concluido', 'encerrado']]) {
+    if (id === 7) {
+      assert.deepEqual(await b.avaliar(s => Array.from(document.querySelector(s).options, o => o.value), seletor(id)), ['concluido', 'triagem']);
+      await b.avaliar(s => { const o = document.createElement('option'); o.value = 'execucao'; o.textContent = 'Opção obsoleta sintética'; document.querySelector(s).appendChild(o); }, seletor(id));
+    }
     antes = await contar(); await b.preencher(seletor(id), destino); await terminou(id, anterior);
     assert.match(await texto('[data-status-controle="' + id + '"]'), new RegExp(frase));
     assert.equal(await contar(), antes + 1);
@@ -41,7 +45,7 @@ export async function testarStatus(b, origem) {
   await b.preencher('#c-orc-nome', 'Prestador rascunho'); await b.preencher('#c-nota', 'Nota ainda não salva');
   antes = await contar(); await b.preencher('#c-status', 'execucao');
   await b.esperar(() => document.querySelector('#c-status').value === 'aprovacao' && !document.querySelector('#c-status').disabled);
-  assert.match(await texto('#c-status-controle'), /pendente/);
+  assert.match(await texto('#c-status-controle'), /Gestão → Aprovação/);
   await b.clicar('#c-status-controle [data-status-decisao]'); assert.equal(await b.avaliar(() => document.querySelector('#c-mais').open), true);
   assert.equal(await contar(), antes + 1);
   await b.preencher('#c-status', 'orcamento'); await b.esperar(() => document.querySelector('#c-selo').textContent.includes('Orçamento'));

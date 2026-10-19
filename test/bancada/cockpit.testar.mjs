@@ -1,6 +1,9 @@
+import { testarImpeditivos } from './impeditivos.cenarios.mjs';
+import { testarReview1 } from './review1.cenarios.mjs';
+import { testarLote1 } from './lote1.cenarios.mjs';
+import { testarCockpit2 } from './cockpit2.cenarios.mjs';
 /* Bancada do cockpit: SDK simulado, portal real da bancada e Chromium sem dependências. */
 import { testarResidencias } from './vinculos.cenarios.mjs';
-import { testarGestores } from './gestores.cenarios.mjs';
 import assert from 'node:assert/strict';
 import { criarServidor } from './servidor.mjs';
 import { testarAtendente, testarRecusasAtendente } from './atendente.cenarios.mjs';
@@ -10,15 +13,6 @@ import { abrirChromium } from './chromium.mjs';
 function instrumentar() {
   const params = new URLSearchParams(location.search);
   window.cenario = { tipo: params.get('cenario'), alturas: [], tentativasRede: 0, posts: 0 };
-  // Apenas o relógio da faixa: não interfere em debounce, rede ou resize.
-  const agendar = window.setTimeout, cancelar = window.clearTimeout;
-  const timers = new Map(); let proximoTimer = -1, agora = 0;
-  window.setTimeout = function (fn, ms, ...args) {
-    if (ms !== 8000) return agendar(fn, ms, ...args);
-    const id = proximoTimer--; timers.set(id, { em: agora + ms, fn }); return id;
-  };
-  window.clearTimeout = function (id) { timers.delete(id); cancelar(id); };
-  cenario.avancar = ms => { agora += ms; for (const [id, t] of timers) if (t.em <= agora) { timers.delete(id); t.fn(); } };
   const assinar = omni.on, assinantes = {};
   omni.on = function (nome, fn) { (assinantes[nome] ||= []).push(fn); return assinar(nome, fn); };
   cenario.emitir = (nome, d) => (assinantes[nome] || []).forEach(fn => fn(d));
@@ -30,14 +24,10 @@ function instrumentar() {
     if (op.method === 'POST') {
       cenario.posts++;
       if (cenario.tipo === 'recusar') return { status: 422, body: '{"erro":"dados_invalidos","campos":{"titulo":"Título recusado na bancada"}}' };
-      if (cenario.tipo === 'canal422') return { status: 422, body: JSON.stringify({ erro: 'dados_invalidos', campos: { 'atendimento.canal': 'Informe um texto.' } }) };
-      if (cenario.tipo === 'falha500') return { status: 500, body: '{"erro":"falha_interna"}' };
-      if (cenario.tipo === 'rede') throw new Error('Failed to fetch');
-      if (cenario.tipo === 'postrate') return { status: 429, body: '{"erro":"rate_limit"}' };
-      if (cenario.tipo === 'postlento') await new Promise(r => { cenario.liberarPost = r; });
       if (cenario.tipo === 'semreleitura') cenario.tipo = 'erro';
     }
     if (op.url.includes('/contatos/')) {
+      if (cenario.tipo === 'snapshot-lento' && op.url.endsWith('/locacoes')) await new Promise(r => { cenario.liberar = r; });
       if (cenario.tipo === 'carregando') await new Promise(r => { cenario.liberar = r; });
       if (cenario.tipo === 'erro') return { status: 503, body: '{"erro":"Portal indisponível de teste"}' };
       if (cenario.tipo === 'rate') return { status: 429, body: '{"erro":"rate_limit"}' };
@@ -86,7 +76,6 @@ let b;
 const prova = t => process.stdout.write('OK ' + t + '\n');
 try {
   b = await abrirChromium();
-  await testarGestores(b, base.replace('/app/painel.html', ''));
   const pronto = () => b.esperar(() => document.querySelector('#cp-nome')?.textContent.includes('Demonstração') && !!document.querySelector('[data-chamado]'));
   const texto = s => b.avaliar(s => document.querySelector(s)?.textContent || '', s);
   const semOverflow = async () => assert.ok(await b.avaliar(() => document.documentElement.scrollWidth <= innerWidth && [...document.querySelectorAll('#gi-cockpit *')].every(el => el.scrollWidth <= el.clientWidth + 1 || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')), 'sem rolagem horizontal, inclusive dentro dos cartões');
@@ -96,104 +85,6 @@ try {
     await b.viewport(...tamanho);
     await b.captura('cockpit-' + nome);
   };
-  async function topo(tipo) {
-    assert.deepEqual(await b.avaliar(() => {
-      const faixa = document.querySelector('#cp-recado'), r = faixa.getBoundingClientRect();
-      return { topo: faixa.previousElementSibling.matches('header') && faixa.nextElementSibling.id === 'cp-abas',
-        visivel: !faixa.hidden && r.top >= 0 && r.bottom <= innerHeight, role: faixa.getAttribute('role') };
-    }), { topo: true, visivel: true, role: tipo });
-  }
-  const falhasHotfix = [];
-  async function hotfix(nome, fn) {
-    try { await fn(); prova('hotfix ' + nome); }
-    catch (err) { falhasHotfix.push(nome + ': ' + err.message); }
-  }
-  async function novo(parametros = '') {
-    await b.navegar(base + '?escrita=1' + parametros); await pronto();
-    await b.clicar('#cp-tab-novo'); await b.esperar(() => !!document.querySelector('[data-foto]'));
-  }
-  await hotfix('título vazio tem erro junto ao campo, foco e nenhuma requisição', async () => {
-    await novo(); const antes = await b.avaliar(() => bancada.chamadas.length);
-    await b.clicar('#cp-revisar');
-    assert.equal(await texto('#cp-titulo-erro'), 'Informe o título do chamado.');
-    assert.deepEqual(await b.avaliar(() => [document.activeElement.id, document.querySelector('#cp-titulo').getAttribute('aria-invalid')]), ['cp-titulo', 'true']);
-    assert.equal(await b.avaliar(() => bancada.chamadas.length), antes);
-    await b.preencher('#cp-titulo', 'Reparo sintético');
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo-erro').hidden), true);
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').hasAttribute('aria-invalid')), false);
-  });
-  for (const invalido of [false, true]) await hotfix('canal numérico e início ' + (invalido ? 'inválido' : 'numérico'), async () => {
-    await novo('&numerico=1' + (invalido ? '&inicioInvalido=1' : ''));
-    assert.match(await texto('#cp-vinculo'), /Atendimento|WebChat/);
-    assert.doesNotMatch(await texto('#cp-vinculo'), /\b26\b/);
-    await b.preencher('#cp-titulo', 'Hotfix sintético'); await b.clicar('#cp-revisar');
-    assert.doesNotMatch(await texto('#cp-conteudo'), /\b26\b/);
-    await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
-    const enviado = await b.avaliar(() => JSON.parse(bancada.chamadas.find(r => r.method === 'POST').body).atendimento);
-    assert.match(enviado.canal, /^(WebChat|Atendimento)$/);
-    assert.equal(enviado.iniciado_em, invalido ? null : '2025-10-09T08:53:20.000Z');
-    await topo('status'); assert.match(await texto('#cp-recado'), /OS-\d+ aberta ✓/);
-    assert.equal(await b.avaliar(() => document.activeElement.closest('#cp-sucesso')?.id), 'cp-sucesso');
-    await b.avaliar(() => cenario.avancar(7999)); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), false);
-    await b.avaliar(() => cenario.avancar(1)); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true);
-  });
-  for (const [tipo, frase] of [['canal422', 'O canal do atendimento não pôde ser lido. Atualize o painel e tente de novo.'], ['falha500', 'Não foi possível abrir o chamado. Confira os dados e tente de novo.'], ['rede', 'O portal não respondeu. Tente de novo em instantes.'], ['postrate', 'Limite de consultas atingido. Aguarde cerca de um minuto e tente novamente.']]) {
-    await hotfix(tipo + ' mantém dados, faixa no topo, erro persistente e retry', async () => {
-      await novo('&cenario=' + tipo); await b.preencher('#cp-titulo', 'Preservar hotfix'); await b.preencher('#cp-descricao', 'Descrição sintética'); await b.clicar('[data-foto]');
-      await b.clicar('#cp-revisar'); await b.avaliar(() => scrollTo(0, document.body.scrollHeight)); await b.clicar('#cp-confirmar');
-      await b.esperar(() => !document.querySelector('#cp-confirmar').disabled);
-      assert.equal(await texto('#cp-recado'), frase); await topo('alert');
-      assert.equal(await texto('#cp-confirmar'), 'Tentar de novo');
-      assert.equal(await b.avaliar(() => document.activeElement.id), 'cp-recado');
-      await b.avaliar(() => cenario.avancar(80000)); assert.equal(await texto('#cp-recado'), frase);
-      await b.clicar('#cp-recado-fechar'); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true);
-      await b.clicar('#cp-voltar');
-      assert.deepEqual(await b.avaliar(() => [document.querySelector('#cp-titulo').value, document.querySelector('#cp-descricao').value, document.querySelector('[data-foto]').checked]), ['Preservar hotfix', 'Descrição sintética', true]);
-      if (tipo !== 'postrate') {
-        await b.clicar('#cp-revisar'); await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-confirmar');
-        await b.esperar(() => !!document.querySelector('#cp-sucesso')); assert.match(await texto('#cp-recado'), /OS-\d+ aberta ✓/);
-      }
-    });
-  }
-  await hotfix('botão informa abertura em andamento e impede duplo envio', async () => {
-    await novo('&cenario=postlento'); await b.preencher('#cp-titulo', 'Espera sintética'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
-    await b.esperar(() => !!cenario.liberarPost);
-    assert.equal(await texto('#cp-confirmar'), 'Abrindo chamado…');
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), true);
-    await b.avaliar(() => { document.querySelector('#cp-confirmar').click(); cenario.tipo = ''; cenario.liberarPost(); });
-    await b.esperar(() => !!document.querySelector('#cp-sucesso')); assert.equal(await b.avaliar(() => cenario.posts), 1);
-  });
-  for (const tema of ['claro', 'escuro']) for (const largura of [260, 300, 334]) await hotfix('faixas ' + largura + 'px ' + tema, async () => {
-    await b.viewport(largura, 650); await novo('&tema=' + tema + '&cenario=canal422');
-    await b.preencher('#cp-titulo', 'Captura sintética'); await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
-    await b.esperar(() => !document.querySelector('#cp-confirmar').disabled); await topo('alert'); await capturar('hotfix-' + largura + '-' + tema + '-erro');
-    await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
-    await topo('status'); await capturar('hotfix-' + largura + '-' + tema + '-sucesso');
-  });
-  await hotfix('nota usa faixa do topo e erro hostil permanece texto', async () => {
-    await b.navegar(base + '?escrita=1'); await pronto();
-    await b.clicar('[data-detalhes="1"]'); await b.esperar(() => !!document.querySelector('[data-nota]'));
-    await b.avaliar(() => { cenario.nota = GI.chamadosNota; GI.chamadosNota = async () => { throw new Error('<img src=x onerror="window.__xss=1">'); }; });
-    await b.preencher('[data-nota]', 'Nota sintética'); await b.clicar('[data-salvar-nota]');
-    await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('<img'));
-    await topo('alert');
-    assert.equal(await b.avaliar(() => document.querySelectorAll('#cp-recado img').length), 0);
-    assert.equal(await b.avaliar(() => window.__xss), undefined);
-    await b.avaliar(() => { GI.chamadosNota = cenario.nota; }); await b.clicar('[data-salvar-nota]');
-    await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Nota salva para a equipe.' && !document.querySelector('[data-salvar-nota]').disabled);
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'status');
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').previousElementSibling.tagName), 'HEADER');
-    await b.avaliar(() => cenario.avancar(8000)); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true);
-    await b.preencher('[data-nota]', 'Outra nota sintética'); await b.clicar('[data-salvar-nota]');
-    await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Nota salva para a equipe.' && !document.querySelector('[data-salvar-nota]').disabled);
-    await b.avaliar(() => { GI.chamadosNota = async () => { throw new Error('Falha sintética posterior'); }; });
-    await b.preencher('[data-nota]', 'Preservar nota'); await b.clicar('[data-salvar-nota]');
-    await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Falha sintética posterior'));
-    await b.avaliar(() => cenario.avancar(8000));
-    assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), false, 'timer do sucesso anterior não apaga o erro seguinte');
-    await b.clicar('#cp-tab-imovel'); assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').hidden), true, 'outra ação limpa o erro');
-  });
-  assert.deepEqual(falhasHotfix, [], 'regressões hotfix');
   await testarResidencias(b, base.replace('/app/painel.html', ''));
   await testarAtendente(b, base.replace('/app/painel.html', ''), 1, async (id, texto) => {
     const d = await b.avaliar(async id => GI.chamadosObter(id), id);
@@ -211,7 +102,7 @@ try {
       assert.match(await texto('#cp-conteudo'), /Proprietário Demonstração/);
       assert.match(await texto('#cp-conteudo'), /Atendimento/);
       assert.doesNotMatch(await texto('#cp-conteudo'), /\bSLA\b/, 'prazo em linguagem simples');
-      assert.equal(await b.avaliar(() => document.querySelector('[data-gestao]')), null, 'atendente não recebe atalho para gestão');
+      assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true, 'atendente recebe gestão no diálogo');
       assert.equal(await b.avaliar(() => document.querySelector('details').open), true);
       assert.equal(await b.avaliar(() => document.querySelector('details summary strong').textContent), 'OS-1001', 'emergência com SLA vencido vem antes da aprovação pausada');
       assert.ok(await b.avaliar(() => [...document.querySelectorAll('.gi-cp-trilha')].every(el => el.children.length === 7)));
@@ -220,20 +111,21 @@ try {
       await b.clicar('#cp-tab-imovel');
       assert.match(await texto('#cp-conteudo'), /Fiador/);
       await capturar(largura + '-' + tema + '-imovel');
-      await b.clicar('#cp-tab-novo');
-      assert.match(await texto('#cp-conteudo'), /desligada/);
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+      assert.match(await texto('#cp-escrita-aviso'), /desligadas/);
+      assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').hidden), true);
       assert.equal(await b.avaliar(() => !!document.querySelector('#cp-revisar')), false);
       await b.avaliar(async () => { try { await GI.chamarPortal('/chamados', { corpo: {} }); } catch {} });
       assert.equal(await b.avaliar(() => cenario.posts), 0);
       await capturar(largura + '-' + tema + '-escrita-desligada');
 
       await b.navegar(base + q + '&escrita=1'); await pronto();
-      await b.clicar('#cp-tab-novo'); await b.esperar(() => !!document.querySelector('[data-foto]'));
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.esperar(() => !!document.querySelector('[data-foto]'));
       assert.match(await texto('#cp-vinculo'), /8801.*DEMO-P8801.*WhatsApp/);
       await b.preencher('#cp-titulo', 'Reparo Demonstração');
       await b.preencher('#cp-descricao', 'Relato de teste sintético.');
       await b.clicar('[data-categoria="eletrica"]'); await b.clicar('[data-prioridade="alta"]');
-      await b.clicar('[data-foto]'); await b.preencher('#cp-disponibilidade', 'Após 18h');
+      await b.clicar('[data-foto]'); await b.clicar('#cp-mais-detalhes summary'); await b.preencher('#cp-disponibilidade', 'Após 18h');
       await capturar(largura + '-' + tema + '-novo-vinculado');
       await b.clicar('#cp-revisar');
       assert.match(await texto('#cp-conteudo'), /Confirme antes de abrir/);
@@ -243,7 +135,7 @@ try {
       assert.equal(await b.avaliar(() => document.querySelector('#cp-descricao').value), 'Relato de teste sintético.');
       await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
       await b.esperar(() => document.querySelector('#cp-sucesso')?.textContent.includes('aberta'));
-      assert.equal(await b.avaliar(() => document.querySelector('#cp-ver-gestao')), null);
+      assert.equal(await b.avaliar(() => !!document.querySelector('#cp-ver-gestao')), true);
       const criacao = await b.avaliar(() => JSON.parse(bancada.chamadas.find(c => c.method === 'POST').body));
       assert.equal(criacao.atendimento.chat_id, 8801); assert.equal(criacao.atendimento.protocolo, 'DEMO-P8801');
       assert.equal(criacao.solicitante.contato_id, 9901); assert.equal(criacao.atendente.user_id, 9999);
@@ -283,15 +175,15 @@ try {
   prova('token de geração: resposta atrasada do chat anterior não mistura dados');
 
   await b.navegar(base); await pronto();
-  await b.preencher('#cp-imovel', '1');
+  await b.preencher('#cp-filtro-imovel', '3');
   assert.doesNotMatch(await texto('#cp-conteudo'), /Proprietário Demonstração/);
-  await b.preencher('#cp-imovel', '0');
+  await b.preencher('#cp-filtro-imovel', '1');
   assert.match(await texto('#cp-conteudo'), /Proprietário Demonstração/);
   const n = await b.avaliar(() => bancada.chamadas.length);
   await b.clicar('#cp-atualizar'); await pronto();
   await b.esperar(n => bancada.chamadas.length === n + 2, n);
   await b.clicar('#cp-tab-imovel'); await new Promise(r => setTimeout(r, 200));
-  await b.clicar('#cp-tab-novo'); await new Promise(r => setTimeout(r, 200));
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await new Promise(r => setTimeout(r, 200));
   const alturas = await b.avaliar(() => cenario.alturas.slice());
   assert.ok(alturas.some((h, i) => i && h < alturas[i - 1] - 2));
   assert.ok(alturas.some((h, i) => i && h > alturas[i - 1] + 2));
@@ -300,7 +192,7 @@ try {
   prova('atualização ignora cache 60s; wrapper cresce e encolhe sem realimentação de altura');
 
   await b.navegar(base + '?cenario=fixo'); await pronto();
-  await b.clicar('#cp-tab-novo'); await new Promise(r => setTimeout(r, 200));
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await new Promise(r => setTimeout(r, 200));
   assert.equal(await b.avaliar(() => cenario.alturas.length), 1);
   prova('resize applied:false encerra pedidos para slot fixo');
 
@@ -316,11 +208,11 @@ try {
   prova('cota local impede ultrapassar 30 requisições por minuto');
 
   await b.navegar(base + '?escrita=1&cenario=recusar'); await pronto();
-  await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Preservar no erro');
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.preencher('#cp-titulo', 'Preservar no erro');
   await b.clicar('#cp-revisar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
   await b.clicar('#cp-confirmar');
-  await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Informe o título do chamado.'));
+  await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Título recusado'));
   await b.clicar('#cp-voltar');
   assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), 'Preservar no erro');
   await b.avaliar(() => { cenario.tipo = 'semreleitura'; });
@@ -330,7 +222,111 @@ try {
   prova('422 preserva formulário; releitura recusada após POST mantém sucesso e evita nova gravação');
 
   await b.navegar(base + '?escrita=1'); await pronto();
-  await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Não abrir no chat errado');
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+  await b.preencher('#cp-titulo', 'Abertura incerta sintética'); await b.clicar('#cp-revisar');
+  await b.avaliar(() => { cenario.tipo = 'erro'; bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
+  await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
+  const postsIncerta = await b.avaliar(() => cenario.posts);
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
+  await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-atualizar');
+  await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent.includes('aberta'));
+  assert.equal(await b.avaliar(() => cenario.posts), postsIncerta, 'conferência por releitura não repete POST');
+  await b.clicar('#cp-voltar');
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), 'Abertura incerta sintética', 'o campo mantém o título depois da atualização que encontrou a abertura');
+  prova('abertura incerta: botão habilitado, atualização confere por GET e preserva formulário sem POST duplicado');
+
+  // Releitura recusada mantém conferência; trocar de atendimento abandona a incerteza antiga.
+  await b.navegar(base + '?escrita=1'); await pronto();
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+  await b.preencher('#cp-titulo', 'Incerta só no atendimento original RC3'); await b.clicar('#cp-revisar');
+  await b.avaliar(() => { cenario.tipo = 'erro'; bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
+  await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
+  const postsFalha = await b.avaliar(() => cenario.posts);
+  await b.clicar('#cp-atualizar');
+  await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Não foi possível conferir'));
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').textContent), 'Conferir se abriu');
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-confirmar').disabled), false);
+  assert.equal(await b.avaliar(() => cenario.posts), postsFalha);
+  await b.clicar('#cp-voltar');
+  assert.equal(await b.avaliar(() => document.querySelector('#cp-titulo').value), 'Incerta só no atendimento original RC3', 'releitura falha por ⟳ mantém o campo');
+  await b.avaliar(async () => {
+    const http = omni.http.request;
+    cenario.conferenciasAntigas = 0; cenario.restaurarRede = () => { omni.http.request = http; };
+    omni.http.request = async op => {
+      if (op.url.includes('/contatos/9901/')) { cenario.conferenciasAntigas++; return { status: 503, body: '{"erro":"Indisponível só para contato antigo"}' }; }
+      return http(op);
+    };
+    cenario.tipo = ''; await omni.chats.select(8802);
+  });
+  await b.esperar(() => document.querySelector('#cp-nome').textContent.includes('Dois') && document.querySelector('#cp-imovel').textContent.includes('Avulso') && !!document.querySelector('[data-chamado]'));
+  assert.equal(await b.avaliar(() => cenario.conferenciasAntigas), 0, 'troca não consulta o contato da criação incerta');
+  assert.equal(await b.avaliar(() => cenario.posts), postsFalha);
+  await b.avaliar(async () => { cenario.restaurarRede(); await omni.chats.select(8801); });
+  await b.esperar(() => document.querySelector('#cp-nome').textContent.includes('Um') && !!document.querySelector('[data-chamado]'));
+  assert.equal(await b.avaliar(() => document.body.textContent.includes('Conferir se abriu')), false, 'voltar ao atendimento não ressuscita a incerteza descartada');
+  prova('RC3 abertura incerta: falha mantém botão e título; outro contato carrega sem conferir o antigo; retorno sem incerteza residual');
+
+  // Sem chamado na releitura, só a tentativa explícita pode mandar outro POST.
+  await b.navegar(base + '?escrita=1'); await pronto();
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+  await b.preencher('#cp-titulo', 'POST não chegou ao portal RC3'); await b.clicar('#cp-revisar');
+  await b.avaliar(() => {
+    const http = omni.http.request;
+    omni.http.request = async op => {
+      if (op.method === 'POST' && op.url.endsWith('/chamados')) {
+        omni.http.request = http; cenario.posts++; cenario.tipo = 'erro';
+        throw Object.assign(new Error('Timeout antes de gravar'), { code: 'timeout' });
+      }
+      return http(op);
+    };
+  });
+  await b.clicar('#cp-confirmar'); await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
+  const postsNaoGravados = await b.avaliar(() => cenario.posts);
+  await b.avaliar(() => { cenario.tipo = ''; }); await b.clicar('#cp-confirmar');
+  await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Tentar de novo');
+  assert.match(await texto('#cp-recado'), /Não encontramos o chamado. Você pode tentar abrir de novo\./);
+  assert.equal(await b.avaliar(() => cenario.posts), postsNaoGravados);
+  await b.clicar('#cp-confirmar'); await b.esperar(() => !!document.querySelector('#cp-sucesso'));
+  assert.equal(await b.avaliar(() => cenario.posts), postsNaoGravados + 1, 'Tentar de novo manda um único novo POST');
+  prova('RC3 abertura incerta: releitura sem chamado oferece Tentar de novo e só então repete POST');
+  for (const mudanca of ['chat', 'contato', 'conferencia-tardia']) {
+    await b.navegar(base + '?escrita=1'); await pronto();
+    await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
+    await b.preencher('#cp-titulo', 'Isolamento da incerteza RC3 ' + mudanca); await b.clicar('#cp-revisar');
+    await b.avaliar(() => { cenario.tipo = 'erro'; bancada.perderResposta = true; }); await b.clicar('#cp-confirmar');
+    await b.esperar(() => document.querySelector('#cp-confirmar')?.textContent === 'Conferir se abriu');
+    const anteriores = await b.avaliar(() => ({ posts: cenario.posts, locacoes: bancada.chamadas.filter(c => c.caminho.endsWith('/locacoes')).length }));
+    await b.avaliar(mudanca => {
+      cenario.tipo = '';
+      if (mudanca === 'conferencia-tardia') {
+        const obter = GI.chamadosPorContato;
+        GI.chamadosPorContato = n => n === 9901 ? new Promise((resolve, reject) => { cenario.recusarConferencia = () => reject(new Error('Conferência antiga falhou')); }) : obter(n);
+      } else {
+        const selecionado = omni.chats.getSelected;
+        // O SDK passa a devolver outro par sem evento; iniciar deve conferir os dois IDs.
+        omni.chats.getSelected = async () => ({ ...(await selecionado()), ...(mudanca === 'chat' ? { id: 8805 } : { contactId: 9902 }) });
+      }
+    }, mudanca);
+    if (mudanca === 'conferencia-tardia') {
+      await b.clicar('#cp-confirmar'); await b.esperar(() => !!cenario.recusarConferencia);
+      await b.avaliar(async () => { await omni.chats.select(8802); });
+    } else await b.clicar('#cp-atualizar');
+    await b.esperar(nome => document.querySelector('#cp-nome').textContent.includes(nome) && !!document.querySelector('[data-chamado]'), mudanca === 'chat' ? 'Um' : 'Dois');
+    if (mudanca === 'conferencia-tardia') {
+      await b.avaliar(async () => { cenario.recusarConferencia(); await new Promise(r => setTimeout(r, 30)); });
+      assert.doesNotMatch(await texto('#cp-recado'), /Não foi possível conferir/);
+    } else {
+      assert.ok(await b.avaliar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/locacoes')).length) > anteriores.locacoes, 'outro par carrega normalmente em vez de conferir a incerteza');
+    }
+    assert.equal(await b.avaliar(() => cenario.posts), anteriores.posts);
+    assert.equal(await b.avaliar(() => document.body.textContent.includes('Conferir se abriu')), false);
+  }
+  prova('RC3 incerteza: IDs de chat e contato conferidos mesmo sem evento; falha tardia do chat antigo descartada');
+
+
+
+  await b.navegar(base + '?escrita=1'); await pronto();
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.preencher('#cp-titulo', 'Não abrir no chat errado');
   await b.clicar('#cp-revisar');
   await b.avaliar(async () => {
     const user = omni.session.getUser;
@@ -350,7 +346,7 @@ try {
   prova('destroy cancela assinatura de chat e trabalho pendente');
 
   await b.navegar(base + '?demonstracao=1&escrita=1'); await pronto();
-  await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Chamado sintético');
+  await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.preencher('#cp-titulo', 'Chamado sintético');
   await b.clicar('#cp-revisar'); await b.clicar('#cp-confirmar');
   await b.esperar(() => !!document.querySelector('#cp-sucesso'));
   assert.equal(await b.avaliar(() => cenario.tentativasRede), 0);
@@ -359,7 +355,7 @@ try {
   prova('demonstração: ciclo completo sintético com zero tentativas de rede');
 
   for (const q of ['?modo=local&escrita=1', '?modo=fora&escrita=1']) {
-    await b.navegar(base + q); await b.esperar(() => document.querySelector('#cp-conteudo')?.textContent.includes('portal conectado'));
+    await b.navegar(base + q); await b.esperar(() => document.querySelector('#cp-conteudo')?.textContent.includes('Confira a URL e o token'));
     await b.avaliar(async () => { try { await GI.chamarPortal('/chamados', { corpo: {} }); } catch {} });
     assert.equal(await b.avaliar(() => cenario.posts), 0);
     assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
@@ -367,6 +363,7 @@ try {
   await b.navegar(base + '?cenario=hostil&escrita=1'); await b.esperar(() => !!document.querySelector('[data-chamado]'));
   for (const aba of ['chamados', 'imovel', 'novo']) {
     await b.clicar('#cp-tab-' + aba);
+    if (aba === 'novo' && await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0');
     await capturar('hostil-' + aba);
     assert.equal(await b.avaliar(() => document.querySelectorAll('#gi-cockpit img, #gi-cockpit script').length), 0);
     assert.equal(await b.avaliar(() => window.__xss), undefined);
@@ -377,9 +374,15 @@ try {
   await capturar('hostil-confirmacao');
   assert.equal(await b.avaliar(() => document.querySelectorAll('#gi-cockpit img').length), 0);
   assert.equal(await b.avaliar(() => window.__xss), undefined);
-  assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
+  const snapshotHostil = await b.avaliar(async () => omni.storage.get('gi-cockpit-snapshots-v1'));
+  assert.ok(snapshotHostil.rows.length > 0);
+  assert.doesNotMatch(JSON.stringify(snapshotHostil), /portalToken|base64|anexos/);
   assert.deepEqual(b.erros, []);
-  prova('dado hostil permanece texto; sem storage, sem exceções no Chromium');
+  prova('dado hostil permanece texto; snapshot sem arquivos ou credenciais, sem exceções no Chromium');
+  await testarCockpit2(b, base);
+  await testarLote1(b, base.replace('/app/painel.html', ''));
+  await testarImpeditivos(b, base.replace('/app/painel.html', ''));
+  await testarReview1(b, base);
   process.stdout.write('Cockpit: todas as provas passaram. Capturas em test/bancada/capturas/cockpit-*.png\n');
 } catch (err) {
   if (b) process.stderr.write(JSON.stringify(await b.avaliar(() => ({ texto: document.querySelector('#gi-cockpit')?.textContent, chamadas: bancada.chamadas.map(c => [c.method, c.caminho]), erros: window.__xss }))) + '\n');

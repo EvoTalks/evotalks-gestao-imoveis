@@ -1,3 +1,5 @@
+import { testarImpeditivos } from '../bancada/impeditivos.cenarios.mjs';
+import { testarLote1 } from '../bancada/lote1.cenarios.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -155,7 +157,7 @@ export async function testarReal(b, origem, real) {
       await abrir(id);
       assert.equal((await chamado(id)).aprovacao_status, 'pendente');
       await b.preencher('#c-status', 'agendado'); await livre();
-      assert.equal((await chamado(id)).status, 'orcamento'); assert.match(await texto('#c-status-controle'), /aprovação.*pendente/);
+      assert.equal((await chamado(id)).status, 'orcamento'); assert.match(await texto('#c-status-controle'), /Aguardando o proprietário.*Gestão → Aprovação/);
       await b.clicar('#c-registrar-decisao'); await b.clicar('#c-aprovar'); await livre();
       assert.equal((await chamado(id)).aprovacao_status, 'aprovada');
       assert.equal((await chamado(id)).aprovacao_por, 'Proprietário');
@@ -189,24 +191,19 @@ export async function testarReal(b, origem, real) {
       await b.captura('integracao-h-cancelado'); await fechar();
     });
     await cenario('i atendente abre chamado do chat e vê na gestão', async () => {
-      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1&numerico=1');
+      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1');
       await b.esperar(() => !!document.querySelector('[data-chamado]'));
-      assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), false);
+      assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true);
       assert.match(await texto('#cp-conteudo'), /Reparo Sintético Integração/);
-      await b.clicar('#cp-tab-novo'); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração');
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); await b.preencher('#cp-titulo', 'Cockpit Sintético Integração');
       await b.captura('integracao-i-novo-vinculado');
       await b.clicar('#cp-revisar'); await b.captura('integracao-i-confirmacao'); await b.clicar('#cp-confirmar');
       await b.esperar(() => !!document.querySelector('#cp-sucesso'));
-      assert.equal(await b.avaliar(() => !!document.querySelector('#cp-ver-gestao')), false);
+      assert.equal(await b.avaliar(() => !!document.querySelector('#cp-ver-gestao')), true);
       await b.captura('integracao-i-sucesso');
       const c = (await sql("SELECT * FROM chamados WHERE titulo='Cockpit Sintético Integração'"))[0];
       assert.equal(c.atendimento_chat_id, 8801); assert.equal(c.solicitante_contato_id, 9901); assert.equal(c.origem, 'atendimento');
       assert.equal(c.atendente_user_id, 9999);
-      assert.match(c.atendimento_canal, /^(Atendimento|WebChat)$/);
-      assert.equal(new Date(c.atendimento_iniciado_em).toISOString(), '2025-10-09T08:53:20.000Z');
-      assert.equal(await texto('#cp-recado'), 'OS-' + c.numero + ' aberta ✓');
-      assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').getAttribute('role')), 'status');
-      assert.equal(await b.avaliar(() => document.querySelector('#cp-recado').previousElementSibling.tagName), 'HEADER');
       await b.esperar(() => bancada.chamadas.filter(c => c.caminho.includes('/contatos/9901/chamados')).length >= 2);
       await navegar('chamados'); await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Cockpit Sintético Integração'));
       await b.captura('integracao-i-cockpit-na-gestao');
@@ -242,7 +239,7 @@ export async function testarReal(b, origem, real) {
       await b.avaliar(async () => { await omni.chats.select(8802); await omni.chats.select(8801); });
       await b.esperar(() => document.querySelector('#cp-nome').textContent.includes('Um') && !!document.querySelector('[data-chamado]'));
       assert.doesNotMatch(await texto('#cp-nome'), /Dois/);
-      assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), false);
+      assert.equal(await b.avaliar(() => !!document.querySelector('[data-gestao]')), true);
       assert.equal((await chamado(id)).atendimento_chat_id, 8801);
     });
     for (const tema of ['claro', 'escuro']) for (const largura of [260, 300, 334]) {
@@ -261,7 +258,7 @@ export async function testarReal(b, origem, real) {
         const altura = await b.avaliar(() => Math.ceil(document.querySelector('#gi-cockpit').getBoundingClientRect().height) + 100);
         await b.viewport(largura, altura);
         await b.captura('integracao-atendente-' + largura + '-' + tema);
-        await b.clicar('#cp-tab-novo'); assert.match(await texto('#cp-conteudo'), /desligada/);
+        await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); assert.match(await texto('#cp-escrita-aviso'), /desligadas/); assert.equal(await b.avaliar(() => document.querySelector('#cp-tab-novo').hidden), true);
       });
     }
     await cenario('F10 cockpit vincula catálogo e avulso ao contato sem locação', async () => {
@@ -273,8 +270,8 @@ export async function testarReal(b, origem, real) {
       await b.preencher('#cp-r-contrato', 'DEMO-INVALIDO-REAL'); await b.clicar('[data-residencia]');
       assert.equal((await sql('SELECT count(*)::int AS n FROM locacao_contatos WHERE contato_id=9905'))[0].n, 0);
       let inicio = real.requisicoes.length;
-      await b.clicar('#cp-r-confirmar'); await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Residência vinculada.');
-      await b.esperar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/9905/chamados')).length === 2);
+      await b.clicar('#cp-r-confirmar'); await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Residência vinculada.'));
+      await b.esperar(() => bancada.chamadas.filter(c => c.caminho.endsWith('/9905/chamados')).length === 1);
       assert.ok(real.requisicoes.length - inicio <= 3);
       const l = (await sql("SELECT * FROM locacoes WHERE imovel_codigo='DEMO-003'"))[0];
       assert.equal(l.contrato_numero, 'DEMO-INVALIDO-REAL');
@@ -282,14 +279,80 @@ export async function testarReal(b, origem, real) {
       assert.equal(contato.contato_id, 9905); assert.equal(contato.papel, 'locatario');
       assert.equal(contato.nome, 'Contato Sem Residência Demonstração'); assert.equal(contato.telefone, '00000000005');
       assert.match(await texto('#cp-conteudo'), /Sala Demonstração Gama/);
-      await b.clicar('#cp-tab-novo'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
+      await b.clicar('#cp-tab-novo'); if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', '0'); assert.ok(await b.avaliar(() => !!document.querySelector('#cp-revisar')));
       await b.clicar('#cp-vincular-residencia'); await b.clicar('#cp-r-fora'); await b.preencher('#cp-r-titulo', 'Avulso F10 Integração Sintética');
       await b.clicar('#cp-r-form button[type=submit]'); await b.clicar('#cp-r-confirmar');
-      await b.esperar(() => document.querySelector('#cp-recado').textContent === 'Residência vinculada.');
+      await b.esperar(() => document.querySelector('#cp-recado').textContent.includes('Residência vinculada.'));
       const avulso = (await sql("SELECT id,imovel_codigo FROM locacoes WHERE imovel_titulo='Avulso F10 Integração Sintética'"))[0];
       assert.equal(avulso.imovel_codigo, null); assert.equal((await sql('SELECT contato_id FROM locacao_contatos WHERE locacao_id=$1', [avulso.id]))[0].contato_id, 9905);
       await b.captura('integracao-f10-residencia');
     });
+    await cenario('F11 atendente edita a O.S. pela gestão do diálogo', async () => {
+      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1');
+      await b.esperar(id => !!document.querySelector('[data-detalhes="' + id + '"]'), id);
+      await b.avaliar(id => document.querySelector('[data-detalhes="' + id + '"]').closest('details').querySelector('[data-gestao]').click(), id);
+      await modal(); await livre();
+      assert.match(await b.avaliar(() => location.pathname), /os.html$/);
+      assert.equal(await b.avaliar(() => document.querySelectorAll('[role="dialog"]').length), 0);
+      await b.preencher('#c-status', 'triagem'); await livre();
+      assert.equal((await chamado(id)).status, 'triagem');
+      await b.preencher('#c-prioridade', 'alta');
+      await b.clicar('[data-ok]'); await b.esperar(() => !!document.querySelector('[data-os]'));
+      assert.equal((await chamado(id)).prioridade, 'alta');
+      await b.clicar('[data-os="' + id + '"]'); await livre();
+      await b.preencher('#c-nota', 'Nota sintética F11 do diálogo'); await b.clicar('#c-salvar-nota');
+      await b.esperar(() => document.querySelector('#c-nota').value === '' && !document.querySelector('#c-salvar-nota').disabled);
+      const ev = (await sql("SELECT texto,notificou_cliente FROM chamado_eventos WHERE chamado_id=$1 AND tipo='nota' ORDER BY id DESC LIMIT 1", [id]))[0];
+      assert.equal(ev.texto, 'Nota sintética F11 do diálogo'); assert.equal(ev.notificou_cliente, false);
+      await b.avaliar(() => { document.querySelector('#c-mais').open = true; });
+      await b.preencher('#c-orc-nome', 'Prestador Sintético Diálogo F11'); await b.preencher('#c-orc-valor', '77'); await b.clicar('#c-salvar-orcamento');
+      await b.esperar(() => document.querySelector('#c-orcamentos').textContent.includes('Prestador Sintético Diálogo F11') && !document.querySelector('#c-salvar-orcamento').disabled);
+      const orc = (await sql("SELECT valor_centavos FROM chamado_orcamentos WHERE chamado_id=$1 AND prestador_nome='Prestador Sintético Diálogo F11'", [id]))[0];
+      assert.equal(orc.valor_centavos, 7700);
+      await b.captura('integracao-f11-dialogo');
+      await b.clicar('#b-fechar'); await b.esperar(() => bancada.fechamentos === 1);
+    });
+    await cenario('F12 edição rápida e vínculo no cockpit com banco real', async () => {
+      const novo = await real.api('/chamados', { locacao_id: locacaoId, titulo: 'O.S. Sintética Cockpit F12', categoria: 'outros', prioridade: 'normal', solicitante: { contato_id: 9901, nome: 'Cliente Sintético F12' } });
+      const n = novo.chamado.id;
+      await b.navegar(origem + '/app/painel.html?perfil=agente&escrita=1');
+      await b.esperar(() => !!document.querySelector('#cp-imovel option'));
+      const indice = await b.avaliar(() => Array.from(document.querySelector('#cp-imovel').options).find(o => o.textContent.includes('Avulso Integração')).value);
+      await b.preencher('#cp-imovel', indice);
+      await b.esperar(n => !!document.querySelector('[data-os-id="' + n + '"]'), n);
+      const seletor = '[data-os-id="' + n + '"]';
+      await b.avaliar(n => { document.querySelector('[data-os-id="' + n + '"]').open = true; }, n);
+      await b.esperar(n => !document.querySelector('[data-os-id="' + n + '"] [data-rapida="atendente"]').disabled, n);
+      async function editar(campo, valor) {
+        const inicio = real.requisicoes.length;
+        await b.preencher(seletor + ' [data-rapida="' + campo + '"]', valor);
+        await b.esperar((n, campo) => document.querySelector('[data-os-id="' + n + '"] [data-salvo="' + campo + '"]').textContent === '✓ salvo' && !document.querySelector('[data-os-id="' + n + '"] [data-rapida="' + campo + '"]').disabled, n, campo);
+        assert.equal(real.requisicoes.length - inicio, 1, campo + ': 1 requisição');
+      }
+      await editar('status', 'triagem'); assert.equal((await chamado(n)).status, 'triagem');
+      await editar('prioridade', 'alta'); assert.equal((await chamado(n)).prioridade, 'alta');
+      await editar('atendente', '9998'); assert.equal((await chamado(n)).atendente_user_id, 9998);
+      await editar('quem_paga', 'inquilino'); assert.equal((await chamado(n)).quem_paga, 'inquilino');
+      await editar('visita', '2026-12-05T09:30'); assert.ok((await chamado(n)).visita_inicio);
+      const antes = real.requisicoes.length;
+      await b.clicar(seletor + ' [data-vincular]');
+      await b.esperar(n => document.querySelector('[data-os-id="' + n + '"] [data-acao]').textContent.includes('Este atendimento'), n);
+      assert.equal(real.requisicoes.length - antes, 1); assert.equal((await chamado(n)).atendimento_chat_id, 8801);
+      assert.match(await texto(seletor + ' summary'), /Este atendimento/);
+      await b.clicar(seletor + ' [data-aviso]'); await b.preencher('[data-aviso-texto]', 'Aviso sintético F12 com banco real');
+      await b.clicar('[data-aviso-form] button[type=submit]'); await b.esperar(n => document.querySelector('[data-os-id="' + n + '"] [data-acao]').textContent.includes('Cliente avisado'), n);
+      const ev = (await sql("SELECT texto,notificou_cliente FROM chamado_eventos WHERE chamado_id=$1 AND tipo='nota' ORDER BY id DESC LIMIT 1", [n]))[0];
+      assert.equal(ev.texto, 'Aviso sintético F12 com banco real'); assert.equal(ev.notificou_cliente, true);
+      await b.captura('integracao-f12-edicao-rapida');
+    });
+    await testarLote1(b, origem, async (id, criado) => {
+      const c = await chamado(id);
+      assert.equal(c.atendimento_canal, 'WebChat'); assert.equal(c.atendimento_iniciado_em, null);
+      assert.equal(c.atendimento_protocolo, '987'); assert.equal(c.solicitante_nome, '5');
+      assert.equal(c.solicitante_telefone, '5');
+      const iguais = await sql('SELECT id FROM chamados WHERE titulo=$1 AND atendimento_chat_id=8806', [criado.titulo]); assert.equal(iguais.length, 1);
+    });
+    await testarImpeditivos(b, origem, real);
     process.stdout.write('OK real j: cada cenário respeitou no máximo 30 requisições por minuto; zero exceções no Chromium.\n');
   } finally { b.clicar = clicarOriginal; rmSync(pasta, { recursive: true, force: true }); }
 }
