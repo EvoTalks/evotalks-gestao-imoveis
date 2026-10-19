@@ -740,7 +740,7 @@
       var r;
       if (demo()) { r = { chamado: Object.assign({}, d, { id: 9001, numero: 9001, status: 'novo', sla: {} }) }; chamados.unshift(r.chamado); }
       else {
-        operacaoCriacao = { chatId: id(c.id), contatoId: id(c.contactId), locacaoId: id(d.locacao_id), titulo: normalizarTitulo(d.titulo), inicio: Date.now() };
+        operacaoCriacao = { chatId: id(c.id), contatoId: id(c.contactId), locacaoId: id(d.locacao_id), titulo: d.titulo, inicio: Date.now() };
         r = await GI.chamadosCriarSeguro(d);
       }
       criacaoIncerta = null;
@@ -775,7 +775,6 @@
       }
     } finally { if (g === geracao) gravando = false; }
   }
-  function normalizarTitulo(titulo) { return String(titulo || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   async function conferirCriacaoIncerta() {
     if (!criacaoIncerta || gravando || GI.modo !== 'portal') return;
     var incerta = criacaoIncerta, g = geracao, contexto = { id: incerta.chatId, contactId: incerta.contatoId };
@@ -786,12 +785,7 @@
     try {
       var resposta = await GI.chamadosPorContato(incerta.contatoId);
       if (!await atual(g, contexto) || criacaoIncerta !== incerta) return;
-      var inicioMinimo = new Date(incerta.inicio - 120000).toISOString();
-      var encontrado = linhas(resposta).filter(function (c) {
-        var criadoEm = typeof c.criado_em === 'string' ? GI.isoPortal(c.criado_em) : null;
-        return normalizarTitulo(c.titulo) === incerta.titulo && id(c.locacao_id) === incerta.locacaoId &&
-          (!c.atendimento || id(c.atendimento.chat_id) === incerta.chatId) && criadoEm && criadoEm >= inicioMinimo && abertos(c);
-      }).sort(function (a, b) { return GI.isoPortal(b.criado_em).localeCompare(GI.isoPortal(a.criado_em)); })[0];
+      var encontrado = GI.reconciliarCriacao(linhas(resposta), incerta);
       if (encontrado) {
         criacaoIncerta = null; confirmado = null;
         if (botao) { botao.disabled = true; botao.textContent = GI.chamadoNumero(encontrado.numero) + ' aberta ✓'; }

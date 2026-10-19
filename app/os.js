@@ -70,12 +70,15 @@
     var params = ctx && ctx.contribution && ctx.contribution.params, direto = id(params && params.chamadoId);
     // Consuma o segundo canal mesmo quando os parâmetros tiverem precedência.
     return Promise.resolve().then(function () { return omni.storage.get('gi-os-alvo'); }).then(function (valor) {
-      return Promise.resolve().then(function () { return omni.storage.remove('gi-os-alvo'); }).then(function () {
-        if (direto) return direto;
-        var idade = valor && typeof valor.em === 'number' && valor.em > 0 ? Date.now() - valor.em : NaN;
-        return valor && id(valor.chamadoId) && id(valor.contatoId) && Number.isFinite(idade) && idade >= 0 && idade <= 60000 ? id(valor.chamadoId) : null;
+      return Promise.resolve().then(function () { return omni.storage.remove('gi-os-alvo'); }).then(function () { return valor; });
+    }).catch(function () { return null; }).then(function (valor) {
+      var idade = valor && typeof valor.em === 'number' && valor.em > 0 ? Date.now() - valor.em : NaN;
+      var destino = direto ? params : Number.isFinite(idade) && idade >= 0 && idade <= 60000 ? valor : null;
+      if (!destino || !id(destino.chamadoId) || !id(destino.contatoId)) return null;
+      return omni.chats.getSelected().then(function (chat) {
+        return chat && id(chat.id) && id(chat.contactId) === id(destino.contatoId) ? id(destino.chamadoId) : null;
       });
-    }).catch(function () { return direto; });
+    }).catch(function () { return null; });
   }
   el('b-voltar').onclick = voltar;
   el('b-fechar').onclick = function () { if (fecharEdicao) { fecharHost = true; fecharEdicao(false); } else fechar(); };

@@ -125,15 +125,23 @@
     return { chat_id: GI.id(chat.id), protocolo: GI.textoOuNull(chat.protocol), canal: GI.canalAtendimento(chat.channel),
       fila: GI.textoOuNull(fila && fila.name || chat.queueName) || (GI.id(chat.queueId) ? 'Fila ' + GI.id(chat.queueId) : null), iniciado_em: GI.dataDoChat(chat.startedAt) };
   };
+  function normalizarTitulo(titulo) { return String(titulo || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  GI.reconciliarCriacao = function (chamados, contexto) {
+    if (!GI.id(contexto.locacaoId) || !Number.isFinite(contexto.inicio)) return null;
+    var inicioMinimo = new Date(contexto.inicio - 120000).toISOString();
+    return (chamados || []).filter(function (c) {
+      var criadoEm = typeof c.criado_em === 'string' ? GI.isoPortal(c.criado_em) : null;
+      return normalizarTitulo(c.titulo) === normalizarTitulo(contexto.titulo) && GI.id(c.locacao_id) === GI.id(contexto.locacaoId) &&
+        (!c.atendimento || GI.id(c.atendimento.chat_id) === GI.id(contexto.chatId)) && criadoEm && criadoEm >= inicioMinimo &&
+        c.status !== 'concluido' && c.status !== 'cancelado';
+    }).sort(function (a, b) { return GI.isoPortal(b.criado_em).localeCompare(GI.isoPortal(a.criado_em)); })[0] || null;
+  };
   GI.chamadosCriarSeguro = function (dados) {
+    var contexto = { locacaoId: GI.id(dados.locacao_id), titulo: dados.titulo, chatId: GI.id(dados.atendimento && dados.atendimento.chat_id), inicio: Date.now() };
     return GI.chamadosCriar(dados).catch(function (err) {
       if (!err.semResposta || !dados.solicitante || !GI.id(dados.solicitante.contato_id)) throw err;
       return GI.chamadosPorContato(dados.solicitante.contato_id).then(function (r) {
-        var encontrado = (r.rows || []).find(function (c) {
-          var idade = Date.now() - Date.parse(c.criado_em);
-          var mesmoAtendimento = !c.atendimento && !dados.atendimento || c.atendimento && dados.atendimento && c.atendimento.chat_id === dados.atendimento.chat_id && c.atendimento.protocolo === dados.atendimento.protocolo;
-          return c.titulo === dados.titulo && mesmoAtendimento && idade >= 0 && idade <= 180000;
-        });
+        var encontrado = GI.reconciliarCriacao(r.rows || [], contexto);
         if (encontrado) return { chamado: encontrado, reconciliado: true };
         throw err;
       }, function () { err.criacaoIncerta = true; throw err; });

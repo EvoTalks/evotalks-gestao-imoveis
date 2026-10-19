@@ -28,7 +28,7 @@
   window.fetch = localFetch;
   var armazenamento = {}, assinantes = {};
   if (params.get('sdk') === 'hostil') ctx.user.name = 'Agente “Sintético” 😀';
-  ctx.contribution = { params: params.has('chamado') && !params.has('semparams') ? { chamadoId: params.get('chamado') } : {} };
+  ctx.contribution = { params: params.has('chamado') && !params.has('semparams') ? { chamadoId: params.get('chamado'), contatoId: params.get('contato') || (params.has('lote1') ? 9913 : 9901) } : {} };
   if (params.has('alvo')) armazenamento['gi-os-alvo'] = { chamadoId: Number(params.get('alvo')), contatoId: 9901, em: Date.now() - Number(params.get('idade') || 0) };
   var contatos = [
     { id: 9901, name: 'Locatário Demonstração Um', phone: '00000000001', document: '00000000000', email: 'um@example.invalid' },
@@ -175,6 +175,7 @@
       if (!telas[id]) return Promise.reject(new Error('Tela não simulada.'));
       var query = new URLSearchParams(location.search);
       if (dados && dados.chamadoId) query.set('chamado', dados.chamadoId);
+      if (dados && dados.contatoId) query.set('contato', dados.contatoId);
       location.href = '/app/' + telas[id] + '.html?' + query.toString();
       return Promise.resolve();
     } }

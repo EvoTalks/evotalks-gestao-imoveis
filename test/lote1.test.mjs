@@ -50,9 +50,9 @@ test('lote 1: 422 nomeia campos e rede nunca expõe status nem código', () => {
 });
 test('lote 1: POST gravado com resposta perdida reconcilia sem duplicar', async () => {
   const { GI } = carregar(); let posts = 0;
-  const d = { titulo: 'Reparo sintético', solicitante: { contato_id: 99 }, atendimento: { chat_id: 88 } };
+  const d = { locacao_id: 1, titulo: 'Reparo sintético', solicitante: { contato_id: 99 }, atendimento: { chat_id: 88 } };
   GI.chamadosCriar = async () => { posts++; throw Object.assign(new Error('timeout'), { semResposta: true }); };
-  GI.chamadosPorContato = async () => ({ rows: [{ id: 1, numero: 1001, titulo: d.titulo, atendimento: d.atendimento, criado_em: new Date().toISOString() }] });
+  GI.chamadosPorContato = async () => ({ rows: [{ id: 1, numero: 1001, locacao_id: 1, status: 'novo', titulo: d.titulo, atendimento: d.atendimento, criado_em: new Date().toISOString() }] });
   assert.equal((await GI.chamadosCriarSeguro(d)).chamado.numero, 1001); assert.equal(posts, 1);
 });
 test('lote 1: fila limita getFile a quatro em voo', async () => {
@@ -68,10 +68,10 @@ test('lote 1: erro HTTP e campo desconhecido nunca chegam crus à interface', ()
 });
 test('lote 1: falha na reconciliação mantém criação bloqueada; chamada sem chat também reconcilia', async () => {
   const { GI } = carregar();
-  const d = { titulo: 'Sem atendimento sintético', solicitante: { contato_id: 99 } };
+  const d = { locacao_id: 1, titulo: 'Sem atendimento sintético', solicitante: { contato_id: 99 } };
   GI.chamadosCriar = async () => { throw Object.assign(new Error('timeout'), { semResposta: true }); };
   GI.chamadosPorContato = async () => { throw new Error('timeout'); };
   await assert.rejects(() => GI.chamadosCriarSeguro(d), err => err.criacaoIncerta === true);
-  GI.chamadosPorContato = async () => ({ rows: [{ numero: 1002, titulo: d.titulo, atendimento: null, criado_em: new Date().toISOString() }] });
+  GI.chamadosPorContato = async () => ({ rows: [{ numero: 1002, locacao_id: 1, status: 'novo', titulo: d.titulo, atendimento: null, criado_em: new Date().toISOString() }] });
   assert.equal((await GI.chamadosCriarSeguro(d)).chamado.numero, 1002);
 });

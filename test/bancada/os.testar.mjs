@@ -9,6 +9,24 @@ try {
   b = await abrirChromium();
   const abrir = async q => { await b.navegar(origem + '/app/os.html?perfil=agente&' + q); };
   const pronto = () => b.esperar(() => !!document.querySelector('#c-orc-nome') && !document.querySelector('#c-status').disabled);
+  const falhasAlvo = [];
+  for (const fonte of ['alvo=1', 'chamado=1']) for (const [chat, esperado] of [[8802, 'Avulso'], [8804, 'Vincule um contato'], [0, 'Abra um atendimento']]) {
+    try {
+      await abrir(fonte + '&chat=' + chat);
+      await b.esperar(() => !!document.querySelector('#c-status') || !!document.querySelector('[data-os]') || /Vincule um contato|Abra um atendimento/.test(document.querySelector('#os-recado').textContent));
+      assert.equal(await b.avaliar(() => !!document.querySelector('#c-status')), false, fonte + ': alvo de outro contato nunca abre edição (chat ' + chat + ')');
+      assert.match(await b.avaliar(() => document.querySelector('#os-lista').textContent + document.querySelector('#os-recado').textContent), new RegExp(esperado));
+      assert.equal(await b.avaliar(() => bancada.chamadas.some(c => c.caminho === '/api/ext/chamados/1')), false, 'não consulta a O.S. do contato A');
+      assert.equal(await b.avaliar(async () => await omni.storage.get('gi-os-alvo') ?? null), null);
+    } catch (err) { falhasAlvo.push(err); process.stdout.write('FALHA F18 ' + err.message + '\n'); }
+  }
+  if (falhasAlvo.length) throw new AggregateError(falhasAlvo, 'F18 isolamento de alvo: ' + falhasAlvo.length);
+  for (const fonte of ['alvo=1', 'chamado=1']) {
+    await abrir(fonte); await pronto();
+    assert.match(await b.avaliar(() => document.querySelector('.gi-modal-topo').textContent), /OS-1001/);
+    assert.equal(await b.avaliar(async () => await omni.storage.get('gi-os-alvo') ?? null), null);
+  }
+  process.stdout.write('OK F18 alvo por storage/params exige contato selecionado; divergente, sem contato e sem atendimento descartados; mesmo contato edita\n');
   // RC3: o carregamento não pode roubar foco nem emitir erro antes da resposta.
   await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));
   const infoSemFoco = async (foco, toasts) => {

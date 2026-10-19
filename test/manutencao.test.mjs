@@ -6,14 +6,52 @@ import { criarPortalChamados, PADROES } from './bancada/portal-chamados.mjs';
 import { criarServidor } from './bancada/servidor.mjs';
 import { abrirChromium } from './bancada/chromium.mjs';
 
-function carregar() {
+function carregar(agora) {
   const window = { addEventListener() {} }, sandbox = { window, document: {}, URL, setTimeout };
+  if (agora) sandbox.Date = class extends Date { static now() { return agora(); } };
   vm.runInNewContext(readFileSync(new URL('../app/comum.js', import.meta.url), 'utf8'), sandbox);
   sandbox.GI = window.GI;
   vm.runInNewContext(readFileSync(new URL('../app/manutencao.js', import.meta.url), 'utf8'), sandbox);
   return window.GI;
 }
 const plain = v => JSON.parse(JSON.stringify(v));
+for (const [nome, mudanca] of [
+  ['locação diferente', { locacao_id: 1 }],
+  ['criação de um dia atrás', { criado_em: '2026-10-18T12:00:00.000Z' }],
+  ['antes da tolerância de dois minutos', { criado_em: '2026-10-19T11:57:59.999Z' }],
+  ['atendimento diferente', { atendimento: { chat_id: 8802, protocolo: 'DEMO-P8801' } }],
+  ['concluído', { status: 'concluido' }],
+  ['cancelado', { status: 'cancelado' }],
+  ['data sem ISO', { criado_em: '19/10/2026' }],
+  ['data numérica', { criado_em: 1792411200000 }]
+]) test('F18 criação segura não reconcilia ' + nome, async () => {
+  const GI = carregar(() => Date.parse('2026-10-19T12:00:00.000Z'));
+  const dados = { locacao_id: 2, titulo: 'Reparo Demonstração', solicitante: { contato_id: 9901 }, atendimento: { chat_id: 8801, protocolo: 'DEMO-P8801' } };
+  const err = Object.assign(new Error('Resposta perdida sintética'), { semResposta: true });
+  GI.chamadosCriar = async () => { throw err; };
+  GI.chamadosPorContato = async () => ({ rows: [{ id: 1, status: 'novo', criado_em: '2026-10-19T12:00:00.000Z', ...dados, ...mudanca }] });
+  await assert.rejects(() => GI.chamadosCriarSeguro(dados), e => e === err);
+});
+test('F18 criação segura reconcilia mesma locação na janela, normaliza título e escolhe mais recente', async () => {
+  const GI = carregar(() => Date.parse('2026-10-19T12:00:00.000Z'));
+  const dados = { locacao_id: 2, titulo: ' Reparo   Demonstração ', solicitante: { contato_id: 9901 }, atendimento: { chat_id: 8801, protocolo: 'DEMO-P8801' } };
+  GI.chamadosCriar = async () => { throw Object.assign(new Error('Resposta perdida sintética'), { semResposta: true }); };
+  GI.chamadosPorContato = async () => ({ rows: [
+    { ...dados, id: 1, status: 'novo', criado_em: '2026-10-19T11:58:00.000Z' },
+    { ...dados, id: 2, titulo: 'reparo demonstração', status: 'triagem', criado_em: '2026-10-19T12:00:00.000Z' }
+  ] });
+  const r = await GI.chamadosCriarSeguro(dados);
+  assert.equal(r.reconciliado, true); assert.equal(r.chamado.id, 2);
+});
+test('F18 criação segura usa início da operação mesmo após resposta demorada e aceita chamado sem vínculo', async () => {
+  let agora = Date.parse('2026-10-19T12:00:00.000Z');
+  const GI = carregar(() => agora);
+  const dados = { locacao_id: 2, titulo: 'Reparo Demonstração', solicitante: { contato_id: 9901 } };
+  GI.chamadosCriar = async () => { agora += 240000; throw Object.assign(new Error('Resposta perdida sintética'), { semResposta: true }); };
+  GI.chamadosPorContato = async () => ({ rows: [{ ...dados, id: 3, status: 'novo', atendimento: null, criado_em: '2026-10-19T11:58:00.000Z' }] });
+  const r = await GI.chamadosCriarSeguro(dados);
+  assert.equal(r.chamado.id, 3);
+});
 test('manifest 0.23.0 declara navegação ordenada, cockpit e escrita configurável', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
   assert.equal(m.version, '0.23.0');
