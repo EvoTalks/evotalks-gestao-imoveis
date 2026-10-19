@@ -27,7 +27,7 @@
   function editar(detalhe, g) {
     if (g !== geracao) return;
     recado('', 'info'); el('os-listagem').hidden = true; el('os-edicao').hidden = false;
-    var form = GI.criarChamadoForm({ apresentar: function (op) { return g === geracao ? apresentar(op) : Promise.resolve(null); }, contatoInicial: contato });
+    var form = GI.criarChamadoForm({ apresentar: function (op) { return g === geracao ? apresentar(op) : Promise.resolve(null); }, contatoInicial: contato, aoCancelarFechamento: function () { fecharHost = false; } });
     form.formulario(detalhe).then(function (resultado) {
       if (g !== geracao) return;
       fecharEdicao = null;

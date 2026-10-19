@@ -5,7 +5,7 @@
   font-family:var(--ext-font-family, Roboto, "Helvetica Neue", Arial, sans-serif);
   --at-perigo:color-mix(in srgb, var(--ext-color-error, #ff3b3b) 72%, var(--ext-color-text, #1e1e1e));
 }
-:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(button, [role=button], summary[aria-label], .chip, .gi-chip, .pill, .opt, .gi-cp-pill, input, select, textarea) {
+:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(.btn, .btn-primario, .btn-sucesso, .btn-perigo, .btn-perigo-forte, .btn-icone, .gi-modal-x, summary[aria-label], [role=tab], .seg button, .gi-cp-chips button, .chip, .opt, .gi-modal-rodape button, input, select, textarea) {
   font-family:var(--ext-font-family, Roboto, "Helvetica Neue", Arial, sans-serif);
   font-size:var(--ext-font-size, 14px);
   font-weight:500;
@@ -14,7 +14,7 @@
   border-radius:var(--ext-radius, 4px);
   color:var(--ext-color-text, #1e1e1e);
 }
-:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(button, [role=button], summary[aria-label], .chip, .gi-chip, .pill, .opt, .gi-cp-pill) {
+:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(.btn, .btn-primario, .btn-sucesso, .btn-perigo, .btn-perigo-forte, .btn-icone, .gi-modal-x, summary[aria-label], [role=tab], .seg button, .gi-cp-chips button, .chip, .opt, .gi-modal-rodape button) {
   min-height:32px;
   height:auto;
   padding:6px 12px;
@@ -24,21 +24,21 @@
   line-height:1.3;
   cursor:pointer;
 }
-:is(#gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(button, [role=button]) { min-height:36px; }
+:is(#gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(.btn, .btn-primario, .btn-sucesso, .btn-perigo, .btn-perigo-forte, .btn-icone, .gi-modal-rodape button) { min-height:36px; }
 :is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(input:not([type=checkbox]), select, textarea) {
   min-height:32px;
   background:var(--ext-color-bg, #ffffff);
   border-color:var(--ext-color-border, #d2d2d2);
 }
-/* Textos aninhados de cartões, chips e miniaturas também mantêm contraste. */
-:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(button, [role=button], summary[aria-label], .chip, .gi-chip, .pill, .opt, .gi-cp-pill) :where(span, b, strong, small, em) {
+/* Só os descendentes das ações herdam a tipografia de botão. */
+:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(.btn, .btn-primario, .btn-sucesso, .btn-perigo, .btn-perigo-forte, .btn-icone, .gi-modal-x, summary[aria-label], [role=tab], .seg button, .gi-cp-chips button, .chip, .opt, .gi-modal-rodape button) :where(span, b, strong, small, em) {
   color:inherit;
   font-size:inherit;
   font-weight:inherit;
   text-transform:none;
   letter-spacing:normal;
 }
-:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(button, [role=button], summary[aria-label], .chip, .opt):hover {
+:is(.gi-cockpit, #gi-os, :where(body):has(#gi-os) > :where(.gi-modal-fundo)) :is(.btn, .btn-primario, .btn-sucesso, .btn-perigo, .btn-perigo-forte, .btn-icone, .gi-modal-x, summary[aria-label], [role=tab], .seg button, .gi-cp-chips button, .chip, .opt, .gi-modal-rodape button):hover {
   background:var(--ext-color-surface, #f5f5f5);
   opacity:1;
 }
@@ -105,3 +105,59 @@
   background:var(--ext-color-bg, #ffffff);
   color:var(--ext-color-text, #1e1e1e);
 }
+
+/* Resumos, links e selos são texto compacto, sem a caixa das ações. */
+:is(.gi-cockpit, #gi-os) :is(#cp-resumo [data-resumo], .pc__link, .pill, .gi-cp-pill) {
+  font-family:var(--ext-font-family, Roboto, "Helvetica Neue", Arial, sans-serif);
+  font-size:12px;
+  font-weight:500;
+  text-transform:none;
+  letter-spacing:normal;
+  line-height:1.4;
+  min-height:0;
+  border:0;
+}
+:is(.gi-cockpit, #gi-os) #cp-resumo [data-resumo] {
+  display:inline;
+  appearance:none;
+  height:auto;
+  padding:0;
+  background:transparent;
+  color:var(--ext-color-text-muted, #565656);
+}
+:is(.gi-cockpit, #gi-os) #cp-resumo [data-resumo][aria-pressed=true] { font-weight:600; text-decoration:underline; }
+:is(.gi-cockpit, #gi-os) .pc__link {
+  padding:0;
+  background:transparent;
+  color:var(--ext-color-text, #1e1e1e);
+  text-decoration:underline;
+  text-underline-offset:2px;
+  cursor:pointer;
+}
+:is(.gi-cockpit, #gi-os) :is(.pill, .gi-cp-pill) {
+  height:auto;
+  padding:1px 7px;
+  border-radius:9px;
+  color:var(--ext-color-text-muted, #565656);
+  background:var(--ext-color-surface, #f5f5f5);
+}
+/* Conserva a cor semântica da pílula de status, com contraste nos dois temas. */
+:is(.gi-cockpit, #gi-os) .acc .pill {
+  --at-status:var(--ext-color-text-muted, #565656);
+  color:color-mix(in srgb, var(--at-status) 45%, var(--ext-color-text, #1e1e1e));
+  background:color-mix(in srgb, var(--at-status) 12%, var(--ext-color-bg, #ffffff));
+}
+:is(.gi-cockpit, #gi-os) .acc :is(.pill--orc, .pill--aprov, .pill--warn) { --at-status:var(--ext-color-warning, #ff784b); }
+:is(.gi-cockpit, #gi-os) .acc :is(.pill--agend, .pill--exec) { --at-status:var(--ext-color-info, #29bdff); }
+:is(.gi-cockpit, #gi-os) .acc .pill--done { --at-status:var(--ext-color-success, #06c270); }
+:is(.gi-cockpit, #gi-os) .acc .pill--bad { --at-status:var(--ext-color-error, #ff3b3b); }
+
+/* Os status da lista do diálogo também conservam a cor, sem herdar botão. */
+#gi-os .gi-os-cartao .gi-estado {
+  --at-status:var(--ext-color-text-muted, #565656);
+  color:color-mix(in srgb, var(--at-status) 45%, var(--ext-color-text, #1e1e1e));
+  background:color-mix(in srgb, var(--at-status) 12%, var(--ext-color-bg, #ffffff));
+}
+#gi-os .gi-os-cartao .gi-estado-pendente { --at-status:var(--ext-color-warning, #ff784b); }
+#gi-os .gi-os-cartao .gi-estado-ok { --at-status:var(--ext-color-success, #06c270); }
+#gi-os .gi-os-cartao .gi-estado-azul { --at-status:var(--ext-color-info, #29bdff); }

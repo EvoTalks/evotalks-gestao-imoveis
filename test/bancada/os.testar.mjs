@@ -52,6 +52,26 @@ try {
   assert.equal(await b.avaliar(() => document.querySelector('.gi-modal [data-cancelar]').textContent.trim()), 'Voltar à lista');
   await b.clicar('.gi-modal [data-cancelar]');
   await b.esperar(() => !!document.querySelector('[data-os]') && !document.querySelector('.gi-modal'));
+  // X5: desistir de fechar o host não pode contaminar a próxima volta à lista.
+  await b.clicar('[data-os="1"]'); await pronto();
+  await b.avaliar(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const dt = new DataTransfer(); dt.items.add(new File([blob], 'rascunho-cancelar-fechamento.png', { type: 'image/png' }));
+    const input = document.querySelector('#c-pasta'); input.files = dt.files; input.dispatchEvent(new Event('change'));
+  });
+  await b.esperar(() => document.querySelectorAll('#c-pendentes img').length === 1);
+  await b.clicar('#b-fechar'); await b.esperar(() => !document.querySelector('#c-descarte').hidden);
+  await b.clicar('#c-voltar-descarte');
+  assert.equal(await b.avaliar(() => document.querySelector('#c-descarte').hidden), true);
+  assert.equal(await b.avaliar(() => document.querySelectorAll('#c-pendentes img').length), 1, 'desistência preserva a foto pendente');
+  const fechamentosCancelados = await b.avaliar(() => bancada.fechamentos);
+  await b.clicar('.gi-modal [data-cancelar]'); await b.esperar(() => !document.querySelector('#c-descarte').hidden);
+  await b.clicar('#c-descartar');
+  await b.esperar(() => !document.querySelector('.gi-modal'));
+  assert.equal(await b.avaliar(() => bancada.fechamentos), fechamentosCancelados, 'X5: cancelar Fechar → Voltar à lista → Descartar não fecha o host');
+  await b.esperar(() => !!document.querySelector('[data-os]') && !document.querySelector('#os-listagem').hidden);
+  process.stdout.write('OK X5 Fechar → Voltar no aviso → Voltar à lista → Descartar: lista visível, host aberto\n');
   process.stdout.write('OK F18 alvo por storage/params exige contato selecionado; divergente, sem contato e sem atendimento descartados; mesmo contato edita\n');
   // RC3: o carregamento não pode roubar foco nem emitir erro antes da resposta.
   await abrir(''); await b.esperar(() => !!document.querySelector('[data-os]'));

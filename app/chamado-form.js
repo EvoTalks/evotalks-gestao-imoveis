@@ -999,7 +999,7 @@
             guardado(function () { return aplicarPendentes().then(function () { no('salvar-pendentes').hidden = true; mensagem('Dados salvos. Agora adicione, escolha ou remova o orçamento.', 'sucesso'); }); });
           };
           no('fechar-foto').onclick = function () { no('foto-ampliada').hidden = true; };
-          no('voltar-descarte').onclick = function () { no('descarte').hidden = true; };
+          no('voltar-descarte').onclick = function () { no('descarte').hidden = true; if (op.aoCancelarFechamento) op.aoCancelarFechamento(); };
           no('descartar').onclick = function () {
             cancelarFotos = true;
             if (envioFotos) fecharAposFotos = true; else pendentes = [];
