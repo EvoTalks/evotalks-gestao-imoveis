@@ -16,7 +16,10 @@ test('F9: ajustes após o teste real, sem instância', async t => {
       await b.esperar(() => !!document.querySelector('#gi-corpo [data-editar], #gi-corpo [data-abrir], [data-chamado]'));
     };
     const livre = () => b.esperar(() => !!document.querySelector('#c-orc-nome') && !document.querySelector('#c-salvar-orcamento').disabled);
-    const abrir = async id => { await b.clicar('[data-editar="' + id + '"]'); await livre(); };
+    const abrir = async id => {
+      await b.esperar(id => !!document.querySelector('[data-editar="' + id + '"]'), id);
+      await b.clicar('[data-editar="' + id + '"]'); await livre();
+    };
     const salvar = async () => { await b.clicar('.gi-modal [data-ok]'); await b.esperar(() => !document.querySelector('.gi-modal')); };
     const marcar = () => b.avaliar(() => bancada.chamadas.length);
     const desde = n => b.avaliar(n => bancada.chamadas.slice(n), n);

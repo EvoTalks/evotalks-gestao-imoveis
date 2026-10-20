@@ -3,6 +3,25 @@
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
 um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Campos**, **Histórico** e **Configurações**.
 
+## 0.29.0 — Detalhe completo do imóvel
+
+Os filtros de Imóveis ficam alinhados, sem a nota sobre a assistente. Clique no código ou
+título (também por Enter/Espaço) para conferir o detalhe somente leitura, em janela central
+com metade da largura e rolagem interna. Em telas estreitas ela ocupa quase toda a largura.
+O card principal mantém identificação, foto principal grande, miniaturas, descrição,
+características do site e catálogo. Um segundo card, com cerca de 23% da tela, fica à
+direita sem deslocar o principal: Situação, Valores e Informações adicionais (inclusive
+vazios). Cada card tem rolagem própria; abaixo de 1100 px o adendo fica embaixo e os dois
+compartilham a rolagem. Ambos fecham juntos, sem repetir valores ou campos internos no
+principal. Valores do portal são centavos; fotos e links aceitam
+somente HTTP/HTTPS. O detalhe consulta `/imovel/:codigo` uma vez e mantém cache por código
+até sair da tela. Sem portal ou em caso de erro, conserva os dados disponíveis e avisa.
+Editar e Situação mantêm suas ações próprias. Feche por ×, Esc ou clique no fundo.
+
+Validação: `node --test test/*.test.mjs`, `node test/checar.mjs` e todas as bancadas
+`test/bancada/*.testar.mjs`. A nova `detalhe.testar.mjs` prova filtros, teclado, dimensões,
+rolagem, campos, cache, fallback e segurança; capturas em `test/bancada/capturas/detalhe-0290-1400-{claro,escuro}.png`.
+
 ## 0.28.0 — Permissões por usuário
 
 Configurações → **Permissões** permite ao administrador buscar usuários pelo nome e
@@ -41,7 +60,7 @@ Contrato: `GET /imoveis/situacoes` devolve `{ situacoes: { codigo: situacao } }`
 Locados foi removido (menu, navegação, tela e formulário). Chamados, Prestadores,
 cockpit e diálogo de O.S. estão desligados no manifesto, com os arquivos preservados
 integralmente para uma extensão separada. Os helpers de locação e o CSS compartilhado
-continuam disponíveis para esse código. As telas ativas usam cache `?v=0.28.0`;
+continuam disponíveis para esse código. As telas ativas usam cache `?v=0.29.0`;
 as telas dormentes mantêm `?v=0.26.3` para respeitar a preservação sem alteração.
 As seções históricas abaixo descrevem o histórico dessas funcionalidades dormentes.
 
