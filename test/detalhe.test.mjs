@@ -39,3 +39,53 @@ test('detalhe sem portal ou resposta inválida rejeita para o fallback da tela',
   GI.chamarPortal = async () => { throw new Error('HTTP 404'); };
   await assert.rejects(GI.detalheDoImovel('ABC'), /404/);
 });
+function visualizacao() {
+  const window = { addEventListener() {} };
+  const contexto = { window, document: {}, URL, setTimeout };
+  vm.runInNewContext(readFileSync('app/comum.js', 'utf8'), contexto);
+  vm.runInNewContext(readFileSync('app/visualizacao.js', 'utf8'), contexto);
+  window.GI.config = { prefixoCodigo:'535' };
+  return window.GI;
+}
+test('visualização normaliza caixa alta e restaura bairro/cidade, preservando títulos mistos', () => {
+  const GI = visualizacao();
+  assert.equal(GI.tituloDoImovel('APARTAMENTO NO CENTRO DE BRUSQUE', 'Centro', 'Brusque'), 'Apartamento no Centro de Brusque');
+  assert.equal(GI.tituloDoImovel('Apartamento em Brusque', 'Centro', 'Brusque'), 'Apartamento em Brusque');
+  assert.equal(GI.tituloDoImovel('CASA EM RIO', 'Rio', ''), 'Casa em Rio');
+  assert.equal(GI.tituloDoImovel('CASARIO', 'Rio', ''), 'Casario');
+  assert.equal(GI.tituloDoImovel('', '', ''), '');
+});
+test('características traduzem códigos conhecidos, preservam desconhecidos e distinguem piscina desconhecida', () => {
+  const GI = visualizacao();
+  for (const [codigo, esperado] of [['Pool','Piscina'],['Kitchen','Cozinha'],['Tennis court','Quadra de tênis'],['Outra','Outra'],['toString','toString']]) assert.equal(GI.caracteristicaTraduzida(codigo), esperado);
+  for (const [site, esperado] of [[{},'—'],[{caracteristicas:null},'—'],[{caracteristicas:[]},'Não'],[{caracteristicas:['Kitchen']},'Não'],[{caracteristicas:['Pool']},'Sim']]) assert.equal(GI.piscinaDoImovel(site),esperado);
+});
+test('fotos recusam URLs inseguras, deduplicam e distribuem a grade de 0 a 5 fotos', () => {
+  const GI = visualizacao();
+  assert.deepEqual(Array.from(GI.fotosDoImovel({imagem_principal:'https://a/1',imagens:['https://a/1','http://a/2','javascript:evil','data:evil','http://a/2']})),['https://a/1','http://a/2']);
+  for (let i = 0; i < 10; i++) assert.equal(GI.gradeDoImovel(i),Math.min(i,5));
+});
+test('valores em centavos cobrem aluguel, venda, ambos e total mensal do portal', () => {
+  const GI = visualizacao(), p = { description:'[Locacao]', value:10000 };
+  assert.equal(GI.valoresDaVisualizacao({valor_aluguel:'10000',condominio:'1000'},p).total,11000);
+  assert.equal(GI.valoresDaVisualizacao({valor_aluguel:10000,valor_total_mensal:12000},p).total,12000);
+  const venda = GI.valoresDaVisualizacao({valor_venda:50000},p);
+  assert.equal(venda.venda,50000); assert.equal(venda.total,null);
+  const ambos = GI.valoresDaVisualizacao({valor_aluguel:10000,valor_venda:50000},p);
+  assert.equal(ambos.aluguel,10000); assert.equal(ambos.venda,50000);
+});
+test('navegação respeita a ordem filtrada e limites, sem circular nem inventar posição', () => {
+  const GI = visualizacao(), lista = [{internalcode:'B'},{internalcode:'A'},{internalcode:'C'}];
+  for (const [id,ant,prox,indice] of [['B',null,'A',0],['A','B','C',1],['C','A',null,2],['D',null,null,-1]]) {
+    const nav = GI.navegacaoDoImovel(lista,id);
+    assert.equal(nav.anterior,ant);assert.equal(nav.proximo,prox);assert.equal(nav.indice,indice);assert.equal(nav.total,3);
+  }
+});
+test('renderização escapa dados do portal, catálogo e campos; piscina não repete nos chips', () => {
+  const GI = visualizacao(); GI.pode = () => true;
+  const p = {internalcode:'5357422', name:'Catálogo <img>', category:'Apartamento > Brusque > Centro', value:1000};
+  const r = GI.conteudoVisualizacao(p,{imovel:{titulo:'<img onerror=evil>',caracteristicas:['Pool','Kitchen','<script>'],descricao:'Linha 1\nLinha 2',link:'javascript:evil'},valores:{}},{campos:[{id:1,nome:'<svg>',tipo:'texto',ativo:true}],lancados:{1:{valor:'<img>'}},situacao:'reservado'});
+  assert.match(r.html,/&lt;img/); assert.doesNotMatch(r.html,/<script>|<img onerror|javascript:evil/);
+  assert.match(r.html,/dv-fato--sim/); assert.doesNotMatch(r.html,/dv-chip[^>]*>[^<]*Piscina/);
+  assert.match(r.html,/<p>Linha 1<\/p><p>Linha 2<\/p>/);
+});

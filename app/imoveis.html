@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.30.0">
-<link rel="stylesheet" href="chamados.css?v=0.30.0">
+<link rel="stylesheet" href="estilo.css?v=0.31.0">
+<link rel="stylesheet" href="chamados.css?v=0.31.0">
+<link rel="stylesheet" href="visualizacao.css?v=0.31.0">
 </head>
 <body class="gi gi-gestao gi-permissoes-pendentes">
 
@@ -90,7 +91,8 @@
 </p>
 
 <div class="gi-aviso" id="gi-situacao-aviso" hidden></div>
-<script src="comum.js?v=0.30.0"></script>
+<script src="comum.js?v=0.31.0"></script>
+<script src="visualizacao.js?v=0.31.0"></script>
 <script>
 (function () {
   'use strict';
@@ -100,7 +102,7 @@
     itens: [], campos: [], valores: {}, preenchidos: {}, situacoes: null, gravando: Object.create(null)
   };
   var geracao = 0;
-  var capas = Object.create(null);
+  var capas = Object.create(null), listaVisivel = [];
 
   var el = function (id) { return document.getElementById(id); };
 
@@ -148,6 +150,7 @@
       linhas = linhas.filter(function (p) { return situacaoDoImovel(p.internalcode) === estado.filtroSituacao; });
     }
 
+    listaVisivel = linhas.slice();
     if (!linhas.length) {
       corpo.innerHTML = '<tr><td colspan="9"><div class="gi-vazio">' +
         'Nenhum imóvel nesta página com esses filtros.<br>' +
@@ -314,94 +317,21 @@
     });
   }
 
-  /* Detalhe somente leitura: uma consulta por código, inclusive durante carga. */
+  /* Visualização: uma consulta por código, inclusive durante carga. */
   var detalhes = Object.create(null), detalheAberto = false;
-
-  function campoDetalhe(rotulo, valor, html) {
-    var vazio = valor === undefined || valor === null || valor === '';
-    return '<div><dt>' + GI.escapar(rotulo) + '</dt><dd>' +
-      (vazio ? '—' : html ? valor : GI.escapar(valor)) + '</dd></div>';
-  }
-
-  function secaoDetalhe(titulo, corpo) {
-    return '<section class="gi-detalhe-secao"><h3>' + GI.escapar(titulo) + '</h3><dl>' + corpo + '</dl></section>';
-  }
-
-  function urlDetalhe(valor) {
-    return /^https?:\/\//i.test(String(valor || '')) ? String(valor) : '';
-  }
-
-  function conteudoDetalhe(p, dados) {
-    var cat = GI.partesCategoria(p.category), finalidade = GI.finalidadeDoImovel(p), site = dados && dados.imovel;
-    var situacao = estado.situacoes ? situacaoDoImovel(p.internalcode) : site && site.situacao;
-    var atual = GI.SITUACOES.filter(function (s) { return s.valor === situacao; })[0];
-    var seloAtual = atual ? '<span data-situacao-detalhe class="gi-estado ' + atual.classe + '">' + GI.escapar(atual.rotulo) + '</span>' : '';
-    var html = secaoDetalhe('Identificação',
-      campoDetalhe('Código curto', GI.codigoCurto(p.internalcode)) + campoDetalhe('Código completo', p.internalcode) +
-      campoDetalhe('Título', p.name) + campoDetalhe('Finalidade', finalidade === 'locacao' ? 'Locação' : finalidade === 'venda' ? 'Venda' : '') +
-      campoDetalhe('Tipo', cat.tipo));
-    function dinheiro(valor) { return valor === null || valor === undefined || valor === '' ? '' : GI.dinheiro(valor); }
-    function foto(url, legenda, grande) {
-      return '<a href="' + GI.escapar(url) + '" target="_blank" rel="noopener noreferrer"><img src="' + GI.escapar(url) +
-        '" alt="' + legenda + '"' + (grande ? '' : ' loading="lazy"') + '><span>' + legenda + '</span></a>';
-    }
-    var locacao = site ? /^(locacao|locação|aluguel)$/i.test(site.transacao || '') : finalidade === 'locacao';
-    var total = site && site.valor_total_mensal;
-    if (site && locacao && total == null && site.valor_aluguel != null) total = Number(site.valor_aluguel) + Number(site.condominio || 0);
-    var adendo = secaoDetalhe('Situação', campoDetalhe('Situação atual', seloAtual, true)) +
-      secaoDetalhe('Valores',
-        campoDetalhe('Valor de venda', dinheiro(site ? site.valor_venda : finalidade === 'venda' ? p.value : null)) +
-        campoDetalhe('Valor do aluguel', dinheiro(site ? site.valor_aluguel : finalidade === 'locacao' ? p.value : null)) +
-        campoDetalhe('Condomínio', dinheiro(site && site.condominio)) + campoDetalhe('Valor total mensal', locacao ? dinheiro(total) : ''));
-    if (site) {
-      var link = urlDetalhe(site.link);
-      var linkHtml = link ? '<a href="' + GI.escapar(link) + '" target="_blank" rel="noopener noreferrer">' + GI.escapar(link) + '</a>' : '';
-      var principal = urlDetalhe(site.imagem_principal);
-      var fotos = (Array.isArray(site.imagens) ? site.imagens : []).map(urlDetalhe).filter(function (u) { return u && u !== principal; });
-      html += '<section class="gi-detalhe-secao"><h3>Fotos</h3>' +
-        (principal ? '<div class="gi-detalhe-foto-principal">' + foto(principal, 'Imagem principal', true) + '</div>' : '<dl>' + campoDetalhe('Imagem principal', '') + '</dl>') +
-        '<div class="gi-detalhe-fotos">' + fotos.map(function (u, i) { return foto(u, 'Foto ' + (i + 1), false); }).join('') + '</div>' +
-        (!fotos.length ? '<dl>' + campoDetalhe('Imagens', '') + '</dl>' : '') + '</section>';
-      html += secaoDetalhe('Descrição completa', campoDetalhe('Descrição completa', '<span data-descricao-site>' + GI.escapar(site.descricao || '—') + '</span>', true));
-      html += secaoDetalhe('Dados do site',
-        campoDetalhe('Título do site', site.titulo) + campoDetalhe('Transação', locacao ? 'Locação' : site.transacao) +
-        campoDetalhe('Tipo', site.tipo) + campoDetalhe('Cidade', site.cidade) + campoDetalhe('Bairro', site.bairro) +
-        campoDetalhe('Quartos', site.quartos) + campoDetalhe('Suítes', site.suites) + campoDetalhe('Banheiros', site.banheiros) +
-        campoDetalhe('Vagas', site.vagas) + campoDetalhe('Área (m²)', site.area_m2) +
-        campoDetalhe('Ano de construção', site.ano_construcao) + campoDetalhe('Link do anúncio', linkHtml, true) +
-        campoDetalhe('Primeira vez visto', GI.dataHora(site.primeiro_visto_em)) + campoDetalhe('Última atualização', GI.dataHora(site.atualizado_em)));
-    } else html += '<p role="status">Dados do site indisponíveis agora.</p>';
-    var lancados = estado.valores[p.internalcode] || (dados && dados.valores) || {};
-    adendo += secaoDetalhe('Informações adicionais', estado.campos.filter(function (c) { return c.ativo !== false; }).map(function (c) {
-      var l = lancados[c.id];
-      var vazio = !l || ((l.valor === null || l.valor === undefined || l.valor === '') && !l.obs);
-      return campoDetalhe(c.nome, vazio ? '' : GI.valorLegivel(c, l));
-    }).join('') || campoDetalhe('Campos ativos', ''));
-    html += secaoDetalhe('Catálogo do EvoTalks', campoDetalhe('Nome', p.name) + campoDetalhe('Categoria', p.category) +
-      campoDetalhe('Valor', dinheiro(p.value)) + campoDetalhe('Descrição', p.description));
-    return { principal: html, adendo: adendo };
-  }
 
   function abrirDetalhe(codigo) {
     if (detalheAberto) return;
-    var p = estado.itens.filter(function (item) { return item.internalcode === codigo; })[0];
-    if (!p) return;
     detalheAberto = true;
-    var aberto = true;
-    GI.modal({
-      titulo: p.name || 'Imóvel ' + GI.codigoCurto(codigo), somenteLeitura: true,
-      corpo: '<p role="status">Carregando detalhes…</p>', adendo: '<p role="status">Carregando valores…</p>',
-      aoFechar: function () { aberto = false; },
-      aoAbrir: function (caixa, caixaAdendo) {
-        if (!detalhes[codigo]) detalhes[codigo] = GI.detalheDoImovel(codigo).catch(function () { return null; });
-        detalhes[codigo].then(function (dados) {
-          if (!aberto) return;
-          var conteudo = conteudoDetalhe(p, dados);
-          caixa.innerHTML = conteudo.principal;
-          caixaAdendo.innerHTML = conteudo.adendo;
-          GI.ajustarAltura();
-        });
-      }
+    GI.visualizarImovel({
+      codigo: codigo, estado: estado, situacao: situacaoDoImovel,
+      lista: function () { return listaVisivel.slice(); },
+      carregar: function (id) {
+        if (!detalhes[id]) detalhes[id] = GI.detalheDoImovel(id).catch(function () { return null; });
+        return detalhes[id];
+      },
+      atualizar: desenharLista,
+      editar: abrirImovel
     }).then(function () { detalheAberto = false; });
   }
 
