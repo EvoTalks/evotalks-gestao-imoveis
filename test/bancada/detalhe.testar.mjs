@@ -120,7 +120,7 @@ try {
       assert.equal(await b.avaliar(() => document.activeElement.dataset.detalhe), 'DEMO-001');
     }
     assert.equal(await chamadasDetalhe(), 1, 'reabertura usa cache');
-    await b.clicar('#gi-corpo td:nth-child(2) [data-detalhe="DEMO-001"]');
+    await b.clicar('#gi-corpo td:nth-child(3) [data-detalhe="DEMO-001"]');
     await b.esperar(() => !!document.querySelector('.gi-detalhe-secao'));
     await b.avaliar(() => document.querySelector('.gi-modal-x').focus());
     await b.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: 8 });

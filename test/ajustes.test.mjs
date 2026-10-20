@@ -123,13 +123,13 @@ test('F9: ajustes após o teste real, sem instância', async t => {
       await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('Para mudar, escolha outro orçamento.'));
       assert.doesNotMatch(await texto('.gi-modal-recado'), /^\d/);
     });
-    await t.test('4: situação editável só para administrador ou usuário liberado', async () => {
+    await t.test('4: situação editável para quem vê Imóveis', async () => {
       for (const perfil of ['agente', 'supervisor', 'admin']) {
         await navegar('imoveis', '?perfil=' + perfil);
         assert.equal(await b.avaliar(() => !!document.querySelector('[data-locacao]')), false);
         assert.equal(await b.avaliar(() => !!document.querySelector('#f-situacao')), true);
         assert.match(await texto('#gi-corpo'), /Disponível/);
-        assert.equal(await b.avaliar(() => document.querySelectorAll('[data-situacao]').length), perfil === 'admin' ? 3 : 0);
+        assert.equal(await b.avaliar(() => document.querySelectorAll('[data-situacao]').length), 3);
       }
     });
     await t.test('5: decisão em dois botões e observação opcional, padrões no portal', async () => {

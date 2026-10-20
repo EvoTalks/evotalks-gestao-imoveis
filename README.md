@@ -3,10 +3,14 @@
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
 um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Campos**, **Histórico** e **Configurações**.
 
-## 0.29.1 — Situação no formulário de edição
+## 0.30.0 — Capas e situação
+
+A lista mostra miniaturas de capa (72×54), com placeholder sem imagem. As capas são consultadas uma vez por código enquanto a tela permanece aberta. Situação acompanha Ver Imóveis, sem coluna própria em Permissões.
+
+### Situação no formulário de edição
 
 A situação do imóvel aparece no início do modal Editar e pode ser alterada por usuários
-com a permissão `mudar_situacao`. Atualizar grava a situação e os campos adicionais;
+com acesso a Imóveis (`ver_imoveis`). Atualizar grava a situação e os campos adicionais;
 falhas mantêm o formulário aberto com os valores digitados.
 
 ## 0.29.0 — Detalhe completo do imóvel
@@ -31,15 +35,15 @@ rolagem, campos, cache, fallback e segurança; capturas em `test/bancada/captura
 ## 0.28.0 — Permissões por usuário
 
 Configurações → **Permissões** permite ao administrador buscar usuários pelo nome e
-salvar somente as linhas alteradas. Os seis acessos são Ver Imóveis, Editar imóveis,
-Mudar situação, Criar e editar campos, Ver Histórico e Ver Configurações. O portal
+salvar somente as linhas alteradas. Os cinco acessos são Ver Imóveis, Editar imóveis,
+Criar e editar campos, Ver Histórico e Ver Configurações. O portal
 fornece os padrões: usuário novo vê e edita imóveis; os demais acessos começam negados.
 Administradores (tipo 0) têm tudo marcado e travado. A alteração é gravada no portal e
 vale nas próximas chamadas; cada página mantém sua consulta de permissões em memória.
 
 As abas seguem os acessos; o menu do host continua disponível e o endereço direto
 mostra “Sem acesso a esta tela. Peça ao administrador para liberar.” quando bloqueado.
-Sem edição, os botões Editar/Excluir somem; sem Mudar situação, há apenas o selo colorido.
+Sem edição, os botões Editar/Excluir somem. Quem vê Imóveis pode alterar a Situação.
 Modo local conserva os acessos liberados. Com portal configurado, falha ao consultar
 permissões bloqueia os controles em vez de recorrer aos padrões locais.
 
@@ -66,7 +70,7 @@ Contrato: `GET /imoveis/situacoes` devolve `{ situacoes: { codigo: situacao } }`
 Locados foi removido (menu, navegação, tela e formulário). Chamados, Prestadores,
 cockpit e diálogo de O.S. estão desligados no manifesto, com os arquivos preservados
 integralmente para uma extensão separada. Os helpers de locação e o CSS compartilhado
-continuam disponíveis para esse código. As telas ativas usam cache `?v=0.29.1`;
+continuam disponíveis para esse código. As telas ativas usam cache `?v=0.30.0`;
 as telas dormentes mantêm `?v=0.26.3` para respeitar a preservação sem alteração.
 As seções históricas abaixo descrevem o histórico dessas funcionalidades dormentes.
 

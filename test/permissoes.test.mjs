@@ -13,7 +13,7 @@ function carregar() {
 }
 test('permissões locais liberam tudo e portal usa seu padrão, cache e abas', async () => {
   const { GI } = carregar();
-  assert.equal((await GI.permissoes()).permissoes.mudar_situacao, true);
+  assert.equal((await GI.permissoes()).permissoes.ver_imoveis, true);
   GI.modo = 'portal';
   let leituras = 0;
   GI.chamarPortal = async rota => {
@@ -23,7 +23,7 @@ test('permissões locais liberam tudo e portal usa seu padrão, cache e abas', a
   await Promise.all([GI.permissoes(), GI.permissoes()]);
   assert.equal(leituras, 1);
   assert.equal(GI.pode('editar_imoveis'), true);
-  assert.equal(GI.pode('mudar_situacao'), false);
+  assert.equal(GI.pode('mudar_situacao'), true);
   const html = GI.cabecalho('gi-imoveis');
   assert.match(html, /Imóveis/);
   assert.doesNotMatch(html, /Campos|Histórico|Configurações/);
@@ -44,10 +44,10 @@ test('stub aplica padrão, admin, validação, releitura e barreiras sem afetar 
   try {
     const padrao = (await api('/permissoes/eu')).body.permissoes;
     assert.equal(padrao.editar_imoveis, true);
-    assert.equal(padrao.mudar_situacao, false);
+    assert.equal(padrao.mudar_situacao, true);
     assert.equal((await api('/permissoes')).status, 403);
     assert.equal((await api('/campos')).status, 200);
-    for (const [rota, body] of [['/campos', {}], ['/campos/padrao', {}], ['/historico'], ['/config'], ['/imoveis/DEMO-001/situacao', { situacao: 'reservado' }]]) assert.equal((await api(rota, 2, body)).status, 403, rota);
+    for (const [rota, body] of [['/campos', {}], ['/campos/padrao', {}], ['/historico'], ['/config']]) assert.equal((await api(rota, 2, body)).status, 403, rota);
     assert.equal((await api('/permissoes/9998', 0, { nome: 'Agente' })).status, 422);
     const salvo = await api('/permissoes/9998', 0, { nome: 'Agente', ...padrao, mudar_situacao: true, editar_imoveis: false });
     assert.equal(salvo.status, 200);
@@ -99,7 +99,7 @@ test('stub conserva padrão sem identidade válida e registra histórico só ao 
   const dados = { nome: 'Agente', ...PERMISSOES_PADRAO };
   for (const id of [undefined, '', '-1', 'abc', '2147483648']) {
     const r = p.responder('GET', '/permissoes/eu', {}, { ...headers, 'x-gi-user-id': id }).corpo;
-    assert.deepEqual(r.permissoes, PERMISSOES_PADRAO);
+    assert.deepEqual(r.permissoes, { ...PERMISSOES_PADRAO, mudar_situacao: true });
     assert.equal(r.administrador, false);
   }
   for (const corpo of [null, [], {}, { ...dados, nome: 2 }, { ...dados, ver_imoveis: 1 }]) assert.equal(p.responder('POST', '/permissoes/9998', corpo, headers).status, 422);

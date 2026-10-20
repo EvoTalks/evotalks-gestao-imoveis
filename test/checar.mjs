@@ -26,7 +26,7 @@ function auditarEstilosEVisibilidade() {
     for (const item of contribuicao.items || []) porId.set(item.id, item);
   }
   if (!['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'].some(id => porId.has(id))) return;
-  if (['0.27.0', '0.28.0', '0.29.0', '0.29.1'].includes(dados.version)) {
+  if (['0.27.0', '0.28.0', '0.29.0', '0.29.1', '0.30.0'].includes(dados.version)) {
     for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-os']) if (porId.has(id)) {
       erros++; process.stderr.write('manifest.json: contribuição desligada: ' + id + '.\n');
     }
@@ -67,7 +67,7 @@ function visitar(pasta) {
     else if (/\.html$/.test(item.name)) {
       const html = readFileSync(nome, 'utf8');
       // Arquivos dormentes são preservados integralmente na 0.27.0.
-      const versaoHtml = ['0.27.0', '0.28.0', '0.29.0', '0.29.1'].includes(versao) && /^(painel|os|chamados|prestadores)\.html$/.test(item.name) ? '0.26.3' : versao;
+      const versaoHtml = ['0.27.0', '0.28.0', '0.29.0', '0.29.1', '0.30.0'].includes(versao) && /^(painel|os|chamados|prestadores)\.html$/.test(item.name) ? '0.26.3' : versao;
       for (const tag of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
         const atributo = tag[0].match(/<(script|link)\b[^>]*?\b(src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
         if (versao && atributo) {

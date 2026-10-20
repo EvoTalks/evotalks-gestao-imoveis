@@ -106,7 +106,7 @@ test('29/F11: cockpit e diálogo exigem [0,1,2], gestão [0] e demais telas pres
   } finally { rmSync(pasta, { recursive: true, force: true }); }
 });
 
-for (const versao of ['0.27.0', '0.28.0', '0.29.0', '0.29.1']) test(versao + ': telas ativas exigem cache novo, dormentes mantêm versão e contribuições desligadas são recusadas', () => {
+for (const versao of ['0.27.0', '0.28.0', '0.29.0', '0.29.1', '0.30.0']) test(versao + ': telas ativas exigem cache novo, dormentes mantêm versão e contribuições desligadas são recusadas', () => {
   const pasta = mkdtempSync(path.join(raiz, '.checar-'));
   const app = path.join(pasta, 'app');
   const rodar = () => spawnSync(process.execPath, ['test/checar.mjs', pasta], { cwd: raiz, encoding: 'utf8' });

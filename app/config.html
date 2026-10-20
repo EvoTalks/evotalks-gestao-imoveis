@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Configurações</title>
-<link rel="stylesheet" href="estilo.css?v=0.29.1">
-<link rel="stylesheet" href="chamados.css?v=0.29.1">
+<link rel="stylesheet" href="estilo.css?v=0.30.0">
+<link rel="stylesheet" href="chamados.css?v=0.30.0">
 </head>
 <body class="gi gi-gestao gi-permissoes-pendentes">
 
@@ -25,7 +25,7 @@
     <p class="gi-ajuda">Controle de uso das telas; quem tem o token do portal consegue contornar.</p>
     <div class="gi-campo"><label for="p-busca">Buscar usuário por nome</label><input id="p-busca" type="search"></div>
     <fieldset id="p-campos" style="border:0;padding:0;margin:12px 0;min-width:0" disabled>
-      <div class="gi-tabela-rolagem"><table><thead><tr><th>Usuário / perfil</th><th>Ver Imóveis</th><th>Editar imóveis</th><th>Mudar situação</th><th>Criar e editar campos</th><th>Ver Histórico</th><th>Ver Configurações</th></tr></thead><tbody id="p-usuarios"></tbody></table></div>
+      <div class="gi-tabela-rolagem"><table><thead><tr><th>Usuário / perfil</th><th>Ver Imóveis</th><th>Editar imóveis</th><th>Criar e editar campos</th><th>Ver Histórico</th><th>Ver Configurações</th></tr></thead><tbody id="p-usuarios"></tbody></table></div>
     </fieldset>
     <div class="gi-rodape"><button id="p-salvar" class="btn btn-sucesso" type="button" disabled>Salvar</button><span id="p-resultado" class="gi-pequeno" role="status" aria-live="polite"></span></div>
   </div>
@@ -116,8 +116,8 @@
   imóveis de verdade no endereço.
 </p>
 
-<script src="comum.js?v=0.29.1"></script>
-<script src="manutencao.js?v=0.29.1"></script>
+<script src="comum.js?v=0.30.0"></script>
+<script src="manutencao.js?v=0.30.0"></script>
 <script>
 (function () {
   'use strict';
@@ -125,7 +125,7 @@
   var el = function (id) { return document.getElementById(id); };
   var urlTestada = '';
   var usuariosPermissoes = [], registrosPermissoes = {}, padraoPermissoes = {};
-  var rotulosPermissoes = { ver_imoveis: 'Ver Imóveis', editar_imoveis: 'Editar imóveis', mudar_situacao: 'Mudar situação', gerenciar_campos: 'Criar e editar campos', ver_historico: 'Ver Histórico', ver_configuracoes: 'Ver Configurações' };
+  var rotulosPermissoes = { ver_imoveis: 'Ver Imóveis', editar_imoveis: 'Editar imóveis', gerenciar_campos: 'Criar e editar campos', ver_historico: 'Ver Histórico', ver_configuracoes: 'Ver Configurações' };
   function desenharPermissoes() {
     var busca = el('p-busca').value.trim().toLowerCase();
     Array.prototype.forEach.call(el('p-usuarios').querySelectorAll('[data-usuario]'), function (linha) {

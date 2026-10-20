@@ -52,9 +52,9 @@ test('F18 criação segura usa início da operação mesmo após resposta demora
   const r = await GI.chamadosCriarSeguro(dados);
   assert.equal(r.chamado.id, 3);
 });
-test('manifest 0.29.1 mantém só as quatro telas ativas, sem configuração de manutenção', () => {
+test('manifest 0.30.0 mantém só as quatro telas ativas, sem configuração de manutenção', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.29.1');
+  assert.equal(m.version, '0.30.0');
   assert.equal(m.contributions.length, 1);
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) {

@@ -695,3 +695,7 @@ body.gi-permissoes-pendentes > :not(.gi-topo):not(.gi-erro):not(script):not(#gi-
 @media (max-width:720px) {
   .gi .gi-detalhe-conjunto { width:calc(100vw - 32px); min-width:0; }
 }
+
+.gi-capa { width:72px; height:54px; border:0; padding:0; border-radius:6px; overflow:hidden; position:relative; display:block; background:#eef0f2; color:#737b83; cursor:pointer; }
+.gi-capa-vazia { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:28px; }
+.gi-capa img { position:relative; display:block; width:72px; height:54px; object-fit:cover; }

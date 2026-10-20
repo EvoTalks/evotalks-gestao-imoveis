@@ -23,6 +23,7 @@ try {
   await navegar('config', '&perfil=admin');
   await b.esperar(() => document.querySelectorAll('#p-usuarios tr').length === 4 && !document.querySelector('#p-salvar').disabled);
   assert.equal(await b.avaliar(() => document.querySelector('#c-permissoes').checkVisibility()), true);
+  assert.equal(await b.avaliar(() => document.querySelector('#c-permissoes').textContent.includes('Mudar situação')), false);
   assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('[data-usuario="9998"] input')].map(e => e.checked)), Object.values(PERMISSOES_PADRAO));
   assert.ok(await b.avaliar(() => [...document.querySelectorAll('[data-usuario="9996"] input')].every(e => e.checked && e.disabled)));
   assert.match(await b.avaliar(() => document.querySelector('[data-usuario="9996"]').textContent), /Administrador: acesso total/);
@@ -30,7 +31,7 @@ try {
   await b.clicar('#p-salvar');
   assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST').length), 0);
   // A busca preserva edições nas linhas escondidas; apenas usuários alterados são enviados.
-  for (const chave of ['mudar_situacao', 'ver_configuracoes']) await b.clicar(checkbox(9998, chave));
+  for (const chave of ['ver_historico', 'ver_configuracoes']) await b.clicar(checkbox(9998, chave));
   await b.preencher('#p-busca', 'Administrador');
   assert.equal(await b.avaliar(() => document.querySelector('[data-usuario="9998"]').hidden), true);
   await b.clicar('#p-salvar');
@@ -41,7 +42,7 @@ try {
   assert.equal(posts[0].userType, '0'); assert.equal(posts[0].userId, '9999');
   assert.deepEqual(Object.keys(JSON.parse(posts[0].body)).sort(), ['nome', ...chaves].sort());
   await b.preencher('#p-busca', '');
-  assert.equal(await b.avaliar(() => document.querySelector('[data-usuario="9998"] [data-permissao="mudar_situacao"]').checked), true);
+  assert.equal(await b.avaliar(() => document.querySelector('[data-usuario="9998"] [data-permissao="ver_historico"]').checked), true);
   // Nome hostil e dados alheios ao contrato não viram HTML nem modelo da tela.
   await b.avaliar(() => {
     const list = omni.users.list;
@@ -62,8 +63,8 @@ try {
   await navegar('imoveis');
   await b.esperar(() => document.querySelectorAll('[data-abrir]').length === 3);
   assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('.gi-nav-item')].map(e => e.textContent)), ['Imóveis']);
-  assert.equal(await b.avaliar(() => document.querySelectorAll('[data-situacao]').length), 0);
-  assert.match(await b.avaliar(() => document.querySelector('#gi-corpo td:nth-child(7) .gi-estado').textContent), /Disponível/);
+  assert.equal(await b.avaliar(() => document.querySelectorAll('[data-situacao]').length), 3);
+  assert.equal(await b.avaliar(() => document.querySelector('[data-situacao]').value), 'disponivel');
   assert.equal(await b.avaliar(() => bancada.chamadas.find(c => c.caminho === '/api/ext/permissoes/eu').userType), '2');
   await b.clicar('[data-abrir="DEMO-001"]');
   await b.esperar(() => !!document.querySelector('[data-campo="1"]'));
@@ -92,17 +93,17 @@ try {
   // Revogação no portal vale mesmo com a página mantendo a consulta em memória.
   await navegar('imoveis', '&usuario=9998');
   await b.esperar(() => !!document.querySelector('[data-situacao]'));
-  await gravar(9998, { ...PERMISSOES_PADRAO, editar_imoveis: false });
+  await gravar(9998, { ...PERMISSOES_PADRAO, editar_imoveis: false, ver_imoveis: false });
   await b.preencher('[data-situacao="DEMO-001"]', 'indisponivel');
   await b.esperar(() => !document.querySelector('[data-situacao="DEMO-001"]').disabled);
-  assert.match(await b.avaliar(() => document.body.textContent), /Você não tem permissão para mudar a situação\./);
+  assert.match(await b.avaliar(() => document.body.textContent), /Você não tem permissão para ver Imóveis\./);
   assert.equal(await b.avaliar(() => document.querySelector('[data-situacao="DEMO-001"]').value), 'reservado');
   await b.clicar('[data-abrir="DEMO-001"]');
   await b.esperar(() => !!document.querySelector('[data-campo="1"]'));
   await b.preencher('[data-campo="1"]', 'Recusado'); await b.clicar('.gi-modal [data-ok]');
   await b.esperar(() => document.querySelector('.gi-modal-recado').textContent.includes('Você não tem permissão para editar imóveis.'));
   await navegar('imoveis', '&usuario=9998');
-  await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('DEMO-001'));
+  await b.esperar(() => !!document.querySelector('#gi-sem-acesso'));
   assert.equal(await b.avaliar(() => document.querySelectorAll('[data-abrir],[data-excluir],[data-situacao]').length), 0);
   await gravar(9998, { ...PERMISSOES_PADRAO, editar_imoveis: false, mudar_situacao: true });
   await navegar('imoveis', '&usuario=9998');
