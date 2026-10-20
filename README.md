@@ -1,8 +1,31 @@
 # Gerenciamento de Imóveis — extensão do EvoTalks
 
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
-um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Locados**, **Chamados**,
-**Prestadores**, **Campos**, **Histórico** e **Configurações**, e cockpit de manutenção no atendimento.
+um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Campos**, **Histórico** e **Configurações**.
+
+## 0.27.0 — Situação editável
+
+Imóveis tem seletor de Situação por linha: Disponível (verde), Reservado (âmbar) e
+Indisponível (cinza). Quem acessa a tela pode editar; a gravação vai ao portal com
+o autor. Imóvel sem registro é Disponível. Reservado e Indisponível não são oferecidos
+pela Williane. O filtro Situação atua na página carregada e combina com Finalidade e Estado.
+Falha ao salvar restaura o valor anterior. Sem portal ou mapa disponível, a coluna mostra
+“—”, o filtro fica desabilitado e o aviso explica a indisponibilidade.
+
+Contrato: `GET /imoveis/situacoes` devolve `{ situacoes: { codigo: situacao } }`;
+`POST /imoveis/:codigo/situacao` recebe `{ situacao }` e envia o autor por `X-GI-Autor`.
+
+Locados foi removido (menu, navegação, tela e formulário). Chamados, Prestadores,
+cockpit e diálogo de O.S. estão desligados no manifesto, com os arquivos preservados
+integralmente para uma extensão separada. Os helpers de locação e o CSS compartilhado
+continuam disponíveis para esse código. As telas ativas usam cache `?v=0.27.0`;
+as telas dormentes mantêm `?v=0.26.3` para respeitar a preservação sem alteração.
+As seções históricas abaixo descrevem o histórico dessas funcionalidades dormentes.
+
+Validação: `node --test test/*.test.mjs`, `node test/checar.mjs`,
+`git diff --check` e cada `test/bancada/*.testar.mjs` com timeout de 280 s.
+A bancada principal e `situacao.testar.mjs` exercitam o fluxo ativo com dados sintéticos;
+as demais também cobrem os arquivos dormentes diretamente.
 
 Registra, por imóvel, informações que **não aparecem no site** (taxas, IPTU, encargos, observações
 da administração) e que precisam chegar a quem atende.

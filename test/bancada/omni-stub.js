@@ -121,6 +121,9 @@
       var url = new URL(op.url);
       if (url.origin !== 'http://portal.bancada.invalid') return Promise.reject(new Error('Portal externo bloqueado na bancada.'));
       window.bancada.chamadas.push({ caminho: url.pathname + url.search, method: op.method, body: op.body, timeout: op.timeout, autor: op.headers['X-GI-Autor'] });
+      if (params.has('situacao-mapa-invalido') && /\/imoveis\/situacoes$/.test(url.pathname)) return Promise.resolve({ status: 200, body: '{"situacoes":null}' });
+      if (params.has('situacao-fora') && /\/imoveis\/situacoes$/.test(url.pathname)) return Promise.resolve({ status: 503, body: '{"erro":"situacao_indisponivel"}' });
+      if (window.bancada.falharSituacao && /\/imoveis\/.+\/situacao$/.test(url.pathname)) return Promise.resolve({ status: 422, body: '{"erro":"situacao_invalida"}' });
       if (modo === 'fora' && !window.bancada.portalRestaurado) return Promise.resolve({ status: 503, body: JSON.stringify({ erro: 'portal_indisponivel' }) });
       return localFetch(url.pathname + url.search, { method: op.method, headers: op.headers, body: op.body }).then(function (r) {
         return r.text().then(function (body) {
@@ -172,7 +175,7 @@
       window.bancada.aberturas.push({ id: id, params: dados || {} });
       if (window.bancada.falharContribuicao) return falhar(window.bancada.falharContribuicao, 'Contribuição indisponível.');
       if (window.bancada.navegarContribuicao === false) return Promise.resolve({ opened: true });
-      var telas = { 'gi-os': 'os', 'gi-imoveis': 'imoveis', 'gi-locados': 'locados', 'gi-campos': 'campos', 'gi-historico': 'historico', 'gi-config': 'config', 'gi-chamados': 'chamados', 'gi-prestadores': 'prestadores', 'gi-cockpit': 'painel' };
+      var telas = { 'gi-os': 'os', 'gi-imoveis': 'imoveis', 'gi-campos': 'campos', 'gi-historico': 'historico', 'gi-config': 'config', 'gi-chamados': 'chamados', 'gi-prestadores': 'prestadores', 'gi-cockpit': 'painel' };
       if (!telas[id]) return Promise.reject(new Error('Tela não simulada.'));
       var query = new URLSearchParams(location.search);
       if (dados && dados.chamadoId) query.set('chamado', dados.chamadoId);

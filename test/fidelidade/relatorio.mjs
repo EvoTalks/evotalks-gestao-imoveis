@@ -26,8 +26,6 @@ const grupos = {
   lista: [['Contagens do contrato', '.gi-sub'], ['Aba ativa posicionada manualmente no desenho vivo', '.gi-nav-ativo'], ['Colunas automáticas por texto do contrato', 'thead'], ['Prazo do contrato, datas, legendas ausentes', 'tbody td:nth-child(6)'], ['Cotações sem meta contratual', 'tbody td:nth-child(7)']],
   novo: [['Gênero não informado', '.gi-grade-modal:last-of-type label:last-of-type'], ['Opções adicionais preservadas', '.gi-modal-rodape']],
   modal: [['Datas nativas e gênero ausente', '[data-evox="mnt-modal-campos"]'], ['Fotos sem vídeo', '.photos'], ['Cotações sem meta ou contagem de serviços', '[data-evox="mnt-modal-orcamentos"]'], ['Subtextos não gravados nos eventos', '[data-evox="mnt-modal-historico"]'], ['Decisão do proprietário continua acessível', '.gi-aprov'], ['Opções adicionais preservadas', '.gi-modal-rodape'], ['Explicação visível do bloqueio de envio', '.gi-aviso-check']],
-  locados: [['Datas relativas do contrato', 'tbody td:nth-child(5)']],
-  marcar: [['Cidade ausente na categoria', '.gi-modal-imovel .gi-ajuda'], ['Datas nativas', '.gi-grade-modal']],
   imoveis: [['Definições dos campos ausentes', '.gi-sub'], ['Total das seis linhas do fixture', '.gi-rodape'], ['Próxima desabilitada: seis imóveis reais contra 1757 ilustrados', '.gi-rodape button:last-child']],
   'cockpit-chamados': [['Papel sem gênero', '.pc__doc .pill'], ['Resumo interativo', '.pc__sum'], ['Vincular residência preservado', '.pc__link'], ['Editar e Mais ações preservados', '.acc .btns'], ['Rodapé sem filtro temporal inexistente', '.foot']],
   'cockpit-novo': [['Papel sem gênero', '.pc__doc .pill'], ['Usar última mensagem do cliente', '.pc__link'], ['Autorização sem gênero e acesso adicional', '.chk']],
@@ -40,7 +38,7 @@ try {
     await b.viewport(r.desenho.largura, Math.max(1100, r.desenho.altura));
     await b.navegar(pathToFileURL(path.join(SAIDA, 'referencia-iframe', r.quadro + '.html')).href);
     const caixas = await b.avaliar((q, gs) => {
-      const raiz = document.querySelector(q.startsWith('cockpit-') ? '.panel' : ['novo','modal','marcar'].includes(q) ? '.gi-modal' : '.gi');
+      const raiz = document.querySelector(q.startsWith('cockpit-') ? '.panel' : ['novo','modal'].includes(q) ? '.gi-modal' : '.gi');
       const o = raiz.getBoundingClientRect();
       return gs.flatMap(([causa, seletor]) => [...raiz.querySelectorAll(seletor)].map(n => {
         const x = n.getBoundingClientRect();

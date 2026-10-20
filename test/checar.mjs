@@ -26,15 +26,22 @@ function auditarEstilosEVisibilidade() {
     for (const item of contribuicao.items || []) porId.set(item.id, item);
   }
   if (!['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'].some(id => porId.has(id))) return;
+  if (dados.version === '0.27.0') {
+    for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-os']) if (porId.has(id)) {
+      erros++; process.stderr.write('manifest.json: contribuição desligada: ' + id + '.\n');
+    }
+  }
   const restritos = ['gi-locados', 'gi-chamados', 'gi-prestadores'];
   const semRestricao = ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'];
   for (const id of restritos) {
+    if (!porId.has(id)) continue;
     const visibilidade = porId.get(id)?.visibility;
     if (JSON.stringify(visibilidade) !== JSON.stringify({ userIds: [1, 515, 528, 531] })) {
       erros++; process.stderr.write('manifest.json: ' + id + ' deve restringir userIds exatamente a [1,515,528,531], sem userTypes.\n');
     }
   }
   for (const id of ['gi-cockpit', 'gi-os']) {
+    if (!porId.has(id)) continue;
     if (JSON.stringify(porId.get(id)?.visibility?.userTypes) !== '[0,1,2]') {
       erros++; process.stderr.write('manifest.json: ' + id + ' deve definir userTypes exatamente a [0,1,2].\n');
     }
@@ -59,6 +66,8 @@ function visitar(pasta) {
     else if (/\.(?:js|mjs|cjs)$/.test(item.name)) { arquivos++; validar(nome); }
     else if (/\.html$/.test(item.name)) {
       const html = readFileSync(nome, 'utf8');
+      // Arquivos dormentes são preservados integralmente na 0.27.0.
+      const versaoHtml = versao === '0.27.0' && /^(painel|os|chamados|prestadores)\.html$/.test(item.name) ? '0.26.3' : versao;
       for (const tag of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
         const atributo = tag[0].match(/<(script|link)\b[^>]*?\b(src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
         if (versao && atributo) {
@@ -66,11 +75,11 @@ function visitar(pasta) {
           if (recurso && !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(recurso)) {
             const atual = recurso.match(/[?&]v=([^&]+)/);
             if (!atual) { erros++; process.stderr.write(nome + ': recurso local sem ?v=: ' + recurso + '.\n'); }
-            else if (atual[1] !== versao) { erros++; process.stderr.write(nome + ': versão ' + atual[1] + ' diverge da versão ' + versao + ' do manifest.\n'); }
+            else if (atual[1] !== versaoHtml) { erros++; process.stderr.write(nome + ': versão ' + atual[1] + ' diverge da versão ' + versao + ' do manifest.\n'); }
           }
         }
         for (const v of tag[0].matchAll(/[?&]v=([^\s"'&>]+)/g)) {
-          if (versao && v[1] !== versao) {
+          if (versao && v[1] !== versaoHtml) {
             erros++; process.stderr.write(nome + ': versão ' + v[1] + ' diverge da versão ' + versao + ' do manifest.\n');
           }
         }

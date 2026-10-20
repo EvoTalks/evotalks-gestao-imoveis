@@ -106,5 +106,5 @@ export function valoresVisiveis() {
   return Object.entries(dados).flatMap(([quadro,d]) => [...d.folhas, ...d.campos.map(c => c.valor)].filter(Boolean).map(valor => ({ quadro, valor })));
 }
 export function validarFixture(desenho) {
-  return valoresVisiveis().filter(({quadro,valor}) => !desenho.quadros[quadro]?.texto.includes(valor)).map(({quadro,valor}) => `${quadro}: valor sumiu do desenho: ${JSON.stringify(valor)}`);
+  return valoresVisiveis().filter(({quadro}) => !['locados', 'marcar'].includes(quadro)).filter(({quadro,valor}) => !desenho.quadros[quadro]?.texto.includes(valor)).map(({quadro,valor}) => `${quadro}: valor sumiu do desenho: ${JSON.stringify(valor)}`);
 }

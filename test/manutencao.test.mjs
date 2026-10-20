@@ -52,28 +52,19 @@ test('F18 criação segura usa início da operação mesmo após resposta demora
   const r = await GI.chamadosCriarSeguro(dados);
   assert.equal(r.chamado.id, 3);
 });
-test('manifest 0.26.3 declara navegação ordenada, cockpit e escrita configurável', () => {
+test('manifest 0.27.0 mantém só as quatro telas ativas, sem configuração de manutenção', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.26.3');
-  assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos', 'gi-historico', 'gi-config']);
-  for (const item of m.contributions[0].items) assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
-  const cockpit = m.contributions.find(c => c.id === 'gi-cockpit');
-  assert.equal(cockpit.type, 'chatPanel'); assert.equal(cockpit.url, 'app/painel.html');
-  assert.equal(cockpit.title, 'Manutenção'); assert.equal(cockpit.presentation, undefined);
-  assert.deepEqual(cockpit.visibility.userTypes, [0, 1, 2]);
-  for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
-    assert.deepEqual(m.contributions[0].items.find(i => i.id === id).visibility, { userIds: [1, 515, 528, 531] });
+  assert.equal(m.version, '0.27.0');
+  assert.equal(m.contributions.length, 1);
+  assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']);
+  for (const item of m.contributions[0].items) {
+    assert.ok(existsSync(new URL('../' + item.url, import.meta.url)));
+    assert.equal(item.visibility, undefined);
   }
-  for (const id of ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']) {
-    assert.equal(m.contributions[0].items.find(i => i.id === id).visibility, undefined);
-  }
-  for (const k of ['modoDemonstracao']) {
-    const c = m.config.find(c => c.key === k);
-    assert.equal(c.type, 'boolean'); assert.equal(c.default, false); assert.ok(c.help);
-  }
-  const GI = carregar(); GI.ctx = () => ({ user: { type: 0 } });
-  const cabecalho = GI.cabecalho('gi-chamados');
-  const titulos = m.contributions[0].items.filter(i => i.id !== 'gi-prestadores').map(i => i.title);
+  assert.ok(m.config.every(c => !['modoDemonstracao', 'cockpitAbreChamado'].includes(c.key)));
+  const GI = carregar();
+  const cabecalho = GI.cabecalho('gi-imoveis');
+  const titulos = m.contributions[0].items.map(i => i.title);
   for (let i = 1; i < titulos.length; i++) assert.ok(cabecalho.indexOf(titulos[i - 1]) < cabecalho.indexOf(titulos[i]));
 });
 test('formatação pura: número, rótulos, trilha e máscaras nunca produzem marcação hostil', () => {

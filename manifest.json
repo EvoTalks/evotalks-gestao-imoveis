@@ -1,9 +1,9 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.26.3",
+  "version": "0.27.0",
   "name": "Gerenciamento de Imóveis",
-  "description": "Gestão de Imóveis, Locados, Chamados e Prestadores, com campos internos, histórico de autoria e cockpit de manutenção no atendimento.",
+  "description": "Gestão de Imóveis com situação (Disponível, Reservado, Indisponível), campos internos e histórico de autoria.",
   "author": {
     "name": "Evotalks / Cromyk"
   },
@@ -40,20 +40,6 @@
       "type": "string",
       "default": "imóvel",
       "help": "Usado nos textos das telas."
-    },
-    {
-      "key": "cockpitAbreChamado",
-      "label": "Permitir abrir chamado no atendimento",
-      "type": "boolean",
-      "default": true,
-      "help": "Habilita abertura e edição de chamados no cockpit. A abertura exige confirmação. Desligado mantém consulta e Gestão em diálogo."
-    },
-    {
-      "key": "modoDemonstracao",
-      "label": "Demonstração de manutenção",
-      "type": "boolean",
-      "default": false,
-      "help": "Exibe dados sintéticos de manutenção sem rede nem gravação no portal. Desative para consultar dados reais."
     }
   ],
   "contributions": [
@@ -78,57 +64,6 @@
           "title": "Imóveis",
           "icon": "icon-far-building",
           "url": "app/imoveis.html",
-          "presentation": {
-            "mode": "fullscreen"
-          }
-        },
-        {
-          "id": "gi-locados",
-          "title": "Locados",
-          "icon": "icon-far-key",
-          "url": "app/locados.html",
-          "visibility": {
-            "userIds": [
-              1,
-              515,
-              528,
-              531
-            ]
-          },
-          "presentation": {
-            "mode": "fullscreen"
-          }
-        },
-        {
-          "id": "gi-chamados",
-          "title": "Chamados",
-          "icon": "icon-far-list",
-          "url": "app/chamados.html",
-          "visibility": {
-            "userIds": [
-              1,
-              515,
-              528,
-              531
-            ]
-          },
-          "presentation": {
-            "mode": "fullscreen"
-          }
-        },
-        {
-          "id": "gi-prestadores",
-          "title": "Prestadores",
-          "icon": "icon-far-user",
-          "url": "app/prestadores.html",
-          "visibility": {
-            "userIds": [
-              1,
-              515,
-              528,
-              531
-            ]
-          },
           "presentation": {
             "mode": "fullscreen"
           }
@@ -161,38 +96,6 @@
           }
         }
       ]
-    },
-    {
-      "id": "gi-cockpit",
-      "type": "chatPanel",
-      "title": "Manutenção",
-      "url": "app/painel.html",
-      "icon": "app/icone-casa.svg",
-      "visibility": {
-        "userTypes": [
-          0,
-          1,
-          2
-        ]
-      }
-    },
-    {
-      "id": "gi-os",
-      "type": "chatMenu",
-      "title": "Chamados de manutenção",
-      "url": "app/os.html",
-      "icon": "app/icone-casa.svg",
-      "presentation": {
-        "mode": "dialog",
-        "size": "full"
-      },
-      "visibility": {
-        "userTypes": [
-          0,
-          1,
-          2
-        ]
-      }
     }
   ],
   "icon": "app/icone-casa.svg"

@@ -240,6 +240,8 @@
     locacao_encerrada: 'Esta locação foi encerrada. Escolha outra locação ativa.',
     nao_encontrada: 'Esta locação não foi encontrada. Atualize a consulta.', nao_encontrado: 'Este registro não foi encontrado. Atualize a consulta.',
     api_desabilitada: 'A conexão do portal está desabilitada. Verifique a configuração.', falha_interna: 'O portal não conseguiu concluir a operação. Tente de novo em instantes.',
+    situacao_invalida: 'Situação inválida.',
+    codigo_invalido: 'Código do imóvel inválido.',
     imovel_ja_locado: 'Este imóvel já está locado. Inclua o contato na locação existente.',
     aprovacao_pendente: 'Aguardando o proprietário. Registre a decisão em Gestão → Aprovação.',
     aprovacao_recusada: 'O proprietário recusou o orçamento. Escolha outro orçamento antes de aprovar.',
@@ -447,6 +449,20 @@
     });
   }
   GI.chamarPortal = chamar;
+
+  GI.SITUACOES = [
+    { valor: 'disponivel', rotulo: 'Disponível', classe: 'gi-estado-ok' },
+    { valor: 'reservado', rotulo: 'Reservado', classe: 'gi-estado-pendente' },
+    { valor: 'indisponivel', rotulo: 'Indisponível', classe: 'gi-estado-escuro' }
+  ];
+  GI.situacoesMapa = function () {
+    if (GI.modo !== 'portal') return Promise.reject(new Error('Situação exige o portal conectado'));
+    return GI.chamarPortal('/imoveis/situacoes').then(function (r) { return r.situacoes; });
+  };
+  GI.salvarSituacao = function (codigo, situacao) {
+    if (GI.modo !== 'portal') return Promise.reject(new Error('Situação exige o portal conectado'));
+    return GI.chamarPortal('/imoveis/' + encodeURIComponent(codigo) + '/situacao', { corpo: { situacao: situacao } });
+  };
 
   /* Locações são compartilhadas com a assistente: nunca têm cópia no storage. */
   function chamarLocacoes(caminho, corpo) {
@@ -1177,8 +1193,6 @@
   GI.cabecalho = function (ativo) {
     var telas = [
       { id: 'gi-imoveis',   nome: 'Imóveis' },
-      { id: 'gi-locados',   nome: 'Locados' },
-      { id: 'gi-chamados',  nome: 'Chamados' },
       { id: 'gi-campos',    nome: 'Campos' },
       { id: 'gi-historico', nome: 'Histórico' },
       { id: 'gi-config', nome: 'Configurações' }

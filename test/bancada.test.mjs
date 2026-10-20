@@ -15,7 +15,7 @@ test('portal de mentira oferece o contrato HTTP para exercitar as telas', async 
   }
   const inquilino = { contato_id: 9901, papel: 'locatario', nome: 'Locatário Teste Sintético' };
   assert.equal((await fetch(origem + '/api/ext/locacoes')).status, 401);
-  const html = await (await fetch(origem + '/app/locados.html')).text();
+  const html = await (await fetch(origem + '/app/imoveis.html')).text();
   assert.ok(html.indexOf('/test/bancada/omni-stub.js') < html.indexOf('src="comum.js'));
   assert.equal((await fetch(origem + '/app/../README.md')).status, 404);
   const lista = await api('/locacoes');

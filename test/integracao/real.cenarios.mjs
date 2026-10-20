@@ -40,23 +40,23 @@ export async function testarReal(b, origem, real) {
   let locacaoId, id;
   const pasta = mkdtempSync(path.join(fileURLToPath(new URL('./', import.meta.url)), '.imagens-'));
   try {
-    await cenario('a candidatas e cadastro manual em Locados', async () => {
-      await navegar('locados'); await b.esperar(() => !document.querySelector('#b-novo').disabled);
-      await b.clicar('#b-candidatas'); await b.esperar(() => !!document.querySelector('[data-candidata="0"]'));
-      await b.clicar('[data-candidata="0"]'); await b.esperar(() => !!document.querySelector('#l-locatario'));
-      await b.preencher('#l-locatario', 'Demonstração Um'); await b.esperar(() => !!document.querySelector('[data-contato="0"]')); await b.clicar('[data-contato="0"]');
-      await salvar();
-      await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Imóvel que Saiu do Anúncio'));
-      assert.equal((await sql("SELECT count(*)::int AS n FROM locacoes WHERE imovel_codigo='DEMO-SAIDA'"))[0].n, 1);
-      await b.clicar('#b-novo'); await b.esperar(() => !!document.querySelector('#l-titulo'));
-      await b.preencher('#l-titulo', 'Avulso Integração Demonstração'); await b.preencher('#l-endereco', 'Rua Inexistente, zero');
-      await b.preencher('#l-locatario', 'Demonstração Um'); await b.esperar(() => !!document.querySelector('[data-contato="0"]')); await b.clicar('[data-contato="0"]');
-      await salvar();
-      await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Avulso Integração'));
-      locacaoId = (await sql("SELECT id FROM locacoes WHERE imovel_titulo='Avulso Integração Demonstração'"))[0].id;
-      assert.equal((await sql('SELECT contato_id FROM locacao_contatos WHERE locacao_id=$1', [locacaoId]))[0].contato_id, 9901);
-      await b.captura('integracao-a-locados');
+    await cenario('a situação editável e persistente', async () => {
+      await navegar('imoveis');
+      await b.esperar(() => !!document.querySelector('[data-situacao="DEMO-001"]'));
+      assert.equal(await b.avaliar(() => document.querySelector('[data-situacao="DEMO-001"]').value), 'disponivel');
+      await b.preencher('[data-situacao="DEMO-001"]', 'reservado');
+      await b.esperar(() => !document.querySelector('[data-situacao="DEMO-001"]').disabled);
+      const salvo = (await sql("SELECT * FROM imoveis_situacao WHERE codigo='DEMO-001'"))[0];
+      assert.equal(salvo.situacao, 'reservado'); assert.equal(salvo.autor, 'Agente Demonstração');
+      await navegar('imoveis');
+      await b.esperar(() => document.querySelector('[data-situacao="DEMO-001"]')?.value === 'reservado');
+      await b.preencher('[data-situacao="DEMO-001"]', 'disponivel');
+      await b.esperar(() => !document.querySelector('[data-situacao="DEMO-001"]').disabled);
+      await b.captura('integracao-a-situacao');
     });
+    // O código de manutenção permanece coberto diretamente, sem a tela removida.
+    const criado = await real.api('/locacoes', { imovel: { titulo: 'Avulso Integração Demonstração' }, contatos: [{ contato_id: 9901, nome: 'Locatário Demonstração Um', papel: 'locatario' }] });
+    locacaoId = criado.locacao.id;
     await cenario('b chamado na gestão escolhendo chat da lista', async () => {
       await navegar('chamados'); await b.esperar(() => !document.querySelector('#b-novo').disabled);
       await b.avaliar(() => { bancada.historico = [{ id: 8899, status: 0, protocol: '', origin: 999, qname: 'Fila Encerrada Sintética', begintime: '2026-10-20T12:00:00.000Z', endreason: 'Finalizado Sintético' }]; });
@@ -223,12 +223,12 @@ export async function testarReal(b, origem, real) {
         await b.navegar(origem + '/app/imoveis.html?perfil=' + perfil);
         await b.esperar(() => !!document.querySelector('#gi-nav .gi-nav'));
         for (const tela of ['gi-locados', 'gi-chamados']) {
-          assert.equal(await b.avaliar(tela => !!document.querySelector('[data-tela="' + tela + '"]'), tela), perfil === 'admin');
+          assert.equal(await b.avaliar(tela => !!document.querySelector('[data-tela="' + tela + '"]'), tela), false);
         }
-        // Prestadores permanece no menu do host; não integra a barra do desenho.
+        // Contribuições de manutenção desligadas no manifesto e na navegação.
         assert.equal(await b.avaliar(() => !!document.querySelector('[data-tela="gi-prestadores"]')), false);
         await b.esperar(() => !!document.querySelector('[data-abrir]'));
-        assert.equal(await b.avaliar(() => !!document.querySelector('[data-locacao]')), perfil === 'admin');
+        assert.equal(await b.avaliar(() => !!document.querySelector('[data-locacao]')), false);
         if (perfil !== 'admin') {
           await b.avaliar(() => {
             bancada.aberturas = []; omni.ui.openContribution = async id => { bancada.aberturas.push(id); };

@@ -14,7 +14,7 @@ import { compararArquivos } from './pixels.mjs';
 const APP = fileURLToPath(new URL('../../app/', import.meta.url));
 const escapar = s => s.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
 export async function folhasDoQuadro(q) {
-  const pagina = q.startsWith('cockpit-') ? 'painel' : ['lista', 'novo', 'modal'].includes(q) ? 'chamados' : q === 'locados' ? 'locados' : 'imoveis';
+  const pagina = q.startsWith('cockpit-') ? 'painel' : ['lista', 'novo', 'modal'].includes(q) ? 'chamados' : 'imoveis';
   const html = await readFile(path.join(APP, pagina + '.html'), 'utf8');
   return [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)].map(m => {
     const arquivo = m[1].split('?')[0];
@@ -87,7 +87,7 @@ export async function executarCssPuro(op = argumentos([])) {
     for (const q of op.quadros) tamanhos[q] = await capturarDesenho(b, q, 'css-puro/desenho');
     for (const q of op.quadros) {
       const folhas = await folhasDoQuadro(q), cockpit = q.startsWith('cockpit-');
-      const modal = ['novo', 'modal', 'marcar'].includes(q);
+      const modal = ['novo', 'modal'].includes(q);
       const links = folhas.map(f => '<link rel="stylesheet" href="' + escapar(pathToFileURL(path.join(APP, f)).href) + '">').join('\n');
       const dom = d.quadros[q].dom;
       const componente = cockpit ? dom : modal ? '<main class="gi gi-palco">' + dom + '</main>' : dom;

@@ -1,3 +1,15 @@
+# Integração 0.27.0
+
+O portal padrão da bancada é a worktree `gestao-imoveis-portal-situacao`;
+`PORTAL_DIR` permite indicar outra cópia compatível. O banco é PGlite em memória.
+O cenário inicial usa a tela Imóveis para gravar Reservado com autoria, conferir
+o SQL, reabrir e restaurar Disponível. A locação usada pelos cenários dormentes
+é preparada pela API, sem a tela Locados removida. Nenhuma instância é acessada.
+
+Os cenários históricos abaixo cobrem os arquivos de manutenção guardados,
+que não são expostos pelo manifesto 0.27.0; os quatro itens ativos são Imóveis,
+Campos, Histórico e Configurações para os três perfis.
+
 # Integração real
 
 ```bash

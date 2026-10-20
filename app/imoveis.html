@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.26.3">
-<link rel="stylesheet" href="chamados.css?v=0.26.3">
+<link rel="stylesheet" href="estilo.css?v=0.27.0">
+<link rel="stylesheet" href="chamados.css?v=0.27.0">
 </head>
 <body class="gi gi-gestao">
 
@@ -35,8 +35,9 @@
     <div class="gi-campo">
       <label for="f-situacao">Situação</label>
       <select id="f-situacao">
-        <option value="">todas</option><option value="disponiveis">Disponíveis</option><option value="locados">Locados</option>
+        <option value="">todas</option><option value="disponivel">Disponível</option><option value="reservado">Reservado</option><option value="indisponivel">Indisponível</option>
       </select>
+      <span class="gi-ajuda">Reservado e Indisponível não são oferecidos pela Williane.</span>
     </div>
     <div class="gi-campo">
       <label for="f-estado">Estado</label>
@@ -88,19 +89,17 @@
   <span id="gi-modo">verificando onde os dados são gravados…</span>
 </p>
 
-<div class="gi-aviso" id="gi-locados-aviso" hidden></div>
-<script src="comum.js?v=0.26.3"></script>
-<script src="locacao.js?v=0.26.3"></script>
+<div class="gi-aviso" id="gi-situacao-aviso" hidden></div>
+<script src="comum.js?v=0.27.0"></script>
 <script>
 (function () {
   'use strict';
 
   var estado = {
     pagina: 1, porPagina: 25, termo: '', finalidade: '', filtroEstado: '', filtroSituacao: '',
-    itens: [], campos: [], valores: {}, preenchidos: {}, locados: null
+    itens: [], campos: [], valores: {}, preenchidos: {}, situacoes: null, gravando: Object.create(null)
   };
   var geracao = 0;
-  function administrador() { var ctx = GI.ctx(); return !!(ctx && ctx.user && ctx.user.type === 0); }
 
   var el = function (id) { return document.getElementById(id); };
 
@@ -131,6 +130,10 @@
 
   /* ------------------------------------------------------------------ lista */
 
+  function situacaoDoImovel(codigo) {
+    return estado.situacoes && Object.prototype.hasOwnProperty.call(estado.situacoes, codigo) ? estado.situacoes[codigo] : 'disponivel';
+  }
+
   function desenharLista() {
     var corpo = el('gi-corpo');
     var linhas = estado.itens;
@@ -140,8 +143,8 @@
     } else if (estado.filtroEstado === 'preenchido') {
       linhas = linhas.filter(function (p) { return quantosPreenchidos(p.internalcode) > 0; });
     }
-    if (estado.filtroSituacao && estado.locados) {
-      linhas = linhas.filter(function (p) { return !!estado.locados[p.internalcode] === (estado.filtroSituacao === 'locados'); });
+    if (estado.filtroSituacao && estado.situacoes) {
+      linhas = linhas.filter(function (p) { return situacaoDoImovel(p.internalcode) === estado.filtroSituacao; });
     }
 
     if (!linhas.length) {
@@ -157,12 +160,16 @@
       var cat = GI.partesCategoria(p.category);
       var n = quantosPreenchidos(p.internalcode);
       var codigo = GI.escapar(p.internalcode);
-      var locacao = estado.locados && estado.locados[p.internalcode];
-      var tituloLocacao = !estado.locados ? 'Locados exigem o portal conectado e o mapa de locações disponível' : locacao ? 'Ver a locação' : 'Marcar como locado';
-      var situacao = !estado.locados ? '<span class="gi-mudo">—</span>' :
-        '<span class="gi-estado ' + (locacao ? 'gi-estado-escuro' : 'gi-estado-ok') + '"><span class="gi-ponto ' +
-        (locacao ? 'gi-ponto-escuro' : 'gi-ponto-ok') + '"></span>' + (locacao ? 'Locado' : 'Disponível') + '</span>' +
-        (locacao ? '<div class="gi-ajuda">contrato ' + GI.escapar(locacao.contrato_numero || '—') + ' · ' + GI.escapar(locacao.locatario_nome || '') + '</div>' : '');
+      var situacao = '<span class="gi-mudo">—</span>';
+      if (estado.situacoes) {
+        var valor = estado.gravando[p.internalcode] || situacaoDoImovel(p.internalcode);
+        var atual = GI.SITUACOES.filter(function (s) { return s.valor === valor; })[0];
+        situacao = '<select class="gi-estado ' + atual.classe + '" data-situacao="' + codigo +
+          '"' + (estado.gravando[p.internalcode] ? ' disabled' : '') + ' aria-label="Situação de ' + GI.escapar(GI.codigoCurto(p.internalcode)) + '">' +
+          GI.SITUACOES.map(function (s) {
+            return '<option value="' + s.valor + '"' + (s.valor === valor ? ' selected' : '') + '>' + s.rotulo + '</option>';
+          }).join('') + '</select>';
+      }
       return '<tr>' +
         '<td class="gi-nowrap"><strong>' + GI.escapar(GI.codigoCurto(p.internalcode)) + '</strong>' +
           '<div class="gi-ajuda">' + GI.escapar(p.internalcode) + '</div></td>' +
@@ -176,8 +183,6 @@
           '<div class="gi-acoes">' +
             '<button type="button" class="btn btn-slim btn-icone" title="Editar" aria-label="Editar" ' +
               'data-abrir="' + codigo + '">' + ICONE_ABRIR + '</button>' +
-            (administrador() ? '<button type="button" class="btn btn-slim btn-icone" title="' + tituloLocacao + '" aria-label="' + tituloLocacao + '" ' +
-              (estado.locados ? '' : 'disabled ') + 'data-locacao="' + codigo + '">' + GI.iconeLocacao(locacao ? 'ver' : 'chave') + '</button>' : '') +
             '<button type="button" class="btn btn-slim btn-icone btn-perigo" ' +
               'title="' + (n ? 'Excluir as informações preenchidas' : 'Nada preenchido para excluir') + '" ' +
               'aria-label="Excluir as informações preenchidas" ' +
@@ -193,17 +198,23 @@
     Array.prototype.forEach.call(corpo.querySelectorAll('[data-excluir]'), function (b) {
       b.addEventListener('click', function () { excluirImovel(b.getAttribute('data-excluir')); });
     });
-    Array.prototype.forEach.call(corpo.querySelectorAll('[data-locacao]'), function (b) {
-      b.onclick = function () {
-        if (!administrador()) return;
-        var codigo = b.getAttribute('data-locacao');
-        var l = estado.locados && estado.locados[codigo];
-        var acao = l ? GI.editarLocacao(l.locacao_id) : GI.modalLocacao({ imovel: estado.itens.filter(function (p) { return String(p.internalcode) === codigo; })[0] });
-        acao.then(function (gravado) {
-          if (!gravado) return;
-          return carregarMapa().then(desenharLista);
-        }).catch(GI.erroFatal);
-      };
+    Array.prototype.forEach.call(corpo.querySelectorAll('[data-situacao]'), function (seletor) {
+      seletor.addEventListener('change', function () {
+        var codigo = seletor.getAttribute('data-situacao');
+        if (estado.gravando[codigo]) return;
+        var proxima = seletor.value;
+        estado.gravando[codigo] = proxima;
+        seletor.disabled = true;
+        GI.salvarSituacao(codigo, proxima).then(function () {
+          Object.defineProperty(estado.situacoes, codigo, { value: proxima, enumerable: true, configurable: true, writable: true });
+          GI.aviso('Situação atualizada.', 'success');
+        }).catch(function (err) {
+          GI.aviso(GI.mensagemErro(err), 'error');
+        }).then(function () {
+          delete estado.gravando[codigo];
+          desenharLista();
+        });
+      });
     });
     GI.ajustarAltura();
   }
@@ -255,8 +266,7 @@
       var totalConhecido = r.total !== null ? r.total : r.itens.length < estado.porPagina ?
         (estado.pagina - 1) * estado.porPagina + r.itens.length : null;
       el('gi-origem').innerHTML = r.itens.length + ' nesta página' +
-        (totalConhecido !== null ? ' · <span class="gi-total-catalogo">' + GI.escapar(totalConhecido) + '</span> no total' : '') +
-        (estado.locados ? ' · dos quais ' + Object.keys(estado.locados).length + ' locados' : '');
+        (totalConhecido !== null ? ' · <span class="gi-total-catalogo">' + GI.escapar(totalConhecido) + '</span> no total' : '');
       el('gi-origem').title = r.ms + ' ms · ' + GI.estrategiaCatalogo;
       el('b-anterior').disabled = estado.pagina <= 1;
       el('b-proxima').disabled = r.itens.length < estado.porPagina;
@@ -264,20 +274,23 @@
     });
   }
 
-  function carregarMapa() {
-    estado.locados = null;
+  function carregarSituacoes() {
+    estado.situacoes = null;
     el('f-situacao').disabled = true;
     if (GI.modo !== 'portal') {
-      el('gi-locados-aviso').hidden = false;
-      el('gi-locados-aviso').textContent = 'Locados exigem o portal conectado.';
+      el('gi-situacao-aviso').hidden = false;
+      el('gi-situacao-aviso').textContent = 'Situação exige o portal conectado.';
       return Promise.resolve();
     }
-    return GI.locacoesMapa().then(function (mapa) {
-      estado.locados = mapa; el('f-situacao').disabled = false;
-      el('gi-locados-aviso').hidden = true;
+    return GI.situacoesMapa().then(function (mapa) {
+      if (!mapa || typeof mapa !== 'object' || Array.isArray(mapa) || Object.keys(mapa).some(function (codigo) {
+        return !GI.SITUACOES.some(function (s) { return s.valor === mapa[codigo]; });
+      })) throw new Error('Mapa de situações inválido');
+      estado.situacoes = mapa; el('f-situacao').disabled = false;
+      el('gi-situacao-aviso').hidden = true;
     }).catch(function (err) {
-      el('gi-locados-aviso').hidden = false;
-      el('gi-locados-aviso').textContent = 'Situação indisponível: ' + GI.mensagemErro(err) + '. Reabra a tela para tentar novamente.';
+      el('gi-situacao-aviso').hidden = false;
+      el('gi-situacao-aviso').textContent = 'Situação indisponível: ' + GI.mensagemErro(err) + '. Reabra a tela para tentar novamente.';
     });
   }
 
@@ -504,7 +517,7 @@
     });
 
     return Promise.all([
-      GI.campos(), GI.valores(), GI.preenchidos(), carregarMapa()
+      GI.campos(), GI.valores(), GI.preenchidos(), carregarSituacoes()
     ]).then(function (r) {
       estado.campos = r[0];
       estado.valores = r[1];
@@ -512,8 +525,7 @@
       var ativos = estado.campos.filter(function (c) { return c.ativo !== false; }).length;
       var comInfo = Object.keys(estado.preenchidos).length;
       el('gi-resumo').innerHTML = '<span class="gi-contagem-campos">' + ativos + '</span> campo' + (ativos === 1 ? '' : 's') + ' em uso · ' +
-        comInfo + ' imóve' + (comInfo === 1 ? 'l' : 'is') + ' com informação preenchida' +
-        (estado.locados ? ' · ' + Object.keys(estado.locados).length + ' locados do catálogo' : '');
+        comInfo + ' imóve' + (comInfo === 1 ? 'l' : 'is') + ' com informação preenchida';
       return carregar();
     });
   });

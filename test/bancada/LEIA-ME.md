@@ -1,3 +1,15 @@
+# Bancada 0.27.0
+
+`node test/bancada/situacao.testar.mjs` (ou `node test/bancada/testar.mjs`) prova
+Situação nos três perfis, valor padrão e mapa persistido, POST com autor, reversão
+em erro, gravações simultâneas, filtros, ausência do portal e navegação reduzida.
+Usa somente o servidor sintético local, sem instância externa. Cada bancada
+`*.testar.mjs` pode ser executada com `timeout 280s node <arquivo>`.
+
+As bancadas de manutenção abaixo continuam exercitando diretamente os arquivos
+dormentes; suas contribuições não são instaladas pelo manifesto 0.27.0.
+As capturas antigas de Locados correspondem ao histórico, cuja tela foi removida.
+
 # Bancada de Locados
 
 Requer Node 22. Não há dependência npm, banco externo, Docker nem build.
@@ -6,7 +18,7 @@ Requer Node 22. Não há dependência npm, banco externo, Docker nem build.
 node test/bancada/servidor.mjs
 ```
 
-Abra `http://127.0.0.1:4178/app/locados.html` ou `/app/imoveis.html`.
+Abra `http://127.0.0.1:4178/app/imoveis.html` ou `/app/imoveis.html`.
 `PORT=4180` troca a porta. O servidor escuta apenas no loopback.
 
 O HTML recebe `omni-stub.js` somente nesta bancada. As telas publicadas não o referenciam.

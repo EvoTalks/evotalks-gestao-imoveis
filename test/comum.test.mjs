@@ -103,13 +103,16 @@ test('busca de contatos normaliza só os campos permitidos', async () => {
   ]);
 });
 
-test('aba Locados segue Imóveis e antecede Campos', () => {
+test('cabeçalho só oferece Imóveis, Campos, Histórico e Configurações', () => {
   const { GI } = carregar();
-  GI.ctx = () => ({ user: { type: 0 } });
-  const html = GI.cabecalho('gi-locados');
-  assert.match(html, /gi-nav-ativo">Locados/);
-  assert.ok(html.indexOf('Imóveis') < html.indexOf('Locados'));
-  assert.ok(html.indexOf('Locados') < html.indexOf('Campos'));
+  for (const type of [0, 1, 2]) {
+    GI.ctx = () => ({ user: { type } });
+    const html = GI.cabecalho('gi-imoveis');
+    assert.match(html, /gi-nav-ativo">Imóveis/);
+    assert.doesNotMatch(html, /Locados|Chamados|Prestadores/);
+    assert.ok(html.indexOf('Imóveis') < html.indexOf('Campos'));
+    assert.ok(html.indexOf('Campos') < html.indexOf('Histórico'));
+  }
 });
 
 test('atendente e supervisor não recebem atalhos internos nem abrem gestão por GI.abrirTela', () => {
@@ -128,7 +131,7 @@ test('atendente e supervisor não recebem atalhos internos nem abrem gestão por
   }
   assert.equal(avisos.length, 9);
   GI.ctx = () => ({ user: { type: 0 } });
-  assert.match(GI.cabecalho('gi-imoveis'), /gi-locados/);
+  assert.doesNotMatch(GI.cabecalho('gi-imoveis'), /gi-locados/);
   for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos']) GI.abrirTela(id);
   assert.deepEqual(abertos, ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-campos']);
 });
@@ -142,7 +145,7 @@ test('gestor libera só o id temporário e administradores, com navegação e ab
     GI.ctx = () => ({ user });
     assert.equal(GI.gestor(), true);
     for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) {
-      assert.equal(GI.cabecalho('gi-imoveis').includes(id), id !== 'gi-prestadores');
+      assert.equal(GI.cabecalho('gi-imoveis').includes(id), false);
       GI.abrirTela(id);
       assert.equal(abertos.at(-1), id);
     }

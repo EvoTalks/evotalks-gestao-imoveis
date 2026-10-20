@@ -30,8 +30,8 @@ test('F14: encerrado só oferece Reabrir para Triagem', () => {
 });
 test('F14: abertura habilitada e exceção de gestão idêntica ao hotfix', () => {
   const m = JSON.parse(readFileSync('manifest.json'));
-  assert.equal(m.config.find(c => c.key === 'cockpitAbreChamado').default, true);
-  for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) assert.deepEqual(m.contributions[0].items.find(c => c.id === id).visibility, { userIds: [1, 515, 528, 531] });
+  assert.equal(m.config.find(c => c.key === 'cockpitAbreChamado'), undefined);
+  for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores']) assert.equal(m.contributions[0].items.find(c => c.id === id), undefined);
   assert.deepEqual(Array.from(carregar().GESTORES_EXTRA), [531]);
 });
 

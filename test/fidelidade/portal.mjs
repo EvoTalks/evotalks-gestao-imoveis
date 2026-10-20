@@ -1,7 +1,9 @@
 /* Adaptador determinístico de bancada. Nenhuma rota alcança portal/SDK reais. */
 import { fixture, AGORA, anexos, orcamentos, eventos, totalPrestadoresHidraulica, normalizar } from './fixture-desenho.mjs';
+import { criarPortalSituacao } from '../bancada/portal-situacao.mjs';
 import { criarPortalChamados } from '../bancada/portal-chamados.mjs';
 export function criarFixturePortal() {
+  const situacao = criarPortalSituacao();
   const dados = structuredClone(fixture), { chamados, locacoes, produtos, contatos } = dados;
   // Só a criação usa o contrato já testado do portal de mentira, sem fixtures DEMO.
   const criacao = criarPortalChamados({ locacoes, agora: () => Date.parse(AGORA), semFixtures: true });
@@ -10,8 +12,10 @@ export function criarFixturePortal() {
   const resumo = rows => ({ abertos: abertos(rows), concluidos: rows.filter(c=>c.status==='concluido').length,
     prazo_estourado: rows.filter(c=>!['concluido','cancelado'].includes(c.status) && !c.sla.pausado && c.sla.prazo_solucao_em && Date.parse(c.sla.prazo_solucao_em)<Date.parse(AGORA)).length,
     aguardando_proprietario: rows.filter(c=>c.aprovacao.status==='pendente').length, emergencia_sem_triagem: rows.filter(c=>c.prioridade==='emergencia'&&c.status==='novo').length });
-  return { dados, responder(method, url, body) {
+  return { dados, responder(method, url, body, autor) {
     const p = url.pathname, q = url.searchParams;
+    const rSituacao = situacao.responder(method, p.replace(/^\/api\/ext/, ''), body, autor);
+    if (rSituacao) return rSituacao;
     if (p.startsWith('/bancada/sdk/')) {
       const recurso = p.split('/').pop();
       if (recurso === 'contacts') return resposta(contatos.filter(c=>normalizar(c.name+c.phone).includes(normalizar(q.get('termo')))));
