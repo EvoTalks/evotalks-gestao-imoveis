@@ -49,7 +49,7 @@ export async function testarSimplificacao(b, origem) {
   assert.equal(await b.avaliar(() => document.querySelector('#c-mudar-status') || document.querySelector('.gi-trilha')), null);
   await b.preencher('#c-titulo', 'Simplificação editada'); await b.preencher('#c-status', 'triagem');
   await b.esperar(() => !document.querySelector('#c-status').disabled); await salvar();
-  await b.esperar(id => document.querySelector('[data-editar="' + id + '"]').closest('tr').cells[7].textContent.includes('Triagem'), criado.id);
+  await b.esperar(id => document.querySelector('[data-editar="' + id + '"]')?.closest('tr').cells[7].textContent.includes('Triagem'), criado.id);
   let d = await b.avaliar(async id => GI.chamadosObter(id), criado.id);
   assert.equal(d.chamado.titulo, 'Simplificação editada'); assert.equal(d.chamado.status, 'triagem');
   const posts = await b.avaliar(id => bancada.chamadas.filter(r => r.method === 'POST' && r.caminho.startsWith('/api/ext/chamados/' + id)).map(r => r.caminho), criado.id);
@@ -59,7 +59,7 @@ export async function testarSimplificacao(b, origem) {
   assert.match(await texto('#c-status-controle'), /orçamento/);
   assert.equal(await b.avaliar(() => document.querySelector('#c-titulo').value), 'Dados salvos após recusa do status');
   await salvar();
-  await b.esperar(id => document.querySelector('[data-editar="' + id + '"]').closest('tr').textContent.includes('Dados salvos após recusa do status'), criado.id);
+  await b.esperar(id => document.querySelector('[data-editar="' + id + '"]')?.closest('tr').textContent.includes('Dados salvos após recusa do status'), criado.id);
   assert.equal((await b.avaliar(async id => GI.chamadosObter(id), criado.id)).chamado.status, 'triagem');
   await novo(); await b.preencher('#c-locacao', '1');
   await b.avaliar(async () => GI.locacoesEncerrar(3, 'Encerramento concorrente sintético'));

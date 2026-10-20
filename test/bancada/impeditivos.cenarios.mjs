@@ -150,7 +150,9 @@ export async function testarImpeditivos(b, origem, real) {
 
   // O portal de mentira e o real recebem o mesmo orçamento com alçada excedida.
   await abrir('escrita=1'); await pronto();
+  await b.avaliar(async () => { var u = await omni.session.getUser(); u.type = 0; });
   await api('/config/manutencao', { alcada_centavos: 100 });
+  await b.avaliar(async () => { var u = await omni.session.getUser(); u.type = 2; });
   const orc = await api('/chamados/' + c2.id + '/orcamentos', { prestador_nome: 'Prestador Sintético F14', valor_centavos: 200 });
   await api('/chamados/' + c2.id, { quem_paga: 'proprietario' });
   await api('/chamados/' + c2.id + '/orcamentos/' + orc.orcamento.id + '/escolher', {});

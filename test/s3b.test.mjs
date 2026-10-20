@@ -25,6 +25,8 @@ test('S3b: avisos de envio ficam na linha do checkbox sem mudar a altura do moda
       await b.clicar('[data-editar="1042"]');
       await b.esperar(() => !!document.querySelector('#c-nota'));
       await b.esperar(msg => document.querySelector('#c-aviso-dica').textContent === msg, mensagem);
+      // A consulta do aviso pode terminar antes dos dados que definem a altura.
+      await b.esperar(() => document.querySelector('#c-orcamentos')?.textContent.includes('Hidro Sul'));
       const r = await b.avaliar(() => {
         const input = document.querySelector('#c-avisar'), dica = document.querySelector('#c-aviso-dica');
         const linha = input.closest('label').getBoundingClientRect(), texto = dica.getBoundingClientRect();

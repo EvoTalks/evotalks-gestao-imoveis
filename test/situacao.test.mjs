@@ -34,7 +34,7 @@ test('portal sintético e fixture validam códigos/situações e preservam autor
     const url = 'http://127.0.0.1:' + s.address().port + '/api/ext';
     assert.equal((await fetch(url + '/imoveis/situacoes')).status, 401);
     assert.equal((await fetch(url + '/imoveis/ABC/situacao', { method: 'POST', body: '{}' })).status, 401);
-    const headers = { Authorization: 'Bearer bancada-sintetica', 'Content-Type': 'application/json', 'X-GI-Autor': 'Autor Sintético' };
+    const headers = { Authorization: 'Bearer bancada-sintetica', 'Content-Type': 'application/json', 'X-GI-Autor': 'Autor Sintético', 'X-GI-User-Id': '9999', 'X-GI-User-Type': '0' };
     for (const [codigo, situacao, erro] of [['ABC', 'locado', 'situacao_invalida'], ['ABC', '', 'situacao_invalida'], ['ABC', 1, 'situacao_invalida'], ['', 'disponivel', 'codigo_invalido'], ['%20', 'disponivel', 'codigo_invalido'], ['x'.repeat(41), 'reservado', 'codigo_invalido']]) {
       const r = await fetch(url + '/imoveis/' + codigo + '/situacao', { method: 'POST', headers, body: JSON.stringify({ situacao }) });
       assert.equal(r.status, 422); assert.equal((await r.json()).erro, erro);

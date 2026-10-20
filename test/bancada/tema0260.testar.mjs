@@ -1,5 +1,6 @@
 /* N3: estilos computados com os tokens medidos do host; sem rede externa. */
 import assert from 'node:assert/strict';
+import { PERMISSOES_PADRAO } from './portal-permissoes.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
@@ -26,7 +27,7 @@ function aplicarTokens() {
   const ready = omni.ready;
   omni.ready = function (fn) { return ready(function (c) { c.theme.tokens = vars; fn(c); }); };
 }
-const servidor = criarServidor();
+const servidor = criarServidor({ permissoes: { 9999: { ...PERMISSOES_PADRAO, ver_configuracoes: true } } });
 servidor.prependListener('request', (req, res) => {
   if (!req.url.startsWith('/app/') || !req.url.includes('.html')) return;
   const end = res.end;

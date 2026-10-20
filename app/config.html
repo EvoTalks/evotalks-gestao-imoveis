@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Configurações</title>
-<link rel="stylesheet" href="estilo.css?v=0.27.0">
-<link rel="stylesheet" href="chamados.css?v=0.27.0">
+<link rel="stylesheet" href="estilo.css?v=0.28.0">
+<link rel="stylesheet" href="chamados.css?v=0.28.0">
 </head>
-<body class="gi gi-gestao">
+<body class="gi gi-gestao gi-permissoes-pendentes">
 
 <div class="gi-topo">
   <div>
@@ -20,6 +20,15 @@
 <div class="gi-erro" id="gi-erro"></div>
 
 <section id="gi-painel" style="display:none">
+  <div class="gi-cartao" id="c-permissoes" hidden>
+    <h2 style="font-size:14px">Permissões</h2>
+    <p class="gi-ajuda">Controle de uso das telas; quem tem o token do portal consegue contornar.</p>
+    <div class="gi-campo"><label for="p-busca">Buscar usuário por nome</label><input id="p-busca" type="search"></div>
+    <fieldset id="p-campos" style="border:0;padding:0;margin:12px 0;min-width:0" disabled>
+      <div class="gi-tabela-rolagem"><table><thead><tr><th>Usuário / perfil</th><th>Ver Imóveis</th><th>Editar imóveis</th><th>Mudar situação</th><th>Criar e editar campos</th><th>Ver Histórico</th><th>Ver Configurações</th></tr></thead><tbody id="p-usuarios"></tbody></table></div>
+    </fieldset>
+    <div class="gi-rodape"><button id="p-salvar" class="btn btn-sucesso" type="button" disabled>Salvar</button><span id="p-resultado" class="gi-pequeno" role="status" aria-live="polite"></span></div>
+  </div>
 
   <div class="gi-cartao" id="c-manutencao">
     <strong style="font-size:14px">Manutenção</strong>
@@ -107,14 +116,68 @@
   imóveis de verdade no endereço.
 </p>
 
-<script src="comum.js?v=0.27.0"></script>
-<script src="manutencao.js?v=0.27.0"></script>
+<script src="comum.js?v=0.28.0"></script>
+<script src="manutencao.js?v=0.28.0"></script>
 <script>
 (function () {
   'use strict';
 
   var el = function (id) { return document.getElementById(id); };
   var urlTestada = '';
+  var usuariosPermissoes = [], registrosPermissoes = {}, padraoPermissoes = {};
+  var rotulosPermissoes = { ver_imoveis: 'Ver Imóveis', editar_imoveis: 'Editar imóveis', mudar_situacao: 'Mudar situação', gerenciar_campos: 'Criar e editar campos', ver_historico: 'Ver Histórico', ver_configuracoes: 'Ver Configurações' };
+  function desenharPermissoes() {
+    var busca = el('p-busca').value.trim().toLowerCase();
+    Array.prototype.forEach.call(el('p-usuarios').querySelectorAll('[data-usuario]'), function (linha) {
+      linha.hidden = linha.getAttribute('data-nome').toLowerCase().indexOf(busca) === -1;
+    });
+  }
+  function carregarPermissoes() {
+    el('p-campos').disabled = true; el('p-salvar').disabled = true;
+    return Promise.all([omni.users.list(), GI.chamarPortal('/permissoes')]).then(function (r) {
+      // Só estes campos saem do SDK para o modelo da tela.
+      usuariosPermissoes = GI.lista(r[0]).filter(function (u) { return u && GI.id(u.id); }).map(function (u) {
+        return { id: GI.id(u.id), nome: GI.nomeDoUsuario(u), tipo: Number(u.type) };
+      });
+      registrosPermissoes = {}; padraoPermissoes = r[1].padrao;
+      (r[1].usuarios || []).forEach(function (u) { registrosPermissoes[u.user_id] = u; });
+      el('p-usuarios').innerHTML = usuariosPermissoes.map(function (u) {
+        var admin = u.tipo === 0, valores = registrosPermissoes[u.id] || padraoPermissoes;
+        return '<tr data-usuario="' + u.id + '" data-nome="' + GI.escapar(u.nome) + '"><td>' + GI.escapar(u.nome) +
+          '<div class="gi-ajuda">' + (admin ? 'Administrador: acesso total' : u.tipo === 1 ? 'Supervisor' : u.tipo === 2 ? 'Agente' : 'Outros') + '</div></td>' +
+          GI.CHAVES_PERMISSOES.map(function (chave) {
+            return '<td><input type="checkbox" data-permissao="' + chave + '" aria-label="' + GI.escapar(u.nome + ': ' + rotulosPermissoes[chave]) + '"' +
+              (admin || valores[chave] === true ? ' checked' : '') + (admin ? ' disabled' : '') + '></td>';
+          }).join('') + '</tr>';
+      }).join('');
+      el('p-campos').disabled = false; el('p-salvar').disabled = false;
+      desenharPermissoes(); GI.ajustarAltura();
+    });
+  }
+  function salvarPermissoes() {
+    var alterados = [];
+    usuariosPermissoes.forEach(function (u) {
+      if (u.tipo === 0) return;
+      var linha = el('p-usuarios').querySelector('[data-usuario="' + u.id + '"]'), corpo = { nome: u.nome };
+      var antes = registrosPermissoes[u.id] || padraoPermissoes, mudou = false;
+      GI.CHAVES_PERMISSOES.forEach(function (chave) {
+        corpo[chave] = linha.querySelector('[data-permissao="' + chave + '"]').checked;
+        if (corpo[chave] !== antes[chave]) mudou = true;
+      });
+      if (mudou) alterados.push({ id: u.id, corpo: corpo });
+    });
+    if (!alterados.length) { el('p-resultado').textContent = 'Nenhuma permissão alterada.'; return; }
+    el('p-campos').disabled = true; el('p-salvar').disabled = true;
+    el('p-resultado').textContent = 'salvando permissões…';
+    var fila = Promise.resolve();
+    alterados.forEach(function (u) {
+      fila = fila.then(function () { return GI.chamarPortal('/permissoes/' + u.id, { corpo: u.corpo }); });
+    });
+    return fila.then(function () { el('p-resultado').textContent = 'Permissões salvas. Já estão valendo.'; })
+      .catch(function (err) { el('p-resultado').textContent = GI.mensagemErro(err); })
+      .then(function () { return carregarPermissoes(); })
+      .catch(function (err) { el('p-resultado').textContent = GI.mensagemErro(err); });
+  }
   var prioridades = ['emergencia', 'alta', 'normal'];
   function erroManutencao(err) {
     return GI.mensagemErro(err);
@@ -427,6 +490,7 @@
   GI.pronto(function () {
     el('gi-nav').innerHTML = GI.cabecalho('gi-config');
     GI.ligarNavegacao();
+    if (!GI.exigirPermissao('ver_configuracoes')) return;
 
     if (GI.modo !== 'portal') {
       el('gi-negado').style.display = 'block';
@@ -439,6 +503,14 @@
     }
 
     el('gi-painel').style.display = 'block';
+    if (!GI.pode('gerenciar_campos')) el('b-campos-padrao').disabled = true;
+    var leituraAdmin = GI.permissoes().then(function (r) {
+      if (!r.administrador) return;
+      el('c-permissoes').hidden = false;
+      el('p-busca').addEventListener('input', desenharPermissoes);
+      el('p-salvar').addEventListener('click', salvarPermissoes);
+      return carregarPermissoes().catch(function (err) { el('p-resultado').textContent = GI.mensagemErro(err); });
+    });
     el('b-testar').addEventListener('click', testar);
     el('b-revelar').addEventListener('click', revelar);
     el('b-agora').addEventListener('click', atualizarAgora);
@@ -451,7 +523,7 @@
       if (el('c-url').value.trim() !== urlTestada) el('b-salvar').disabled = true;
     });
 
-    return Promise.all([carregar(), carregarManutencao()]);
+    return Promise.all([carregar(), carregarManutencao(), leituraAdmin]);
   });
 })();
 </script>

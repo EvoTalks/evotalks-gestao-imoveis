@@ -106,20 +106,20 @@ test('29/F11: cockpit e diálogo exigem [0,1,2], gestão [0] e demais telas pres
   } finally { rmSync(pasta, { recursive: true, force: true }); }
 });
 
-test('0.27.0: telas ativas exigem cache novo, dormentes mantêm versão e contribuições desligadas são recusadas', () => {
+for (const versao of ['0.27.0', '0.28.0']) test(versao + ': telas ativas exigem cache novo, dormentes mantêm versão e contribuições desligadas são recusadas', () => {
   const pasta = mkdtempSync(path.join(raiz, '.checar-'));
   const app = path.join(pasta, 'app');
   const rodar = () => spawnSync(process.execPath, ['test/checar.mjs', pasta], { cwd: raiz, encoding: 'utf8' });
-  const manifest = { version: '0.27.0', contributions: [{ id: 'menu', items: ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'].map(id => ({ id })) }] };
+  const manifest = { version: versao, contributions: [{ id: 'menu', items: ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'].map(id => ({ id })) }] };
   try {
     mkdirSync(app);
     writeFileSync(path.join(pasta, 'manifest.json'), JSON.stringify(manifest));
     for (const tela of ['painel', 'os', 'chamados', 'prestadores']) writeFileSync(path.join(app, tela + '.html'), '<script src="comum.js?v=0.26.3"></script>');
-    writeFileSync(path.join(app, 'imoveis.html'), '<script src="comum.js?v=0.27.0"></script>');
+    writeFileSync(path.join(app, 'imoveis.html'), '<script src="comum.js?v=' + versao + '"></script>');
     assert.equal(rodar().status, 0);
     writeFileSync(path.join(app, 'imoveis.html'), '<script src="comum.js?v=0.26.3"></script>');
     assert.notEqual(rodar().status, 0, 'tela ativa não aceita exceção de cache dormente');
-    writeFileSync(path.join(app, 'imoveis.html'), '<script src="comum.js?v=0.27.0"></script>');
+    writeFileSync(path.join(app, 'imoveis.html'), '<script src="comum.js?v=' + versao + '"></script>');
     for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-os']) {
       manifest.contributions.push({ id });
       writeFileSync(path.join(pasta, 'manifest.json'), JSON.stringify(manifest));

@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.27.0">
-<link rel="stylesheet" href="chamados.css?v=0.27.0">
+<link rel="stylesheet" href="estilo.css?v=0.28.0">
+<link rel="stylesheet" href="chamados.css?v=0.28.0">
 </head>
-<body class="gi gi-gestao">
+<body class="gi gi-gestao gi-permissoes-pendentes">
 
 <div class="gi-topo">
   <div>
@@ -90,7 +90,7 @@
 </p>
 
 <div class="gi-aviso" id="gi-situacao-aviso" hidden></div>
-<script src="comum.js?v=0.27.0"></script>
+<script src="comum.js?v=0.28.0"></script>
 <script>
 (function () {
   'use strict';
@@ -169,6 +169,7 @@
           GI.SITUACOES.map(function (s) {
             return '<option value="' + s.valor + '"' + (s.valor === valor ? ' selected' : '') + '>' + s.rotulo + '</option>';
           }).join('') + '</select>';
+        if (!GI.pode('mudar_situacao')) situacao = '<span class="gi-estado ' + atual.classe + '">' + GI.escapar(atual.rotulo) + '</span>';
       }
       return '<tr>' +
         '<td class="gi-nowrap"><strong>' + GI.escapar(GI.codigoCurto(p.internalcode)) + '</strong>' +
@@ -180,14 +181,14 @@
         '<td>' + selo(p.internalcode) + '</td>' +
         '<td>' + situacao + '</td>' +
         '<td>' +
-          '<div class="gi-acoes">' +
+          '<div class="gi-acoes">' + (GI.pode('editar_imoveis') ?
             '<button type="button" class="btn btn-slim btn-icone" title="Editar" aria-label="Editar" ' +
               'data-abrir="' + codigo + '">' + ICONE_ABRIR + '</button>' +
             '<button type="button" class="btn btn-slim btn-icone btn-perigo" ' +
               'title="' + (n ? 'Excluir as informações preenchidas' : 'Nada preenchido para excluir') + '" ' +
               'aria-label="Excluir as informações preenchidas" ' +
-              (n ? '' : 'disabled ') + 'data-excluir="' + codigo + '">' + ICONE_EXCLUIR + '</button>' +
-          '</div>' +
+              (n ? '' : 'disabled ') + 'data-excluir="' + codigo + '">' + ICONE_EXCLUIR + '</button>'
+           : '') + '</div>' +
         '</td>' +
       '</tr>';
     }).join('');
@@ -223,6 +224,7 @@
      imóvel em si vem do catálogo do Imogestão e não se apaga por esta tela.
      Some da resposta da IA, então pede confirmação e vai para o histórico. */
   function excluirImovel(codigo) {
+    if (!GI.pode('editar_imoveis')) return;
     var quantos = quantosPreenchidos(codigo);
     if (!quantos) return;
 
@@ -297,6 +299,7 @@
   /* ------------------------------------------------------ edição num modal */
 
   function abrirImovel(codigo) {
+    if (!GI.pode('editar_imoveis')) return;
     var imovel = null;
 
     GI.buscarImovel(codigo).then(function (p) {
@@ -434,6 +437,7 @@
   /* Devolve promise: o modal só fecha quando a gravação volta, e uma recusa
      (número inválido, portal fora) mantém a tela aberta com o que foi digitado. */
   function salvar(codigo) {
+    if (!GI.pode('editar_imoveis')) return Promise.reject(new Error('Você não tem permissão para editar imóveis.'));
     var novo = lerFormulario();
 
     if (novo['@erro']) {
@@ -481,6 +485,7 @@
   GI.pronto(function () {
     el('gi-nav').innerHTML = GI.cabecalho('gi-imoveis');
     GI.ligarNavegacao();
+    if (!GI.exigirPermissao('ver_imoveis')) return;
     if (GI.modo === 'portal') el('gi-modo').parentNode.hidden = true;
 
     el('b-buscar').addEventListener('click', function () {
