@@ -59,6 +59,23 @@ try {
     assert.match(await b.avaliar(()=>document.querySelector('[data-situacao-recado]').textContent),/Falha sintética/);
     assert.equal(await b.avaliar(()=>document.querySelector('[data-sit="reservado"]').getAttribute('aria-pressed')),'true');
     await b.avaliar(()=>{GI.salvarSituacao=salvarOriginal;});
+    // A -> B -> A enquanto a resposta está pendente reconcilia a nova renderização.
+    for (const falhar of [false,true]) {
+      await b.avaliar(()=>{GI.salvarSituacao=()=>new Promise((resolve,reject)=>{window.concluirSituacao=resolve;window.falharSituacao=()=>reject(new Error('Falha ao voltar'));});});
+      await b.clicar(falhar?'[data-sit="disponivel"]':'[data-sit="indisponivel"]');
+      await b.clicar('[data-prox]');await b.esperar(()=>document.querySelector('.dv-titulo')?.textContent==='Casa com piscina');
+      await b.clicar('[data-ant]');await b.esperar(()=>!!document.querySelector('[data-sit="reservado"]')?.disabled);
+      await b.avaliar(erro=>erro?falharSituacao():concluirSituacao(),falhar);
+      await b.esperar(()=>!document.querySelector('[data-sit="reservado"]').disabled);
+      assert.equal(await b.avaliar(()=>document.querySelector('[data-sit="indisponivel"]').getAttribute('aria-pressed')),falhar?'false':'true');
+      assert.match(await b.avaliar(()=>document.querySelector('[data-situacao-detalhe]').textContent),falhar?/Reservado/:/Indisponível/);
+      if(falhar) assert.match(await b.avaliar(()=>document.querySelector('[data-situacao-recado]').textContent),/Falha ao voltar/);
+      await b.avaliar(()=>{GI.salvarSituacao=salvarOriginal;});
+      if(!falhar) {
+        await b.clicar('[data-sit="reservado"]');await b.esperar(()=>!document.querySelector('[data-sit="reservado"]').disabled);
+      }
+    }
+
     await b.clicar('[data-prox]');await b.esperar(()=>document.querySelector('.dv-titulo')?.textContent==='Casa com piscina');
     assert.equal(await b.avaliar(()=>document.querySelector('[data-evox="vis-fato-piscina"] b').textContent),'Sim');
     await b.clicar('[data-prox]');await b.esperar(()=>!!document.querySelector('.dv-sem-foto'));
@@ -102,6 +119,23 @@ try {
   await b.navegar(origem+'/app/imoveis.html?perfil=admin');await b.esperar(()=>!!document.querySelector('[data-detalhe]'));
   await b.preencher('#f-situacao','disponivel');await abrir();await b.clicar('[data-sit="indisponivel"]');await b.esperar(()=>document.querySelector('[data-situacao-recado]').textContent==='Situação salva');
   assert.equal(await b.avaliar(()=>!!document.querySelector('[data-situacao="5357422"]')),false);await fechar();
+
+  // Faixa visível real: iframe de 3000px, rolado pelo host.
+  await b.viewport(1400,900);await b.navegar(origem+'/app/imoveis.html?perfil=admin');
+  await b.avaliar(()=>{document.body.innerHTML='<iframe style="width:100%;height:3000px;border:0" src="/app/imoveis.html?perfil=admin"></iframe>';});
+  await b.esperar(()=>!!document.querySelector('iframe').contentDocument.querySelector('[data-detalhe]'));
+  await b.avaliar(()=>window.scrollTo(0,900));
+  await b.avaliar(()=>document.querySelector('iframe').contentDocument.querySelector('[data-detalhe="5357422"]').click());
+  await b.esperar(()=>!!document.querySelector('iframe').contentDocument.querySelector('[data-foto="0"]'));
+  await b.avaliar(()=>document.querySelector('iframe').contentDocument.querySelector('[data-foto="0"]').click());
+  await b.esperar(()=>{const f=document.querySelector('iframe'),l=f.contentDocument.querySelector('.lb');return l&&l.getBoundingClientRect().top>800;});
+  for(const scroll of [900,1400]) {
+    await b.avaliar(y=>window.scrollTo(0,y),scroll);
+    await b.esperar(()=>{const f=document.querySelector('iframe'),r=f.contentDocument.querySelector('.lb').getBoundingClientRect(),y=f.getBoundingClientRect().top;return Math.abs(r.top+y)<3&&r.height<=901;});
+    assert.equal(await b.avaliar(()=>{const f=document.querySelector('iframe'),y=f.getBoundingClientRect().top;return ['[data-lb-fechar]','.lb-contador','[data-lb-original]'].every(s=>{const r=f.contentDocument.querySelector(s).getBoundingClientRect();return r.top+y>=0&&r.bottom+y<=innerHeight;});}),true);
+  }
+  await b.avaliar(()=>document.querySelector('iframe').contentDocument.querySelector('[data-lb-fechar]').click());
+  assert.equal(await b.avaliar(()=>!!document.querySelector('iframe').contentDocument.querySelector('.lb')),false);
   assert.deepEqual(b.erros,[]);
   process.stdout.write('PASS visualizacao: capa/código/título, galeria/teclado, situação imediata/erro/filtro, piscina, escape, permissões, temas, 800/390px; FAIL 0\n');
 } finally {if(b) await b.fechar();servidor.closeAllConnections();await new Promise(r=>servidor.close(r));}

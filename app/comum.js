@@ -1082,6 +1082,8 @@
       if (!e || !e.intersectionRect || !e.intersectionRect.height) return;
       var visTopo = e.intersectionRect.top - e.boundingClientRect.top;  // px do documento
       var visAltura = e.intersectionRect.height;
+      fundo.style.setProperty('--gi-vis-topo', e.intersectionRect.top + 'px');
+      fundo.style.setProperty('--gi-vis-altura', visAltura + 'px');
       if (caixa.classList.contains('gi-modal-leitura')) caixa.style.maxHeight = Math.floor(visAltura * 0.85) + 'px';
       var sobra = visAltura - caixa.offsetHeight;
       var topo = visTopo + (sobra > 0 ? sobra / 2 : 16);
@@ -1097,7 +1099,12 @@
     var tamanho = global.ResizeObserver && (caixa.classList.contains('gi-modal-leitura')) ? new ResizeObserver(ajustar) : null;
     if (tamanho) tamanho.observe(caixa);
     obs.observe(fundo);
-    return { disconnect: function () { obs.disconnect(); if (tamanho) tamanho.disconnect(); } };
+    // Rolagem do host pode manter a mesma proporção de interseção do iframe.
+    // Enquanto a galeria está aberta, renova a medição também nesse caso.
+    var galeriaTimer = global.setInterval(function () {
+      if (caixa.querySelector('.lb')) { obs.unobserve(fundo); obs.observe(fundo); }
+    }, 100);
+    return { disconnect: function () { global.clearInterval(galeriaTimer); obs.disconnect(); if (tamanho) tamanho.disconnect(); } };
   }
 
   GI.modal = function (op) {

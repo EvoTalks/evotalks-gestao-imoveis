@@ -173,7 +173,7 @@
 .gi .gi-visualizacao .dv-esqueleto {height:380px;border-radius:10px;background:linear-gradient(90deg,var(--gi-campo-bg),var(--gi-bg),var(--gi-campo-bg));background-size:300% 100%;animation:dv-brilho 1.4s infinite}
 @keyframes dv-brilho {to {background-position:100% 0}}
 @media(prefers-reduced-motion:reduce) {.gi .gi-visualizacao .dv-esqueleto {animation:none}}
-.gi .gi-visualizacao .lb {position:fixed;inset:0;z-index:10;width:100%;height:100%;border-radius:0;color:white}
+.gi .gi-visualizacao .lb {position:fixed;inset:var(--gi-vis-topo,0px) 0 auto;z-index:10;width:100%;height:var(--gi-vis-altura,100vh);border-radius:0;color:white}
 .gi .gi-visualizacao .lb button,.gi .gi-visualizacao .lb a {color:white}
 .gi .gi-visualizacao .lb-seta {color:#1e1e1e!important}
 .gi .gi-visualizacao .lb-palco {min-height:0}

@@ -89,3 +89,16 @@ test('renderização escapa dados do portal, catálogo e campos; piscina não re
   assert.match(r.html,/dv-fato--sim/); assert.doesNotMatch(r.html,/dv-chip[^>]*>[^<]*Piscina/);
   assert.match(r.html,/<p>Linha 1<\/p><p>Linha 2<\/p>/);
 });
+
+test('Sim/Não preserva observação escapada nos dois valores', () => {
+  const GI = visualizacao(); GI.pode = () => true;
+  for (const valor of ['sim','nao']) {
+    const html = GI.conteudoVisualizacao({internalcode:'A',name:'Casa',category:''},{imovel:{}},{
+      situacao:'disponivel',campos:[{id:1,nome:'Pet',tipo:'simnao'}],
+      lancados:{1:{valor,obs:'Apenas pequeno porte <img onerror=evil>'}}
+    }).html;
+    assert.match(html,/ — Apenas pequeno porte &lt;img onerror=evil&gt;/);
+    assert.doesNotMatch(html,/<img onerror/);
+    assert.match(html,valor==='sim'?/Sim<\/span> — Apenas/:/Não — Apenas/);
+  }
+});

@@ -70,7 +70,7 @@
     return campos.filter(function (c) { return c.ativo !== false; }).map(function (c) {
       var l = lancados[c.id], valor = '', classe = 'dv-linha';
       if (l && (tem(l.valor) || l.obs)) {
-        if (c.tipo === 'simnao' && tem(l.valor)) valor = String(l.valor) === 'sim' ? '<span class="dv-sim">' + ic('check') + 'Sim</span>' : 'Não';
+        if (c.tipo === 'simnao' && tem(l.valor)) valor = (String(l.valor) === 'sim' ? '<span class="dv-sim">' + ic('check') + 'Sim</span>' : 'Não') + (l.obs ? ' — ' + esc(l.obs) : '');
         else if (c.tipo === 'valor' && tem(l.valor)) {
           var rec = {ano:'/ano', anual:'/ano', mes:'/mês', mensal:'/mês', unico:'única', unica:'única'};
           valor = Number(l.valor) === 0 ? 'isento' : GI.dinheiro(Math.round(Number(l.valor) * 100));
@@ -163,21 +163,21 @@
     }
     function atualizarSituacao(proxima) {
       if (!op.estado.situacoes || GI.modo !== 'portal' || !GI.pode('ver_imoveis') || op.estado.gravando[codigo] || proxima === op.situacao(codigo)) return;
-      var id = codigo, geracao = versao;
+      var id = codigo;
       op.estado.gravando[id] = proxima;
       todos('[data-sit]',function (b) { b.disabled = true; }); recado('Salvando…');
       op.atualizar();
       GI.salvarSituacao(id,proxima).then(function () {
         Object.defineProperty(op.estado.situacoes,id,{value:proxima,enumerable:true,configurable:true,writable:true});
-        if (aberto && geracao === versao) {
+        if (aberto && codigo === id) {
           var anterior = modal.querySelector('[data-situacao-detalhe]');
           if (anterior) anterior.outerHTML = selo(proxima);
           todos('[data-sit]',function (b) { b.setAttribute('aria-pressed',b.getAttribute('data-sit') === proxima ? 'true' : 'false'); });
           recado('Situação salva');
         }
-      }).catch(function (err) { if (aberto && geracao === versao) recado(GI.mensagemErro(err),true); }).then(function () {
+      }).catch(function (err) { if (aberto && codigo === id) recado(GI.mensagemErro(err),true); }).then(function () {
         delete op.estado.gravando[id]; op.atualizar();
-        if (aberto && geracao === versao) todos('[data-sit]',function (b) { b.disabled = false; });
+        if (aberto && codigo === id) todos('[data-sit]',function (b) { b.disabled = false; });
       });
     }
     function renderizar(p,dados) {
