@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.29.0">
-<link rel="stylesheet" href="chamados.css?v=0.29.0">
+<link rel="stylesheet" href="estilo.css?v=0.29.1">
+<link rel="stylesheet" href="chamados.css?v=0.29.1">
 </head>
 <body class="gi gi-gestao gi-permissoes-pendentes">
 
@@ -89,7 +89,7 @@
 </p>
 
 <div class="gi-aviso" id="gi-situacao-aviso" hidden></div>
-<script src="comum.js?v=0.29.0"></script>
+<script src="comum.js?v=0.29.1"></script>
 <script>
 (function () {
   'use strict';
@@ -401,6 +401,16 @@
     }).then(function (lancados) {
       estado.valores[codigo] = lancados;
       var cat = GI.partesCategoria(imovel.category);
+      var valorSituacaoInicial = estado.situacoes ? situacaoDoImovel(codigo) : null;
+      var situacaoInicial = GI.SITUACOES.filter(function (s) { return s.valor === valorSituacaoInicial; })[0];
+      var campoSituacao = '<div class="gi-campo-caixa" style="margin-top:16px" id="gi-editar-situacao">' +
+        '<label for="gi-situacao-editar">Situação</label>' +
+        (situacaoInicial ? (GI.pode('mudar_situacao') ?
+          '<select id="gi-situacao-editar" data-situacao-editar class="gi-estado ' + situacaoInicial.classe + '">' +
+            GI.SITUACOES.map(function (s) { return '<option value="' + s.valor + '"' + (s.valor === valorSituacaoInicial ? ' selected' : '') + '>' + GI.escapar(s.rotulo) + '</option>'; }).join('') +
+          '</select>' : '<span data-situacao-editar-selo class="gi-estado ' + situacaoInicial.classe + '">' + GI.escapar(situacaoInicial.rotulo) + '</span>') :
+          '<span class="gi-mudo">—</span>') +
+        '</div>';
 
       var corpo =
         '<div class="gi-modal-imovel">' +
@@ -413,22 +423,63 @@
             ' · código interno ' + GI.escapar(imovel.internalcode) +
           '</div>' +
         '</div>' +
+        campoSituacao +
         '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:16px 0 8px">' +
           '<strong style="font-size:13.5px">Informações adicionais</strong>' +
           '<span class="gi-ajuda">não aparecem no site — vão só para quem atende</span>' +
         '</div>' +
         '<div class="gi-grade-campos" id="gi-form-campos"></div>';
 
+      var fecharModal = null;
       return GI.modal({
         titulo: 'Editar imóvel ' + GI.codigoCurto(codigo),
         corpo: corpo,
         rotuloOk: 'Atualizar',
-        aoAbrir: function () { desenharFormulario(codigo); },
+        aoAbrir: function () {
+          desenharFormulario(codigo);
+          var situacao = document.querySelector('[data-situacao-editar]');
+          if (situacao) situacao.addEventListener('change', atualizarSituacaoEdicao);
+        },
+        aoControlar: function (fechar) { fecharModal = fechar; },
+        aoFechar: function (caixa) {
+          if (!formularioAlterado(codigo, valorSituacaoInicial)) return true;
+          var descarte = caixa.querySelector('[data-descartar-edicao]');
+          if (!descarte) {
+            descarte = document.createElement('div');
+            descarte.setAttribute('data-descartar-edicao', '');
+            descarte.className = 'gi-confirmacao';
+            descarte.innerHTML = '<p>Descartar as alterações?</p><button type="button" class="btn btn-perigo" data-descartar-sim>Descartar</button> <button type="button" class="btn" data-descartar-nao>Continuar editando</button>';
+            caixa.appendChild(descarte);
+            descarte.querySelector('[data-descartar-sim]').addEventListener('click', function () { if (fecharModal) fecharModal(true); });
+            descarte.querySelector('[data-descartar-nao]').addEventListener('click', function () { descarte.parentNode.removeChild(descarte); });
+          }
+          descarte.hidden = false;
+          return false;
+        },
         aoConfirmar: function () { return salvar(codigo); }
       });
     }).then(function () {
       desenharLista();
     }).catch(GI.erroFatal);
+  }
+
+  function formularioAlterado(codigo, situacaoInicial) {
+    var situacao = document.querySelector('[data-situacao-editar]');
+    if (situacao && situacao.value !== situacaoInicial) return true;
+    var novo = lerFormulario();
+    if (novo['@erro']) return true;
+    var antigo = estado.valores[codigo] || {};
+    return Object.keys(novo).some(function (id) {
+      return id !== '@erro' && GI.valorLegivel(estado.campos.filter(function (c) { return c.id === Number(id) || String(c.id) === id; })[0], novo[id]) !==
+        GI.valorLegivel(estado.campos.filter(function (c) { return c.id === Number(id) || String(c.id) === id; })[0], antigo[id] || {});
+    }) || Object.keys(antigo).some(function (id) { return !novo[id]; });
+  }
+
+  function atualizarSituacaoEdicao() {
+    var seletor = document.querySelector('[data-situacao-editar]');
+    if (!seletor) return;
+    var atual = GI.SITUACOES.filter(function (s) { return s.valor === seletor.value; })[0];
+    seletor.className = 'gi-estado ' + atual.classe;
   }
 
   function desenharFormulario(codigo) {
@@ -537,6 +588,12 @@
       throw new Error('O campo "' + novo['@erro'] + '" não é um número válido — nada foi gravado.');
     }
     var antigo = estado.valores[codigo] || {};
+    var seletorSituacao = document.querySelector('[data-situacao-editar]');
+    var situacaoNova = seletorSituacao ? seletorSituacao.value : null;
+    var situacaoAntiga = estado.situacoes ? situacaoDoImovel(codigo) : null;
+    if (situacaoNova !== null && situacaoNova !== situacaoAntiga && !GI.pode('mudar_situacao')) {
+      return Promise.reject(new Error('Você não tem permissão para mudar a situação.'));
+    }
     var eventos = [];
     var porId = {};
     estado.campos.forEach(function (c) { porId[c.id] = c; });
@@ -556,18 +613,26 @@
       }
     });
 
-    if (!eventos.length) {
+    var situacaoMudou = situacaoNova !== null && situacaoNova !== situacaoAntiga;
+    if (!eventos.length && !situacaoMudou) {
       GI.aviso('Nada mudou — nenhuma linha gravada.', 'info');
       return Promise.resolve(true);
     }
 
-    return GI.salvarValoresDoImovel(codigo, novo, estado.campos)
-      .then(function () { return GI.registrarHistorico(eventos); })
+    var gravarValores = eventos.length ? GI.salvarValoresDoImovel(codigo, novo, estado.campos)
+      .then(function () { return GI.registrarHistorico(eventos); }) : Promise.resolve();
+    return gravarValores.then(function () {
+      if (!situacaoMudou) return;
+      return GI.salvarSituacao(codigo, situacaoNova).then(function () {
+        Object.defineProperty(estado.situacoes, codigo, { value: situacaoNova, enumerable: true, configurable: true, writable: true });
+        desenharLista();
+      });
+    })
       .then(function () {
         if (Object.keys(novo).length) estado.valores[codigo] = novo;
         else delete estado.valores[codigo];
         anotarPreenchidos(codigo, Object.keys(novo).length);
-        GI.aviso(eventos.length + (eventos.length > 1 ? ' alterações gravadas' : ' alteração gravada') +
+        GI.aviso((eventos.length ? eventos.length + (eventos.length > 1 ? ' alterações gravadas' : ' alteração gravada') : 'Situação atualizada') +
           ' no imóvel ' + GI.codigoCurto(codigo) + '.', 'success');
         return true;
       });
