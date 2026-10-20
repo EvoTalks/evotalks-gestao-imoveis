@@ -1082,7 +1082,9 @@
       if (!e || !e.intersectionRect || !e.intersectionRect.height) return;
       var visTopo = e.intersectionRect.top - e.boundingClientRect.top;  // px do documento
       var visAltura = e.intersectionRect.height;
-      if (caixa.classList.contains('gi-modal-leitura') || caixa.classList.contains('gi-detalhe-conjunto')) caixa.style.maxHeight = Math.floor(visAltura * 0.85) + 'px';
+      fundo.style.setProperty('--gi-vis-topo', e.intersectionRect.top + 'px');
+      fundo.style.setProperty('--gi-vis-altura', visAltura + 'px');
+      if (caixa.classList.contains('gi-modal-leitura')) caixa.style.maxHeight = Math.floor(visAltura * 0.85) + 'px';
       var sobra = visAltura - caixa.offsetHeight;
       var topo = visTopo + (sobra > 0 ? sobra / 2 : 16);
 
@@ -1094,10 +1096,15 @@
       caixa.style.top = Math.max(8, topo) + 'px';
     }
     var obs = new IntersectionObserver(function (entradas) { ultimaEntrada = entradas[entradas.length - 1]; ajustar(); }, { threshold: limites });
-    var tamanho = global.ResizeObserver && (caixa.classList.contains('gi-modal-leitura') || caixa.classList.contains('gi-detalhe-conjunto')) ? new ResizeObserver(ajustar) : null;
+    var tamanho = global.ResizeObserver && (caixa.classList.contains('gi-modal-leitura')) ? new ResizeObserver(ajustar) : null;
     if (tamanho) tamanho.observe(caixa);
     obs.observe(fundo);
-    return { disconnect: function () { obs.disconnect(); if (tamanho) tamanho.disconnect(); } };
+    // Rolagem do host pode manter a mesma proporção de interseção do iframe.
+    // Enquanto a galeria está aberta, renova a medição também nesse caso.
+    var galeriaTimer = global.setInterval(function () {
+      if (caixa.querySelector('.lb')) { obs.unobserve(fundo); obs.observe(fundo); }
+    }, 100);
+    return { disconnect: function () { global.clearInterval(galeriaTimer); obs.disconnect(); if (tamanho) tamanho.disconnect(); } };
   }
 
   GI.modal = function (op) {
@@ -1106,7 +1113,7 @@
       var fundo = document.createElement('div');
       fundo.className = op.alvo ? 'gi-form-inline' : 'gi-modal-fundo';
       fundo.innerHTML =
-        '<div class="gi-modal' + (op.somenteLeitura ? ' gi-modal-leitura' : '') + '"' + (op.alvo ? '' : ' role="dialog" aria-modal="true"') +
+        '<div class="gi-modal' + (op.somenteLeitura ? ' gi-modal-leitura' : '') + (op.visualizacao ? ' gi-visualizacao dv' : '') + '"' + (op.alvo ? '' : ' role="dialog" aria-modal="true"') +
             (op.largura ? ' style="max-width:' + Number(op.largura) + 'px"' : '') + '>' +
           '<div class="gi-modal-topo">' +
             '<h2>' + GI.escapar(op.titulo || '') + '</h2>' +
@@ -1122,31 +1129,10 @@
           '</div>' +
         '</div>';
 
+      if (op.visualizacao) fundo.querySelector('.gi-modal').setAttribute('aria-label', 'Visualização do imóvel');
       var caixa = fundo.querySelector('.gi-modal-corpo');
       if (typeof op.corpo === 'string') caixa.innerHTML = op.corpo;
       else if (op.corpo) caixa.appendChild(op.corpo);
-
-      var conjunto = null, caixaAdendo = null;
-      if (op.somenteLeitura && op.adendo !== undefined) {
-        var principal = fundo.querySelector('.gi-modal');
-        conjunto = document.createElement('div');
-        conjunto.className = 'gi-detalhe-conjunto';
-        conjunto.setAttribute('role', 'dialog');
-        conjunto.setAttribute('aria-modal', 'true');
-        conjunto.setAttribute('aria-label', op.titulo || 'Detalhes do imóvel');
-        principal.removeAttribute('role');
-        principal.removeAttribute('aria-modal');
-        fundo.insertBefore(conjunto, principal);
-        conjunto.appendChild(principal);
-        var adendo = document.createElement('aside');
-        adendo.className = 'gi-modal gi-detalhe-adendo';
-        adendo.setAttribute('aria-label', 'Situação, valores e informações adicionais');
-        caixaAdendo = document.createElement('div');
-        caixaAdendo.className = 'gi-detalhe-adendo-corpo';
-        caixaAdendo.innerHTML = op.adendo;
-        adendo.appendChild(caixaAdendo);
-        conjunto.appendChild(adendo);
-      }
 
       var recado = fundo.querySelector('.gi-modal-recado');
       var botaoOk = fundo.querySelector('[data-ok]');
@@ -1170,9 +1156,11 @@
         resolve(valor);
       }
       function naTecla(e) {
+        if (op.aoTecla && op.aoTecla(e) === false) return;
         if (e.key === 'Escape') fechar(null);
         if (op.somenteLeitura && e.key === 'Tab') {
-          var focaveis = fundo.querySelectorAll('button, a[href]');
+          var raizFoco = fundo.querySelector('.lb') || fundo;
+          var focaveis = Array.prototype.filter.call(raizFoco.querySelectorAll('button, a[href], input, summary'), function (e) { return !e.disabled && e.getClientRects().length; });
           var primeiro = focaveis[0], ultimo = focaveis[focaveis.length - 1];
           if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
           else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
@@ -1208,11 +1196,11 @@
       if (!op.alvo) { document.body.classList.add('gi-com-modal'); modaisAbertos++; }
       if (op.aoControlar) op.aoControlar(function (forcar) { fechar(null, forcar); });
 
-      if (op.aoAbrir) op.aoAbrir(caixa, caixaAdendo);
+      if (op.aoAbrir) op.aoAbrir(caixa);
       if (op.somenteLeitura) fundo.querySelector('.gi-modal-x').focus({ preventScroll: true });
 
       /* Posicionar DEPOIS do conteúdo: a altura da caixa é o que centraliza. */
-      if (!op.alvo) observador = posicionar(fundo, conjunto || fundo.querySelector('.gi-modal'));
+      if (!op.alvo) observador = posicionar(fundo, fundo.querySelector('.gi-modal'));
       GI.ajustarAltura();
 
       var primeiro = caixa.querySelector('input, select, textarea');

@@ -10,11 +10,11 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [], detalhes = {}, capas = {} } = {}) {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [], detalhes = {}, capas = {}, produtosSinteticos = null } = {}) {
   if (fixture && portalRealUrl) throw new Error('Fixture não pode usar portal real.');
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
-  const produtos = [
+  const produtos = produtosSinteticos || [
     { id: 9101, internalcode: 'DEMO-001', name: 'Apartamento Demonstração Alfa', description: '[Locacao] Apartamento - 2 quarto(s) de demonstração', category: 'Apartamento > Cidade Fictícia > Bairro Exemplo', value: 123456, brand: 'DEMONSTRACAO' },
     { id: 9102, internalcode: 'DEMO-002', name: 'Casa Demonstração Beta', description: '[Venda] Casa - 2 quarto(s) de demonstração', category: 'Casa > Cidade Fictícia > Bairro Exemplo', value: 234500, brand: 'DEMONSTRACAO' },
     { id: 9103, internalcode: 'DEMO-003', name: 'Sala Demonstração Gama', description: 'Sala para finalidade não identificada', category: 'Sala > Cidade Fictícia > Bairro Modelo', value: 100000, brand: 'DEMONSTRACAO' },
