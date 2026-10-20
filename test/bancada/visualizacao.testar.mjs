@@ -76,6 +76,21 @@ try {
       }
     }
 
+    // Fechar e reabrir cria outra instância enquanto a gravação está pendente.
+    for (const falhar of [false,true]) {
+      await b.avaliar(()=>{GI.salvarSituacao=()=>new Promise((resolve,reject)=>{window.concluirSituacao=resolve;window.falharSituacao=()=>reject(new Error('Falha ao reabrir'));});});
+      await b.clicar('[data-sit="indisponivel"]');await fechar();await abrir();
+      assert.equal(await b.avaliar(()=>[...document.querySelectorAll('[data-sit]')].every(b=>b.disabled)),true);
+      await b.avaliar(erro=>erro?falharSituacao():concluirSituacao(),falhar);
+      await b.esperar(()=>[...document.querySelectorAll('[data-sit]')].every(b=>!b.disabled));
+      assert.equal(await b.avaliar(()=>document.querySelector('[data-sit="indisponivel"]').getAttribute('aria-pressed')),falhar?'false':'true');
+      assert.match(await b.avaliar(()=>document.querySelector('[data-situacao-detalhe]').textContent),falhar?/Reservado/:/Indisponível/);
+      assert.match(await b.avaliar(()=>document.querySelector('[data-situacao-recado]').textContent),falhar?/Falha ao reabrir/:/Situação salva/);
+      assert.equal(await b.avaliar(()=>document.querySelector('[data-situacao="5357422"]').value),falhar?'reservado':'indisponivel');
+      await b.avaliar(()=>{GI.salvarSituacao=salvarOriginal;});
+      if(!falhar) {await b.clicar('[data-sit="reservado"]');await b.esperar(()=>!document.querySelector('[data-sit="reservado"]').disabled);}
+    }
+
     await b.clicar('[data-prox]');await b.esperar(()=>document.querySelector('.dv-titulo')?.textContent==='Casa com piscina');
     assert.equal(await b.avaliar(()=>document.querySelector('[data-evox="vis-fato-piscina"] b').textContent),'Sim');
     await b.clicar('[data-prox]');await b.esperar(()=>!!document.querySelector('.dv-sem-foto'));
@@ -122,8 +137,10 @@ try {
 
   // Faixa visível real: iframe de 3000px, rolado pelo host.
   await b.viewport(1400,900);await b.navegar(origem+'/app/imoveis.html?perfil=admin');
+  await b.esperar(()=>!document.body.classList.contains('gi-permissoes-pendentes'));
   await b.avaliar(()=>{document.body.innerHTML='<iframe style="width:100%;height:3000px;border:0" src="/app/imoveis.html?perfil=admin"></iframe>';});
   await b.esperar(()=>!!document.querySelector('iframe').contentDocument.querySelector('[data-detalhe]'));
+  assert.equal(await b.avaliar(()=>{const r=document.querySelector('iframe').getBoundingClientRect();return r.width>0&&r.height===3000;}),true,'host inicializado mantém iframe visível');
   await b.avaliar(()=>window.scrollTo(0,900));
   await b.avaliar(()=>document.querySelector('iframe').contentDocument.querySelector('[data-detalhe="5357422"]').click());
   await b.esperar(()=>!!document.querySelector('iframe').contentDocument.querySelector('[data-foto="0"]'));

@@ -102,3 +102,17 @@ test('Sim/Não preserva observação escapada nos dois valores', () => {
     assert.match(html,valor==='sim'?/Sim<\/span> — Apenas/:/Não — Apenas/);
   }
 });
+
+
+test('visualização preserva todas as recorrências do formulário e os aliases do portal', () => {
+  const GI = visualizacao(); GI.pode = () => true;
+  for (const [recorrencia,sufixo] of GI.RECORRENCIAS.map(r=>[r.id,r.id==='unico'?'única':r.sufixo]).concat([['anual','/ano'],['mensal','/mês'],['unica','única']])) {
+    for (const padrao of [false,true]) {
+      const html = GI.conteudoVisualizacao({internalcode:'A',name:'Casa',category:''},{imovel:{}},{
+        situacao:'disponivel',campos:[{id:1,nome:'Taxa',tipo:'valor',recorrenciaPadrao:padrao?recorrencia:undefined}],
+        lancados:{1:{valor:100,recorrencia:padrao?undefined:recorrencia}}
+      }).html;
+      assert.ok(html.includes('<span class="dv-rec">'+sufixo+'</span>'),recorrencia);
+    }
+  }
+});

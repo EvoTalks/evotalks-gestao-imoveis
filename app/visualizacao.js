@@ -72,9 +72,10 @@
       if (l && (tem(l.valor) || l.obs)) {
         if (c.tipo === 'simnao' && tem(l.valor)) valor = (String(l.valor) === 'sim' ? '<span class="dv-sim">' + ic('check') + 'Sim</span>' : 'Não') + (l.obs ? ' — ' + esc(l.obs) : '');
         else if (c.tipo === 'valor' && tem(l.valor)) {
-          var rec = {ano:'/ano', anual:'/ano', mes:'/mês', mensal:'/mês', unico:'única', unica:'única'};
+          var recorrencia = l.recorrencia || c.recorrenciaPadrao;
+          var rec = {anual:'/ano', mensal:'/mês', unico:'única', unica:'única'};
           valor = Number(l.valor) === 0 ? 'isento' : GI.dinheiro(Math.round(Number(l.valor) * 100));
-          valor += '<span class="dv-rec">' + esc(rec[l.recorrencia || c.recorrenciaPadrao] || '') + '</span>' + (l.obs ? ' — ' + esc(l.obs) : '');
+          valor += '<span class="dv-rec">' + esc(rec[recorrencia] || GI.sufixoRecorrencia(recorrencia)) + '</span>' + (l.obs ? ' — ' + esc(l.obs) : '');
         } else valor = esc(GI.valorLegivel(c, l));
       }
       if (c.tipo === 'texto' && (String(valor).length > 40 || String(c.nome).length > 24)) classe += ' dv-linha--texto';
@@ -169,17 +170,23 @@
       op.atualizar();
       GI.salvarSituacao(id,proxima).then(function () {
         Object.defineProperty(op.estado.situacoes,id,{value:proxima,enumerable:true,configurable:true,writable:true});
-        if (aberto && codigo === id) {
-          var anterior = modal.querySelector('[data-situacao-detalhe]');
-          if (anterior) anterior.outerHTML = selo(proxima);
-          todos('[data-sit]',function (b) { b.setAttribute('aria-pressed',b.getAttribute('data-sit') === proxima ? 'true' : 'false'); });
-          recado('Situação salva');
-        }
-      }).catch(function (err) { if (aberto && codigo === id) recado(GI.mensagemErro(err),true); }).then(function () {
+      }).then(function () { concluir(); }, function (err) { concluir(GI.mensagemErro(err)); });
+      function concluir(erro) {
         delete op.estado.gravando[id]; op.atualizar();
-        if (aberto && codigo === id) todos('[data-sit]',function (b) { b.disabled = false; });
-      });
+        if (op.estado.notificarVisualizacao) op.estado.notificarVisualizacao(id,erro);
+      }
     }
+    function reconciliarSituacao(id, erro) {
+      if (!aberto || codigo !== id) return;
+      var atual = op.situacao(id), anterior = modal.querySelector('[data-situacao-detalhe]');
+      if (anterior) anterior.outerHTML = selo(atual);
+      todos('[data-sit]',function (b) {
+        b.disabled = false;
+        b.setAttribute('aria-pressed',b.getAttribute('data-sit') === atual ? 'true' : 'false');
+      });
+      recado(erro || 'Situação salva',!!erro);
+    }
+
     function renderizar(p,dados) {
       dadosAtual = dados;
       conteudo = GI.conteudoVisualizacao(p,dados,{
@@ -221,8 +228,8 @@
     return GI.modal({
       titulo:'Visualização do imóvel', somenteLeitura:true, visualizacao:true,
       aoControlar:function (fechar) { fecharModal = fechar; },
-      aoAbrir:function (corpo) { caixa = corpo; modal = corpo.parentNode; modal.setAttribute('data-evox','vis-modal'); carregar(codigo); },
-      aoFechar:function () { aberto = false; },
+      aoAbrir:function (corpo) { caixa = corpo; modal = corpo.parentNode; op.estado.notificarVisualizacao = reconciliarSituacao; modal.setAttribute('data-evox','vis-modal'); carregar(codigo); },
+      aoFechar:function () { aberto = false; if (op.estado.notificarVisualizacao === reconciliarSituacao) delete op.estado.notificarVisualizacao; },
       aoTecla:function (e) {
         if (!lb) return;
         if (e.key === 'Escape') { e.preventDefault(); fecharGaleria(); return false; }

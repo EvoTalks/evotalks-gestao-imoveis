@@ -1,10 +1,10 @@
-/* Quadro 1 congelado contra a janela real: sem máscaras ou CSS de alinhamento. */
+/* Quadro 1 congelado contra a janela real: sem máscaras; origem em pixel inteiro. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { abrirAmbiente, capturar, geometria, SAIDA, AGORA } from './ambiente.mjs';
+import { abrirAmbiente, capturar, geometria, estabilizar, SAIDA, AGORA } from './ambiente.mjs';
 import { compararArquivos } from './pixels.mjs';
 import { criarServidor } from '../bancada/servidor.mjs';
 const desenho = '/srv/devhome/dev-marco-souza/fluxo/william-visualizacao/desenho/tela-3.html';
@@ -18,6 +18,43 @@ async function fotosNeutras(b) {
     await Promise.all(fotos.map(img => { img.src = src; return img.decode().then(()=>img.parentNode.classList.remove('dv-foto-quebrada')); }));
   }, bloco);
 }
+// Aguarda inclusive o posicionamento por IntersectionObserver/ResizeObserver.
+async function recorteEstavel(b, dinamico = false) {
+  await estabilizar(b);
+  if (dinamico) await b.esperar(()=>!!document.querySelector('[data-evox="vis-modal"]').style.top);
+  await b.avaliar(async seletor => {
+    let anterior = '', iguais = 0;
+    for (let quadro = 0; quadro < 120; quadro++) {
+      await new Promise(requestAnimationFrame);
+      const r = document.querySelector(seletor).getBoundingClientRect();
+      const atual = JSON.stringify([r.x,r.y,r.width,r.height]);
+      iguais = atual === anterior ? iguais + 1 : 1;
+      anterior = atual;
+      if (iguais >= 3) return;
+    }
+    throw new Error('Geometria do recorte não estabilizou');
+  }, seletor);
+}
+async function capturarEstavel(b, destino, dinamico = false) {
+  await recorteEstavel(b,dinamico);
+  let r = await geometria(b,seletor);
+  // Ajusta a paridade do viewport, sem alterar CSS ou deslocar o recorte.
+  if (dinamico && !Number.isInteger(r.y)) {
+    const viewport = await b.avaliar(()=>({w:innerWidth,h:innerHeight}));
+    await b.viewport(viewport.w,viewport.h+1);
+    await recorteEstavel(b,dinamico);
+    r = await geometria(b,seletor);
+  }
+  if (!dinamico) {
+    // O documento estático pode começar numa fração de linha do cabeçalho.
+    // Arredonda só a origem, preservando dimensões e todo o layout interno.
+    await b.avaliar(s=>{const m=document.querySelector(s),r=m.getBoundingClientRect();m.style.top=((parseFloat(getComputedStyle(m).top)||0)+Math.round(r.y)-r.y)+'px';},seletor);
+    await recorteEstavel(b);
+    r = await geometria(b,seletor);
+  }
+  assert.ok(Number.isInteger(r.x) && Number.isInteger(r.y),'recorte posicionado em pixels inteiros');
+  return capturar(b,seletor,destino);
+}
 let b, servidor;
 try {
   b = await abrirAmbiente(); await b.viewport(1400,2200);
@@ -30,7 +67,7 @@ try {
       fonte:getComputedStyle(m).fontFamily };
   });
   await fotosNeutras(b);
-  const tamanho = await capturar(b,seletor,path.join(saida,'desenho.png'));
+  const tamanho = await capturarEstavel(b,path.join(saida,'desenho.png'));
   const campos = ['IPTU','Seguro incêndio','Taxa de administração','Taxa de contrato','Vagas extras','Aceita pet','Mobiliado','Observação da administração'].map((rotulo,i)=>({id:i+1,rotulo,tipo:i<4?'valor':i===6?'checkbox':'texto',ativo:true,ordem:i+1}));
   const valores = [184000,4200,52000,35000].map((valor_centavos,i)=>({campo_id:i+1,valor_centavos,recorrencia:['anual','mensal','mensal','unica'][i]})).concat([
     {campo_id:6,valor_texto:'Sim, até 10kg'}, {campo_id:7,valor_texto:'sim'}, {campo_id:8,valor_texto:'Visitas com 24 h de antecedência.'}
@@ -53,10 +90,7 @@ try {
   assert.equal(await b.avaliar(()=>document.querySelector('[data-evox="vis-topo-posicao"]').textContent),'12 de 248');
   assert.equal(await b.avaliar(()=>getComputedStyle(document.querySelector('[data-evox="vis-modal"]')).fontFamily),referencia.fonte);
   await fotosNeutras(b);
-  // Centro em pixels inteiros, sem translação ou redimensionamento do recorte.
-  const r=await geometria(b,seletor);
-  if((2200-Math.round(r.height))%2) await b.viewport(tamanho.largura+32,2201);
-  await capturar(b,seletor,path.join(saida,'extensao.png'));
+  await capturarEstavel(b,path.join(saida,'extensao.png'),true);
   const {diff,...medidas}=await compararArquivos(b,path.join(saida,'desenho.png'),path.join(saida,'extensao.png'));
   await mkdir(saida,{recursive:true});
   await writeFile(path.join(saida,'diferenca.png'),Buffer.from(diff.split(',')[1],'base64'));
