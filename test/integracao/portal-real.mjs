@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-export const portalDir = path.resolve(process.env.PORTAL_DIR || path.join(os.homedir(), '.worktrees/gestao-imoveis-portal-fotos'));
+export const portalDir = path.resolve(process.env.PORTAL_DIR || path.join(os.homedir(), '.worktrees/gestao-imoveis-portal-situacao'));
 export const portalExiste = existsSync(path.join(portalDir, 'app/api.js')) && existsSync(path.join(portalDir, 'schema.sql'));
 export async function criarPortalReal() {
   const require = createRequire(path.join(portalDir, 'app/api.js'));

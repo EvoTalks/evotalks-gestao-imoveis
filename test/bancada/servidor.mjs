@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { criarPortalSituacao } from './portal-situacao.mjs';
 import { criarPortalChamados } from './portal-chamados.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -8,7 +9,7 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null } = {}) {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {} } = {}) {
   if (fixture && portalRealUrl) throw new Error('Fixture não pode usar portal real.');
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
@@ -32,6 +33,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
   ].map(l => ({ contrato_numero: 'DEMO-C' + l.id, garantia: 'fiador', inicio: dia(-300), valor_aluguel_centavos: 120000,
     dia_vencimento: 10, observacao: null, origem: 'manual', criada_por: 'Agente Demonstração', criada_em: new Date().toISOString(),
     atualizada_em: new Date().toISOString(), encerrada_em: null, ...l }));
+  const situacao = criarPortalSituacao(situacoes);
   const manutencao = criarPortalChamados({ locacoes });
   manutencao.falharUpload(falhasUpload);
   const candidatas = [{ codigo: 'DEMO-SAIDA', titulo: 'Imóvel que Saiu do Anúncio Demonstração', bairro: 'Bairro Fictício', saiu_em: new Date().toISOString() }];
@@ -69,7 +71,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
         if (url.pathname.startsWith('/api/ext/') && req.headers.authorization !== 'Bearer bancada-sintetica') return json(401, { erro: 'nao_autorizado' });
         let body;
         if (req.method === 'POST') { let texto = ''; for await (const chunk of req) { texto += chunk; if (texto.length > 256 * 1024) return json(413, { erro: 'corpo_grande' }); } body = JSON.parse(texto || '{}'); }
-        const r = fixture.responder(req.method, url, body);
+        const r = fixture.responder(req.method, url, body, req.headers['x-gi-autor']);
         return json(r.status, r.corpo);
       }
       if (url.pathname.startsWith('/bancada/sdk/')) {
@@ -110,6 +112,8 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
           dados = JSON.parse(texto || '{}');
         }
         const autor = req.headers['x-gi-autor'] || 'Agente Demonstração';
+        const respostaSituacao = situacao.responder(req.method, rota, dados, autor);
+        if (respostaSituacao) return json(respostaSituacao.status, respostaSituacao.corpo);
         const respostaManutencao = manutencao.responder(req.method, rota, q, dados, autor);
         if (respostaManutencao) { for (const [k, v] of Object.entries(respostaManutencao.headers || {})) res.setHeader(k, v); return json(respostaManutencao.status, respostaManutencao.corpo); }
         if (rota === '/info') return json(200, { ok: true, bancada: true });
@@ -171,7 +175,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
         return json(404, { erro: 'rota_nao_simulada' });
       }
       if (req.method !== 'GET') return json(405, { erro: 'metodo_nao_simulado' });
-      const nome = url.pathname === '/' ? 'app/locados.html' : decodeURIComponent(url.pathname).slice(1);
+      const nome = url.pathname === '/' ? 'app/imoveis.html' : decodeURIComponent(url.pathname).slice(1);
       if (!/^(?:app\/[a-z-]+\.(?:js|html|css|svg)|manifest\.json|test\/bancada\/omni-stub\.js)$/.test(nome)) return json(404, { erro: 'arquivo_nao_permitido' });
       let conteudo = await readFile(path.join(raiz, nome));
       const tipo = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' }[path.extname(nome)];
@@ -188,6 +192,6 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const porta = Number(process.env.PORT || 4178);
   criarServidor().listen(porta, '127.0.0.1', function () {
-    process.stdout.write('Bancada sintética: http://127.0.0.1:' + this.address().port + '/app/locados.html\n');
+    process.stdout.write('Bancada sintética: http://127.0.0.1:' + this.address().port + '/app/imoveis.html\n');
   });
 }

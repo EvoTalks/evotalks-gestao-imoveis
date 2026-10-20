@@ -121,7 +121,7 @@ test('S3b: rodapé verdadeiro e contagens sem larguras ajustadas aos números do
 });
 
 test('S3b: textareas dos recortes seguem o desenho sem grip de redimensionamento', async () => {
-  for (const quadro of ['novo','modal','marcar','cockpit-novo']) {
+  for (const quadro of ['novo','modal','cockpit-novo']) {
     const s = await abrirExtensao(quadro, {largura:900, altura:1853});
     try {
       const textareas = await s.b.avaliar(() => [...document.querySelectorAll('textarea')]
@@ -132,14 +132,14 @@ test('S3b: textareas dos recortes seguem o desenho sem grip de redimensionamento
   }
 });
 
-test('S3b: todas as páginas recebem navegação única e Prestadores continua no menu do host', async () => {
+test('S3b: todas as páginas recebem navegação única sem manutenção no menu do host', async () => {
   const s = await abrirExtensao('imoveis', { largura:1360, altura:1000 });
   try {
     const base = await s.b.avaliar(() => location.origin);
-    for (const pagina of ['imoveis','locados','chamados','prestadores','campos','config','historico']) {
+    for (const pagina of ['imoveis','chamados','prestadores','campos','config','historico']) {
       await s.b.navegar(base + '/app/' + pagina + '.html?fixture=desenho');
-      await s.b.esperar(() => document.querySelectorAll('.gi-nav-item').length === 6);
-      assert.deepEqual(await s.b.avaliar(() => [...document.querySelectorAll('.gi-nav-item')].map(n => n.textContent)), ['Imóveis','Locados','Chamados','Campos','Histórico','Configurações']);
+      await s.b.esperar(() => document.querySelectorAll('.gi-nav-item').length === 4);
+      assert.deepEqual(await s.b.avaliar(() => [...document.querySelectorAll('.gi-nav-item')].map(n => n.textContent)), ['Imóveis','Campos','Histórico','Configurações']);
       if (pagina === 'prestadores') {
         assert.equal(await s.b.avaliar(() => document.querySelectorAll('.gi-nav-ativo').length), 0);
         await s.b.clicar('#b-novo');
@@ -148,7 +148,7 @@ test('S3b: todas as páginas recebem navegação única e Prestadores continua n
     }
     assert.doesNotMatch(await s.b.avaliar(() => GI.cabecalho('gi-prestadores')), /Prestadores|gi-nav-ativo/);
     const m = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
-    assert.ok(m.contributions.some(c => c.items?.some(i => i.id === 'gi-prestadores')));
+    assert.equal(m.contributions.some(c => c.items?.some(i => i.id === 'gi-prestadores')), false);
     assert.deepEqual(s.b.erros, []);
   } finally { await s.fechar(); }
 });

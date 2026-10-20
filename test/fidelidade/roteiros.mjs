@@ -5,10 +5,10 @@
 import path from 'node:path';
 import { criarServidor } from '../bancada/servidor.mjs';
 import { criarFixturePortal } from './portal.mjs';
-import { fixture, formulario, locacoes } from './fixture-desenho.mjs';
+import { fixture, formulario } from './fixture-desenho.mjs';
 import { abrirAmbiente, capturar, SAIDA } from './ambiente.mjs';
 
-export const seletorExtensao = q => ['novo','modal','marcar'].includes(q) ? '.gi-modal' : q.startsWith('cockpit-') ? '#gi-cockpit' : 'body';
+export const seletorExtensao = q => ['novo','modal'].includes(q) ? '.gi-modal' : q.startsWith('cockpit-') ? '#gi-cockpit' : 'body';
 export async function abrirExtensao(q, tamanho) {
   const portal = criarFixturePortal(), servidor = criarServidor({ fixture: portal });
   await new Promise(r => servidor.listen(0,'127.0.0.1',r));
@@ -16,13 +16,12 @@ export async function abrirExtensao(q, tamanho) {
   const fechar = async () => { if (b) await b.fechar(); servidor.closeAllConnections(); await new Promise(r=>servidor.close(r)); };
   try {
     const dadosHost = structuredClone(fixture);
-    // Chave de locação é ação administrativa; o desenho a mostra habilitada.
-    // Só estes recortes usam o perfil admin, sem mudar permissões da aplicação.
-    if (['imoveis', 'marcar'].includes(q)) dadosHost.usuarios[0].type = 0;
+    // Mantém o perfil do recorte original de Imóveis.
+    if (q === 'imoveis') dadosHost.usuarios[0].type = 0;
     b = await abrirAmbiente(dadosHost);
     // Não altera CSS nem DOM da aplicação: só o tamanho do iframe na bancada.
-    await b.viewport(q.startsWith('cockpit-') ? 315 : ['novo','modal','marcar'].includes(q) ? tamanho.largura + 32 : tamanho.largura, ['novo','modal','marcar'].includes(q) ? Math.ceil(tamanho.altura / .7) + 1500 : tamanho.altura);
-    const pagina = q.startsWith('cockpit-') ? 'painel' : ['lista','novo','modal'].includes(q) ? 'chamados' : q === 'locados' ? 'locados' : 'imoveis';
+    await b.viewport(q.startsWith('cockpit-') ? 315 : ['novo','modal'].includes(q) ? tamanho.largura + 32 : tamanho.largura, ['novo','modal'].includes(q) ? Math.ceil(tamanho.altura / .7) + 1500 : tamanho.altura);
+    const pagina = q.startsWith('cockpit-') ? 'painel' : ['lista','novo','modal'].includes(q) ? 'chamados' : 'imoveis';
     const base = 'http://127.0.0.1:' + servidor.address().port;
     await b.navegar(base + '/app/' + pagina + '.html?fixture=desenho&escrita=1');
     await b.esperar(() => window.GI?.modo === 'portal');
@@ -85,28 +84,8 @@ export async function abrirExtensao(q, tamanho) {
       }
     } else {
       await b.esperar(() => !!document.querySelector('#gi-corpo tr td') && !/carregando|buscando/.test(document.querySelector('#gi-corpo').textContent));
-      if (q === 'locados') {
-        // O estado do desenho é todos; a tela conserva Vigentes como padrão.
-        await b.preencher('#f-contrato', 'todas'); await b.clicar('#b-buscar');
-        await b.esperar(() => !!document.querySelector('[data-editar]') && !/buscando/.test(document.querySelector('#gi-corpo').textContent));
-      }
-      if (q === 'marcar') {
-        // 0412 já consta como locado: a ação real abre Editar. Para mostrar o formulário
-        // de criação no estado anterior à locação, usa-se a mesma API pública do botão.
-        await b.avaliar(p => { window.fidelidadeModal = GI.modalLocacao({ imovel: p }); }, fixture.produtos.find(p=>p.internalcode==='5350412'));
-        await b.esperar(() => !!document.querySelector('#l-locatario'));
-        await b.preencher('#l-locatario','Carla');
-        await b.esperar(() => !!document.querySelector('#l-contatos button'));
-        await b.clicar('#l-contatos button');
-        const l=locacoes.find(l=>l.id===4);
-        for (const [id,v] of Object.entries({proprietario:l.contatos[1].nome,contrato:l.contrato_numero,garantia:l.garantia,inicio:l.inicio,fim:l.fim,aluguel:'1850,00',vencimento:'10'})) {
-          if (await b.avaliar(s=>!!document.querySelector(s),'#l-'+id)) await b.preencher('#l-'+id,v);
-        }
-        await b.avaliar(() => document.querySelector('#l-aluguel').dispatchEvent(new Event('blur')));
-        motivos.push('0412 já locado no quadro Imóveis: ação da linha abre Editar. Modal de criação aberto pela API pública GI.modalLocacao, sem gravar.');
-      }
     }
-    if (['novo','modal','marcar'].includes(q)) {
+    if (['novo','modal'].includes(q)) {
       // Recalcula o centro pelo IntersectionObserver depois das leituras assíncronas.
       // Só muda o viewport: nenhuma substituição de DOM/CSS da extensão.
       const largura=tamanho.largura+32; let altura=Math.ceil(tamanho.altura/.7)+1500;

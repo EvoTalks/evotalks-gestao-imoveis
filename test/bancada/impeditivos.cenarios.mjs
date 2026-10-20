@@ -60,7 +60,7 @@ export async function testarImpeditivos(b, origem, real) {
     await b.clicar('#cp-tab-chamados');
     assert.equal(await b.avaliar(() => GI.gestor()), extra);
     const nav = await b.avaliar(() => GI.cabecalho('gi-imoveis'));
-    assert.equal(nav.includes('data-tela="gi-chamados"'), extra);
+    assert.equal(nav.includes('data-tela="gi-chamados"'), false);
     await b.avaliar(() => { bancada.navegarContribuicao = false; });
     await b.avaliar(() => document.querySelector('[data-gestao]').click());
     await b.esperar(() => bancada.aberturas.length === 1);
@@ -204,7 +204,7 @@ export async function testarImpeditivos(b, origem, real) {
       await b.captura((real ? 'real-' : '') + 'f14-' + nome + '-' + largura + '-' + tema);
     }
   }
-  for (const tela of ['imoveis', 'locados', 'chamados', 'prestadores', 'campos', 'historico', 'config', 'os']) {
+  for (const tela of ['imoveis',  'chamados', 'prestadores', 'campos', 'historico', 'config', 'os']) {
     await b.navegar(origem + '/app/' + tela + '.html?demonstracao=1');
     await b.esperar(() => !!document.querySelector('#gi-demo-global'));
     assert.equal(await b.avaliar(() => getComputedStyle(document.querySelector('#gi-demo-global')).position), 'sticky');

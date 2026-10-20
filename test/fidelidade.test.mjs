@@ -68,7 +68,7 @@ test('fidelidade: DOM vivo, relógio, pixels, máscara e estados reais', async t
   const d=await lerDesenho({browser:b});
   await t.test('cada valor visível do fixture ainda existe no desenho; erro identifica valor e quadro',()=>{
     assert.deepEqual(validarFixture(d),[]);
-    assert.equal(Object.keys(d.quadros).length,10);assert.ok(d.css.includes('.gi'));
+    assert.equal(Object.keys(d.quadros).length,QUADROS.length);assert.ok(d.css.includes('.gi'));
     for(const q of QUADROS)assert.ok(d.quadros[q].dom&&d.quadros[q].texto);
     const copia=structuredClone(d);copia.quadros.lista.texto=copia.quadros.lista.texto.replaceAll('Carla Menezes','');
     assert.ok(validarFixture(copia).some(e=>e.includes('lista:')&&e.includes('Carla Menezes')));

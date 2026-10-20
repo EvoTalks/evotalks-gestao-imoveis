@@ -9,27 +9,16 @@ import { criarServidor } from '../bancada/servidor.mjs';
 
 export async function testarGestao() {
   let capturas = 0;
-  for (const quadro of ['locados','imoveis','marcar']) {
-    const s = await abrirExtensao(quadro, { largura: quadro === 'marcar' ? 900 : 1360, altura: quadro === 'marcar' ? 709 : quadro === 'locados' ? 890 : 738 });
+  for (const quadro of ['imoveis']) {
+    const s = await abrirExtensao(quadro, { largura: 1360, altura: 738 });
     try {
       const b = s.b;
       assert.equal(await b.avaliar(() => !!document.querySelector('[data-tela="gi-prestadores"]')), false);
-      if (quadro === 'locados') {
-        assert.equal(await b.avaliar(() => document.querySelectorAll('th').length), 9);
-        assert.equal(await b.avaliar(() => document.querySelectorAll('#gi-corpo td:nth-child(8) .gi-chip').length), 6);
-        assert.match(await b.avaliar(() => document.querySelector('#gi-resumo').textContent), /10 chamados abertos/);
-      }
       if (quadro === 'imoveis') {
-        assert.equal(await b.avaliar(() => document.querySelectorAll('[data-locacao]').length), 6);
+        assert.equal(await b.avaliar(() => document.querySelectorAll('[data-situacao]').length), 6);
         assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('.gi-barra select')].map(e => e.id)), ['f-finalidade','f-situacao','f-estado','f-porpagina']);
         assert.equal(await b.avaliar(() => document.querySelector('#b-proxima').disabled), true);
         assert.match(await b.avaliar(() => document.querySelector('#gi-origem').textContent), /6 no total/);
-      }
-      if (quadro === 'marcar') {
-        assert.equal(await b.avaliar(() => document.querySelector('#l-catalogo').hidden), true);
-        assert.equal(await b.avaliar(() => document.querySelector('#l-locatario').value), 'Carla Menezes · (47) 9 ••••-1234');
-        assert.equal(await b.avaliar(() => document.querySelector('#l-aluguel').value), '1.850,00');
-        assert.equal(await b.avaliar(() => Math.ceil(document.querySelector('.gi-modal').getBoundingClientRect().width)), 900);
       }
       const cores = [];
       for (const tema of ['light','dark']) {
@@ -40,21 +29,6 @@ export async function testarGestao() {
       // 0.26.3: a janela de edição fica clara nos dois temas; as demais telas seguem o tema.
       if (s.seletor.includes('gi-modal')) assert.deepEqual(cores, ['rgb(255, 255, 255)', 'rgb(255, 255, 255)'], quadro + ': modal claro nos dois temas');
       else assert.notEqual(cores[0], cores[1], quadro + ': tema escuro efetivo');
-      if (quadro === 'marcar') {
-        await b.clicar('[data-modo="catalogo"]');
-        assert.equal(await b.avaliar(() => document.querySelector('#l-catalogo').hidden), false);
-        await b.clicar('[data-modo="fora"]');
-        assert.equal(await b.avaliar(() => document.querySelector('#l-fora').hidden), false);
-        await b.clicar('[data-modo="catalogo"]');
-        await b.avaliar(() => { GI.locacoesCriar = dados => { bancada.gravacaoLocal = dados; return Promise.resolve({ locacao:{ id:999,...dados } }); }; });
-        await b.clicar('.gi-modal [data-ok]');
-        await b.esperar(() => !document.querySelector('.gi-modal'));
-        const payload = await b.avaliar(() => bancada.gravacaoLocal);
-        assert.equal(payload.imovel_codigo,'5350412');
-        assert.equal(payload.valor_aluguel_centavos,185000);
-        assert.equal(payload.inicio,'2026-04-01'); assert.equal(payload.fim,'2027-03-31');
-        assert.equal(payload.contatos[0].contato_id,103); assert.equal(payload.garantia,'fiador');
-      }
       assert.deepEqual(b.erros, []);
     } finally { await s.fechar(); }
   }

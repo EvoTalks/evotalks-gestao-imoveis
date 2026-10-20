@@ -3,10 +3,10 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { abrirAmbiente, capturar, geometria, SAIDA, principal } from './ambiente.mjs';
 
-export const QUADROS = ['lista', 'novo', 'modal', 'locados', 'marcar', 'imoveis', 'cockpit-chamados', 'cockpit-novo', 'cockpit-confirma', 'cockpit-sucesso'];
+export const QUADROS = ['lista', 'novo', 'modal', 'imoveis', 'cockpit-chamados', 'cockpit-novo', 'cockpit-confirma', 'cockpit-sucesso'];
 // .panel mede 315 px: .phone (317 px) menos as bordas de 1 px do .host.
 export const seletorDesenho = q => q.startsWith('cockpit-') ? `[data-evox="mnt-cp-${(q === 'cockpit-sucesso' ? 'confirma' : q.slice(8))}"] .panel` :
-  `section[data-evox="mnt-art-${q}"] ${['novo', 'modal', 'marcar'].includes(q) ? '.gi-modal' : '.gi'}`;
+  `section[data-evox="mnt-art-${q}"] ${['novo', 'modal'].includes(q) ? '.gi-modal' : '.gi'}`;
 export async function abrirDesenho(b) {
   const arquivo = process.env.TELA_HTML || '/srv/devhome/dev-marco-souza/design/tela.html';
   await readFile(arquivo); // Erro explícito, sem fallback para fotografia histórica.
@@ -98,10 +98,10 @@ export async function capturarCockpitIsolado(b, d, q, tamanho) {
   const pasta = path.join(SAIDA, 'referencia-iframe');
   await mkdir(pasta, { recursive: true });
   const arquivo = path.join(pasta, q + '.html');
-  await writeFile(arquivo, '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>' + d.css + '</style></head><body>' + d.sprite + (['novo','modal','marcar'].includes(q) ? '<div class="gi gi-palco">' + d.quadros[q].dom + '</div>' : d.quadros[q].dom) + '</body></html>');
+  await writeFile(arquivo, '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>' + d.css + '</style></head><body>' + d.sprite + (['novo','modal'].includes(q) ? '<div class="gi gi-palco">' + d.quadros[q].dom + '</div>' : d.quadros[q].dom) + '</body></html>');
   await b.viewport(tamanho.largura, Math.max(1100, tamanho.altura));
   await b.navegar(pathToFileURL(arquivo).href);
-  const dimensoes = await capturar(b, q.startsWith('cockpit-') ? '.panel' : ['novo','modal','marcar'].includes(q) ? '.gi-modal' : '.gi', path.join(SAIDA, 'desenho', q + '.png'));
+  const dimensoes = await capturar(b, q.startsWith('cockpit-') ? '.panel' : ['novo','modal'].includes(q) ? '.gi-modal' : '.gi', path.join(SAIDA, 'desenho', q + '.png'));
   if (dimensoes.largura !== tamanho.largura || dimensoes.altura !== tamanho.altura) throw new Error('Isolamento alterou as dimensões do desenho: ' + q);
   await abrirDesenho(b);
   return dimensoes;

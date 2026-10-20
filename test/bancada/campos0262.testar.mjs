@@ -75,7 +75,7 @@ try {
     await b.navegar(origem + '/app/os.html?chamado=1&targetchat=8802&tema=' + tema);
     await b.esperar(() => !!document.querySelector('#c-orc-nome') && !document.querySelector('#c-status').disabled);
     total['os-' + tema] = await campos('os-' + tema);
-    for (const tela of ['chamados', 'imoveis', 'locados', 'prestadores']) {
+    for (const tela of ['chamados', 'imoveis',  'prestadores']) {
       await b.navegar(origem + '/app/' + tela + '.html?tema=' + tema);
       await b.esperar(() => document.readyState === 'complete' && !!document.querySelector('input, select, textarea'));
       total[tela + '-' + tema] = await campos(tela + '-' + tema);
