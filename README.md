@@ -25,6 +25,7 @@ da administração) e que precisam chegar a quem atende.
 Na versão 0.26.0, o cockpit pede Título obrigatório e mostra o valor na revisão e no sucesso; a Gestão abre em diálogo maior com retorno ao cockpit e rodapé sem sobreposição; botões, abas e chips do cockpit e da Gestão seguem os tokens do tema EvoTalks. Esses pedidos explícitos prevalecem sobre o desenho nos quatro itens.
 
 Na versão 0.26.1, só ações, abas e filtros recebem visual de botão; resumo, links e selos/status mantêm o formato compacto de 12–13 px com a tipografia do host.
+Na versão 0.26.2, todo campo de digitar (texto, busca, número, data, seleção e área de texto), nas telas e no cockpit, fica branco com texto preto, mesmo com o EvoTalks no tema escuro (pedido do Marco de 20/10/2026). O seletor de status da lista mantém a cor do status.
 
 O recorte de sucesso conserva as ações da 0.26.0; sua diferença de pixels permanece igual neste ajuste.
 
@@ -35,7 +36,7 @@ O tema dos controles está em `app/controles-atendimento.css`, carregado apenas 
 ## Arquivos
 
 ```
-manifest.json          identidade 0.26.1, config e contribuições
+manifest.json          identidade 0.26.2, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)

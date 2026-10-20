@@ -12,6 +12,6 @@ test('F11: diálogo gi-os acessível aos três perfis e edição compartilhada',
   assert.match(ler('app/os.html'), /id="b-fechar"/);
   assert.match(ler('app/os.js'), /Voltar ao cockpit/);
   assert.match(ler('app/os.css'), /\.gi-form-inline \.gi-modal-corpo \{[^}]*overflow-y:auto/);
-  for (const tela of ['chamados', 'os']) assert.match(ler('app/' + tela + '.html'), /chamado-form\.js\?v=0\.26\.1/);
+  for (const tela of ['chamados', 'os']) assert.match(ler('app/' + tela + '.html'), /chamado-form\.js\?v=0\.26\.2/);
   for (const nome of ['app/os.js', 'app/painel.js', 'app/chamado-form.js']) assert.doesNotMatch(ler(nome), /\bopenHtml\b|\b(?:prompt|confirm|alert)\s*\(/);
 });
