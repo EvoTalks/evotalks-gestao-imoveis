@@ -455,7 +455,7 @@
   GI.chamarPortal = chamar;
 
   var permissoesAtuais = null, leituraPermissoes = null;
-  GI.CHAVES_PERMISSOES = ['ver_imoveis', 'editar_imoveis', 'mudar_situacao', 'gerenciar_campos', 'ver_historico', 'ver_configuracoes'];
+  GI.CHAVES_PERMISSOES = ['ver_imoveis', 'editar_imoveis', 'gerenciar_campos', 'ver_historico', 'ver_configuracoes'];
   GI.permissoes = function (reler) {
     if (GI.modo === 'local') {
       var livres = {};
@@ -473,6 +473,7 @@
     return leituraPermissoes;
   };
   GI.pode = function (chave) {
+    if (chave === 'mudar_situacao') chave = 'ver_imoveis';
     return GI.modo === 'local' || GI.modo === 'demonstracao' || !!(permissoesAtuais && permissoesAtuais.permissoes[chave] === true);
   };
   GI.exigirPermissao = function (chave) {
@@ -494,6 +495,10 @@
     { valor: 'reservado', rotulo: 'Reservado', classe: 'gi-estado-pendente' },
     { valor: 'indisponivel', rotulo: 'Indisponível', classe: 'gi-estado-escuro' }
   ];
+  GI.capasImoveis = function (codigos) {
+    if (GI.modo !== 'portal' || !codigos.length) return Promise.resolve({});
+    return GI.chamarPortal('/imoveis/capas?codigos=' + encodeURIComponent(codigos.join(','))).then(function (r) { return r.capas || {}; });
+  };
   GI.situacoesMapa = function () {
     if (GI.modo !== 'portal') return Promise.reject(new Error('Situação exige o portal conectado'));
     return GI.chamarPortal('/imoveis/situacoes').then(function (r) { return r.situacoes; });

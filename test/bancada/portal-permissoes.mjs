@@ -1,5 +1,5 @@
 /* Contrato do portal, com dados sintéticos e sem acesso a rede externa. */
-export const PERMISSOES_PADRAO = { ver_imoveis: true, editar_imoveis: true, mudar_situacao: false, gerenciar_campos: false, ver_historico: false, ver_configuracoes: false };
+export const PERMISSOES_PADRAO = { ver_imoveis: true, editar_imoveis: true, gerenciar_campos: false, ver_historico: false, ver_configuracoes: false };
 export function criarPortalPermissoes(iniciais = {}) {
   const registros = structuredClone(iniciais), historico = [];
   const chaves = Object.keys(PERMISSOES_PADRAO);
@@ -9,10 +9,11 @@ export function criarPortalPermissoes(iniciais = {}) {
     const id = /^\d+$/.test(bruto) && Number.isInteger(numero) && numero > 0 && numero <= 2147483647 ? numero : null;
     const autor = String(headers['x-gi-autor'] || dados && dados.autor || '').trim().slice(0, 80) || 'extensao';
     const admin = id !== null && headers['x-gi-user-type'] === '0';
-    const permissoes = admin && id ? todas : id && registros[id] || PERMISSOES_PADRAO;
+    const base = admin && id ? todas : id && registros[id] || PERMISSOES_PADRAO;
+    const permissoes = { ...base, mudar_situacao: base.ver_imoveis };
     const resposta = (corpo, status = 200) => ({ status, corpo });
     const negar = permissao => resposta({ erro: 'sem_permissao', ...(permissao ? { permissao } : {}) }, 403);
-    if (rota === '/permissoes/eu') return resposta({ permissoes: Object.fromEntries(chaves.map(k => [k, permissoes[k]])), administrador: admin && !!id, padrao: PERMISSOES_PADRAO });
+    if (rota === '/permissoes/eu') return resposta({ permissoes: permissoes, administrador: admin && !!id, padrao: PERMISSOES_PADRAO });
     if (rota === '/permissoes' || rota.startsWith('/permissoes/')) {
       if (!admin || !id) return negar();
       if (method === 'GET' && rota === '/permissoes') return resposta({ padrao: PERMISSOES_PADRAO, usuarios: Object.entries(registros).map(([user_id, r]) => ({ ...r, user_id: Number(user_id) })) });
@@ -25,7 +26,7 @@ export function criarPortalPermissoes(iniciais = {}) {
       return resposta({ user_id: userId, ...registros[userId] });
     }
     const chave = method === 'POST' && rota.startsWith('/valores/') ? 'editar_imoveis'
-      : method === 'POST' && /^\/imoveis\/[^/]+\/situacao$/.test(rota) ? 'mudar_situacao'
+      : method === 'POST' && /^\/imoveis\/[^/]+\/situacao$/.test(rota) ? 'ver_imoveis'
       : method === 'POST' && /^\/campos(?:\/|$)/.test(rota) ? 'gerenciar_campos'
       : method === 'GET' && rota === '/historico' ? 'ver_historico'
       : /^\/config(?:\/|$)/.test(rota) ? 'ver_configuracoes' : null;

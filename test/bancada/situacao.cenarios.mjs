@@ -70,7 +70,7 @@ export async function testarSituacao(b, origem) {
   for (const query of ['?modo=local', '?situacao-fora=1', '?situacao-mapa-invalido=1']) {
     await navegar(query);
     assert.equal(await b.avaliar(() => document.querySelectorAll('[data-situacao]').length), 0);
-    assert.equal(await b.avaliar(() => document.querySelector('#gi-corpo td:nth-child(7)').textContent), '—');
+    assert.equal(await b.avaliar(() => document.querySelector('#gi-corpo td:nth-child(8)').textContent), '—');
     assert.equal(await b.avaliar(() => document.querySelector('#f-situacao').disabled), true);
     const aviso = await b.avaliar(() => document.querySelector('#gi-situacao-aviso').textContent);
     assert.match(aviso, query.includes('situacao-') ? /Situação indisponível: .*\. Reabra a tela para tentar novamente\./ : /^Situação exige o portal conectado\.$/);

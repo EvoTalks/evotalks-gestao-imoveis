@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.29.1">
-<link rel="stylesheet" href="chamados.css?v=0.29.1">
+<link rel="stylesheet" href="estilo.css?v=0.30.0">
+<link rel="stylesheet" href="chamados.css?v=0.30.0">
 </head>
 <body class="gi gi-gestao gi-permissoes-pendentes">
 
@@ -60,6 +60,7 @@
     <table>
       <thead>
         <tr>
+          <th style="width:88px">Capa</th>
           <th style="width:92px">Código</th>
           <th>Imóvel</th>
           <th style="width:140px">Bairro</th>
@@ -71,7 +72,7 @@
         </tr>
       </thead>
       <tbody id="gi-corpo">
-        <tr><td colspan="8" class="gi-mudo">carregando…</td></tr>
+        <tr><td colspan="9" class="gi-mudo">carregando…</td></tr>
       </tbody>
     </table>
   </div>
@@ -89,7 +90,7 @@
 </p>
 
 <div class="gi-aviso" id="gi-situacao-aviso" hidden></div>
-<script src="comum.js?v=0.29.1"></script>
+<script src="comum.js?v=0.30.0"></script>
 <script>
 (function () {
   'use strict';
@@ -99,6 +100,7 @@
     itens: [], campos: [], valores: {}, preenchidos: {}, situacoes: null, gravando: Object.create(null)
   };
   var geracao = 0;
+  var capas = Object.create(null);
 
   var el = function (id) { return document.getElementById(id); };
 
@@ -147,7 +149,7 @@
     }
 
     if (!linhas.length) {
-      corpo.innerHTML = '<tr><td colspan="8"><div class="gi-vazio">' +
+      corpo.innerHTML = '<tr><td colspan="9"><div class="gi-vazio">' +
         'Nenhum imóvel nesta página com esses filtros.<br>' +
         '<span class="gi-pequeno">Alargue um filtro por vez — não invente resultado para o cliente.</span>' +
         '</div></td></tr>';
@@ -168,9 +170,13 @@
           GI.SITUACOES.map(function (s) {
             return '<option value="' + s.valor + '"' + (s.valor === valor ? ' selected' : '') + '>' + s.rotulo + '</option>';
           }).join('') + '</select>';
-        if (!GI.pode('mudar_situacao')) situacao = '<span class="gi-estado ' + atual.classe + '">' + GI.escapar(atual.rotulo) + '</span>';
+        if (!GI.pode('ver_imoveis')) situacao = '<span class="gi-estado ' + atual.classe + '">' + GI.escapar(atual.rotulo) + '</span>';
       }
+      var urlCapa = capas[p.internalcode];
+      var miniatura = '<span class="gi-capa-vazia" aria-hidden="true">⌂</span>';
+      if (typeof urlCapa === 'string' && /^https?:\/\//i.test(urlCapa)) miniatura += '<img src="' + GI.escapar(urlCapa) + '" alt="' + GI.escapar(p.name) + '" loading="lazy">';
       return '<tr>' +
+        '<td><button type="button" class="gi-capa" data-detalhe="' + codigo + '" aria-label="' + GI.escapar(p.name) + '">' + miniatura + '</button></td>' +
         '<td class="gi-nowrap"><button type="button" class="gi-imovel-link" data-detalhe="' + codigo + '"><strong>' + GI.escapar(GI.codigoCurto(p.internalcode)) + '</strong></button>' +
           '<div class="gi-ajuda">' + GI.escapar(p.internalcode) + '</div></td>' +
         '<td><button type="button" class="gi-imovel-link" data-detalhe="' + codigo + '">' + GI.escapar(p.name) + '</button><div class="gi-ajuda">' + GI.escapar(cat.tipo) + (GI.finalidadeDoImovel(p) ? ' · ' + GI.escapar(GI.finalidadeDoImovel(p) === 'locacao' ? 'Locação' : 'Venda') : '') + '</div></td>' +
@@ -192,6 +198,9 @@
       '</tr>';
     }).join('');
 
+    Array.prototype.forEach.call(corpo.querySelectorAll('.gi-capa img'), function (img) {
+      img.addEventListener('error', function () { img.remove(); });
+    });
     Array.prototype.forEach.call(corpo.querySelectorAll('[data-detalhe]'), function (b) {
       b.addEventListener('click', function () { abrirDetalhe(b.getAttribute('data-detalhe')); });
     });
@@ -259,7 +268,7 @@
 
   function carregar() {
     var atual = ++geracao;
-    el('gi-corpo').innerHTML = '<tr><td colspan="8" class="gi-mudo">buscando…</td></tr>';
+    el('gi-corpo').innerHTML = '<tr><td colspan="9" class="gi-mudo">buscando…</td></tr>';
     return GI.buscarImoveis({
       termo: estado.termo, finalidade: estado.finalidade, pagina: estado.pagina, porPagina: estado.porPagina
     }).then(function (r) {
@@ -275,6 +284,13 @@
       el('b-anterior').disabled = estado.pagina <= 1;
       el('b-proxima').disabled = r.itens.length < estado.porPagina;
       desenharLista();
+      var faltantes = r.itens.map(function (p) { return p.internalcode; }).filter(function (codigo, i, lista) { return !Object.prototype.hasOwnProperty.call(capas, codigo) && lista.indexOf(codigo) === i; });
+      faltantes.forEach(function (codigo) { capas[codigo] = null; });
+      if (!faltantes.length) return;
+      return GI.capasImoveis(faltantes).catch(function () { return {}; }).then(function (mapa) {
+        faltantes.forEach(function (codigo) { capas[codigo] = mapa[codigo] || null; });
+        if (atual === geracao) desenharLista();
+      });
     });
   }
 
@@ -405,7 +421,7 @@
       var situacaoInicial = GI.SITUACOES.filter(function (s) { return s.valor === valorSituacaoInicial; })[0];
       var campoSituacao = '<div class="gi-campo-caixa" style="margin-top:16px" id="gi-editar-situacao">' +
         '<label for="gi-situacao-editar">Situação</label>' +
-        (situacaoInicial ? (GI.pode('mudar_situacao') ?
+        (situacaoInicial ? (GI.pode('ver_imoveis') ?
           '<select id="gi-situacao-editar" data-situacao-editar class="gi-estado ' + situacaoInicial.classe + '">' +
             GI.SITUACOES.map(function (s) { return '<option value="' + s.valor + '"' + (s.valor === valorSituacaoInicial ? ' selected' : '') + '>' + GI.escapar(s.rotulo) + '</option>'; }).join('') +
           '</select>' : '<span data-situacao-editar-selo class="gi-estado ' + situacaoInicial.classe + '">' + GI.escapar(situacaoInicial.rotulo) + '</span>') :
@@ -591,7 +607,7 @@
     var seletorSituacao = document.querySelector('[data-situacao-editar]');
     var situacaoNova = seletorSituacao ? seletorSituacao.value : null;
     var situacaoAntiga = estado.situacoes ? situacaoDoImovel(codigo) : null;
-    if (situacaoNova !== null && situacaoNova !== situacaoAntiga && !GI.pode('mudar_situacao')) {
+    if (situacaoNova !== null && situacaoNova !== situacaoAntiga && !GI.pode('ver_imoveis')) {
       return Promise.reject(new Error('Você não tem permissão para mudar a situação.'));
     }
     var eventos = [];

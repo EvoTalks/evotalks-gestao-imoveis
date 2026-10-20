@@ -57,8 +57,8 @@ try {
     'X-GI-User-Id': '9999', 'X-GI-User-Type': '0'
   }, body: JSON.stringify({ nome: 'Agente Demonstração', ...PERMISSOES_PADRAO, editar_imoveis: true, mudar_situacao: false }) });
   await abrir('agente');
-  assert.equal(await b.avaliar(() => !!document.querySelector('[data-situacao-editar]')), false);
-  assert.match(await b.avaliar(() => document.querySelector('[data-situacao-editar-selo]').textContent), /Disponível/);
+  assert.equal(await b.avaliar(() => !!document.querySelector('[data-situacao-editar]')), true);
+  assert.equal(await b.avaliar(() => document.querySelector('[data-situacao-editar]').value), 'disponivel');
 
   await abrir();
   await b.preencher('[data-situacao-editar]', 'reservado');
@@ -67,5 +67,5 @@ try {
   await b.clicar('[data-descartar-sim]');
   await b.esperar(() => !document.querySelector('.gi-modal'));
   assert.deepEqual(b.erros, []);
-  process.stdout.write('PASS situação no Editar: primeiro campo, valor atual, gravação isolada e junto dos campos, autoria, atualização da linha, erro preserva formulário, permissão somente leitura e descarte; FAIL 0\n');
+  process.stdout.write('PASS situação no Editar: primeiro campo, valor atual, gravação isolada e junto dos campos, autoria, atualização da linha, erro preserva formulário, acesso por Ver Imóveis mesmo com chave legada falsa e descarte; FAIL 0\n');
 } finally { if (b) await b.fechar(); s.closeAllConnections(); await new Promise(r => s.close(r)); }
