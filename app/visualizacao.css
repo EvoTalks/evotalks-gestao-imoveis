@@ -1,5 +1,5 @@
 /* Visualização: medidas e estrutura do desenho aprovado tela-3. */
-.gi .gi-visualizacao{position:relative;margin:0 auto;width:80vw;background:var(--gi-surface);border-radius:12px;box-shadow:var(--gi-sombra-modal);display:flex;flex-direction:column;overflow:hidden}
+.gi .gi-visualizacao{container-type:inline-size;position:relative;margin:0 auto;width:80vw;background:var(--gi-surface);border-radius:12px;box-shadow:var(--gi-sombra-modal);display:flex;flex-direction:column;overflow:hidden}
 .gi .gi-visualizacao .dv-topo{display:flex;align-items:center;gap:12px;height:52px;padding:0 12px 0 22px;border-bottom:1px solid var(--gi-borda)}
 .gi .gi-visualizacao .dv-grade{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;padding:22px 24px 26px}
 .gi .gi-visualizacao .dv-principal{display:flex;flex-direction:column;gap:22px;min-width:0}
@@ -28,10 +28,8 @@
 .gi .gi-visualizacao .dv-nav{display:flex;align-items:center;gap:2px;color:var(--gi-mudo);font-size:12.5px}
 .gi .gi-visualizacao .dv-nav span{padding:0 6px}
 .gi .gi-visualizacao .dv-nav .dv-sep{width:1px;height:22px;padding:0;background:var(--gi-borda);margin:0 6px}
-/* galeria: capa grande + quatro miniaturas. Proporção 689:380;
-   431px = coluna lateral 340 + gap 28 + padding 48 + scrollbar 15.
-   A largura do popup mantém a referência mesmo com scrollbar oculta. */
-.gi .gi-visualizacao .dv-galeria{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:6px;height:calc((80vw - 431px) * 380 / 689);max-height:55vh;min-height:0;border-radius:10px;overflow:hidden}
+/* Galeria proporcional à largura real, conforme o desenho 704:380. */
+.gi .gi-visualizacao .dv-galeria{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:6px;height:auto;aspect-ratio:704 / 380;max-height:55vh;min-height:0;border-radius:10px;overflow:hidden}
 .gi .gi-visualizacao .dv-foto{position:relative;margin:0;background:var(--gi-campo-bg);overflow:hidden;cursor:zoom-in}
 .gi .gi-visualizacao .dv-foto img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
 .gi .gi-visualizacao .dv-foto:hover img{transform:scale(1.03)}
@@ -160,7 +158,7 @@
 .gi .gi-visualizacao .dv-foto {padding:0;border:0;color:var(--gi-texto);text-align:left}
 .gi .gi-visualizacao .dv-foto-selo,.gi .gi-visualizacao .dv-foto-contador {background:var(--gi-surface);color:var(--gi-texto)}
 .gi .gi-visualizacao .dv-foto-mais {color:var(--gi-acao-texto)}
-.gi .gi-visualizacao .dv-sem-foto {height:calc((80vw - 431px) * 380 / 689);max-height:55vh;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:10px;background:repeating-linear-gradient(135deg,var(--gi-campo-bg) 0 12px,var(--gi-bg) 12px 24px);color:var(--gi-mudo)}
+.gi .gi-visualizacao .dv-sem-foto {height:auto;aspect-ratio:704 / 380;max-height:55vh;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:10px;background:repeating-linear-gradient(135deg,var(--gi-campo-bg) 0 12px,var(--gi-bg) 12px 24px);color:var(--gi-mudo)}
 .gi .gi-visualizacao .dv-foto-quebrada img {visibility:hidden}
 .gi .gi-visualizacao .dv-foto-quebrada:before {content:'Foto indisponível';position:absolute;inset:0;display:grid;place-items:center;color:var(--gi-mudo);font-size:12px}
 .gi .gi-visualizacao .dv-texto--aberto {max-height:none}
@@ -172,7 +170,7 @@
 .gi .gi-visualizacao .dv-recado {font-size:12px;color:var(--gi-mudo);margin-top:6px}
 .gi .gi-visualizacao .dv-recado-erro {color:var(--gi-erro)}
 .gi .gi-visualizacao .dv-situacao-opcoes button:disabled {opacity:.5;cursor:wait}
-.gi .gi-visualizacao .dv-esqueleto {height:calc((80vw - 431px) * 380 / 689);max-height:55vh;min-height:0;border-radius:10px;background:linear-gradient(90deg,var(--gi-campo-bg),var(--gi-bg),var(--gi-campo-bg));background-size:300% 100%;animation:dv-brilho 1.4s infinite}
+.gi .gi-visualizacao .dv-esqueleto {height:auto;aspect-ratio:704 / 380;max-height:55vh;min-height:0;border-radius:10px;background:linear-gradient(90deg,var(--gi-campo-bg),var(--gi-bg),var(--gi-campo-bg));background-size:300% 100%;animation:dv-brilho 1.4s infinite}
 @keyframes dv-brilho {to {background-position:100% 0}}
 @media(prefers-reduced-motion:reduce) {.gi .gi-visualizacao .dv-esqueleto {animation:none}}
 .gi .gi-visualizacao .lb {position:fixed;inset:var(--gi-vis-topo,0px) 0 auto;z-index:10;width:100%;height:var(--gi-vis-altura,100vh);border-radius:0;color:white}
@@ -183,6 +181,17 @@
 .gi .gi-visualizacao .lb-mini[aria-current="true"] {border-color:white}
 .gi .gi-visualizacao:has(.lb) {transform:none;left:0;right:0;margin:auto}
 .gi .gi-visualizacao .dv-copiar-fallback {width:100%;margin-top:6px}
+/* A composição responde ao popup, inclusive em janelas médias. */
+@container (max-width:1100px) {
+.gi .gi-visualizacao .dv-grade {grid-template-columns:minmax(0,1fr) clamp(280px,30cqw,340px)}
+.gi .gi-visualizacao .dv-fatos {grid-template-columns:repeat(3,minmax(0,1fr))}
+.gi .gi-visualizacao .dv-fato:nth-child(4) {border-left:0}
+.gi .gi-visualizacao .dv-fato:nth-child(n+4) {border-top:1px solid var(--gi-borda)}
+}
+@container (max-width:850px) {
+.gi .gi-visualizacao .dv-grade {grid-template-columns:minmax(0,1fr);gap:22px;padding:18px}
+.gi .gi-visualizacao .dv-lado {position:static;max-height:none;overflow:visible}
+}
 @media(max-width:899px) {
 .gi .gi-visualizacao {width:calc(100vw - 32px)}
 .gi .gi-visualizacao .dv-grade {grid-template-columns:minmax(0,1fr);gap:22px;padding:18px}

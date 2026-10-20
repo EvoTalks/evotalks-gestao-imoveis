@@ -120,8 +120,8 @@ try {
     await b.viewport(1400,1000);await b.navegar(origem+'/app/imoveis.html?perfil=admin');await b.esperar(()=>!!document.querySelector('[data-detalhe]'));
     await b.avaliar(n=>{const carregar=GI.detalheDoImovel;GI.detalheDoImovel=async id=>{const d=await carregar(id);d.imovel.imagem_principal=location.origin+'/app/icone-casa.svg?f=0';d.imovel.imagens=Array.from({length:n-1},(_,i)=>location.origin+'/app/icone-casa.svg?f='+(i+1));return d;};},quantidade);
     await abrir();
-    const grade=await b.avaliar(()=>{const g=document.querySelector('.dv-galeria'),r=g.getBoundingClientRect();return {altura:r.height,total:g.querySelectorAll('.dv-foto').length,preenchido:[.1,.4,.65,.9].every(x=>[.25,.75].every(y=>!!document.elementFromPoint(r.x+r.width*x,r.y+r.height*y)?.closest('.dv-foto')))};});
-    assert.equal(grade.altura,380);assert.equal(grade.total,quantidade);assert.equal(grade.preenchido,true,'grade '+quantidade+' sem buracos');await fechar();
+    const grade=await b.avaliar(()=>{const g=document.querySelector('.dv-galeria'),r=g.getBoundingClientRect();return {largura:r.width,altura:r.height,total:g.querySelectorAll('.dv-foto').length,preenchido:[.1,.4,.65,.9].every(x=>[.25,.75].every(y=>!!document.elementFromPoint(r.x+r.width*x,r.y+r.height*y)?.closest('.dv-foto')))};});
+    assert.ok(Math.abs(grade.altura-grade.largura*380/704)<=1,'galeria proporcional à largura real');assert.equal(grade.total,quantidade);assert.equal(grade.preenchido,true,'grade '+quantidade+' sem buracos');await fechar();
   }
   // Cópia mantém uma seleção disponível quando o iframe recusa o clipboard.
   await b.navegar(origem+'/app/imoveis.html?perfil=admin');await b.esperar(()=>!!document.querySelector('[data-detalhe]'));await abrir();
