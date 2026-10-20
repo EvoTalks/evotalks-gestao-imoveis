@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.31.0",
+  "version": "0.31.1",
   "name": "Gerenciamento de Imóveis",
   "description": "Gestão de Imóveis com situação (Disponível, Reservado, Indisponível), campos internos e histórico de autoria.",
   "author": {

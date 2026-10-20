@@ -468,6 +468,7 @@ body.gi-com-modal > *:not(.gi-modal-fundo) {
 .gi .hint{font-size:11px;color:var(--faint);font-style:italic}
 .gi{--gi-font:var(--ext-font-family, Roboto,"Segoe UI",system-ui,-apple-system,sans-serif);--gi-bg:var(--desenho-gi-bg);--gi-surface:var(--desenho-branco);--gi-campo-bg:var(--desenho-sunken);--gi-texto:var(--desenho-text);--gi-mudo:var(--desenho-muted);--gi-borda:var(--desenho-line);--gi-acao:var(--ext-color-primary, #1e1e1e);--gi-acao-texto:var(--desenho-on-primary);--gi-acao-suave:var(--desenho-acao-suave);--gi-ok:var(--desenho-gi-ok);--gi-pendente:var(--desenho-gi-pendente);--gi-erro:var(--desenho-gi-erro);--gi-raio:var(--ext-radius, 8px);--gi-raio-p:6px;--gi-sombra:0 1px 2px var(--desenho-sombra),0 1px 10px var(--desenho-sombra);
   font:var(--ext-font-size,14px)/1.45 var(--gi-font);color:var(--gi-texto);background:var(--gi-bg);width:min(1360px,100%);border:1px solid var(--gi-borda);border-radius:10px;padding:18px 22px 26px}
+.gi.gi-gestao{width:100%}
 .gi *{box-sizing:border-box}
 .gi h1{font-size:18px;font-weight:600;margin:0;letter-spacing:-.01em}
 .gi .gi-sub{color:var(--gi-mudo);font-size:12.5px;margin:3px 0 0}

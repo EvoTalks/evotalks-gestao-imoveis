@@ -1084,7 +1084,7 @@
       var visAltura = e.intersectionRect.height;
       fundo.style.setProperty('--gi-vis-topo', e.intersectionRect.top + 'px');
       fundo.style.setProperty('--gi-vis-altura', visAltura + 'px');
-      if (caixa.classList.contains('gi-modal-leitura')) caixa.style.maxHeight = Math.floor(visAltura * 0.85) + 'px';
+      if (caixa.classList.contains('gi-modal-leitura')) caixa.style.maxHeight = Math.floor(visAltura * (caixa.classList.contains('gi-visualizacao') ? 0.90 : 0.85)) + 'px';
       var sobra = visAltura - caixa.offsetHeight;
       var topo = visTopo + (sobra > 0 ? sobra / 2 : 16);
 
