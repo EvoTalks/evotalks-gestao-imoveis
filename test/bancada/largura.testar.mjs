@@ -41,6 +41,31 @@ try {
       return {w:r.width,h:r.height,x:r.x,janela:document.documentElement.clientWidth,galeria:el.querySelector('.dv-galeria,.dv-sem-foto').getBoundingClientRect().height,gw:el.querySelector('.dv-galeria,.dv-sem-foto').getBoundingClientRect().width,
         overflow:el.querySelector('.gi-modal-corpo').scrollWidth > el.querySelector('.gi-modal-corpo').clientWidth,
         lado:el.querySelector('.dv-lado').getBoundingClientRect().width,
+        internos:[el,...el.querySelectorAll('*')].filter(e => e.getClientRects().length && !e.closest('.lb-tira') &&
+          [getComputedStyle(e).overflowX,getComputedStyle(e).overflowY].some(v => v !== 'visible') && e.scrollWidth > e.clientWidth + 1)
+          .map(e => ({classe:e.className,largura:e.clientWidth,conteudo:e.scrollWidth})),
+        situacoes:Array.from(el.querySelectorAll('.dv-situacao-opcoes button')).map(e => {
+          const r=e.getBoundingClientRect(), grupo=e.parentElement.getBoundingClientRect();
+          return {texto:e.textContent.trim(),inteiro:e.scrollWidth<=e.clientWidth+1 && r.left>=grupo.left && r.right<=grupo.right,
+            ativo:e.getAttribute('aria-pressed'),visivel:r.height>0 && getComputedStyle(e).visibility==='visible'};
+        }),
+        textosCortados:(() => {
+          const cortados=[], walker=document.createTreeWalker(el.querySelector('.dv-lado'),NodeFilter.SHOW_TEXT);
+          while(walker.nextNode()) {
+            const n=walker.currentNode;
+            if(!n.textContent.trim() || !n.parentElement.getClientRects().length) continue;
+            const range=document.createRange();range.selectNodeContents(n);
+            for(const r of range.getClientRects()) {
+              for(let a=n.parentElement;a && el.contains(a);a=a.parentElement) {
+                const ar=a.getBoundingClientRect();
+                if(getComputedStyle(a).overflowX!=='visible' && (r.left<ar.left-1 || r.right>ar.right+1)) {
+                  cortados.push(n.textContent.trim());break;
+                }
+              }
+            }
+          }
+          return cortados;
+        })(),
         fatos:Array.from(el.querySelectorAll('.dv-fato')).map(f => {
           const r=f.getBoundingClientRect(), i=f.querySelector('.dv-fato-icone').getBoundingClientRect();
           const texto=f.querySelector('div:not(.dv-fato-icone)').getBoundingClientRect();
@@ -49,6 +74,12 @@ try {
     });
     assert.ok(Math.abs(m.w - (largura < 900 ? largura - 32 : largura * .8)) <= 1, 'largura dinâmica');
     assert.equal(m.overflow, false, 'sem rolagem horizontal em ' + largura);
+    if ([1152,1280,1366].includes(largura)) {
+      assert.deepEqual(m.internos, [], 'varredura de overflow interno em ' + largura);
+      assert.deepEqual(m.textosCortados, [], 'textos da lateral inteiros em ' + largura);
+      assert.deepEqual(m.situacoes.map(s => s.texto), ['Disponível','Reservado','Indisponível']);
+      for (const s of m.situacoes) assert.ok(s.inteiro && s.visivel && ['true','false'].includes(s.ativo), 'situação inteira com aria-pressed: ' + JSON.stringify(s));
+    }
     assert.equal(m.fatos.length, 6);
     for (const f of m.fatos) assert.ok(f.cabe && f.separado && f.dentro, 'indicador sem corte ou sobreposição em ' + largura + JSON.stringify(m));
     if (m.cols.split(' ').length === 2) assert.ok(m.lado >= 280, 'lateral legível');
@@ -62,7 +93,7 @@ try {
     if (largura === 800) assert.equal(m.cols.split(' ').length, 1);
   }
   assert.deepEqual(b.erros, []);
-  process.stdout.write('PASS largura: quatro telas 1906/1360px, fidelidade 1360px 0 % de diferença frente ao teto anterior, tabela/filtros, popup 80vw em 1906/1400/1152/1280/1366/1000px centralizado, indicadores sem corte/sobreposição, lateral adaptável, 90vh, galeria proporcional até 55vh e coluna única 800px; FAIL 0\n');
+  process.stdout.write('PASS largura: quatro telas 1906/1360px, fidelidade 1360px 0 % de diferença frente ao teto anterior, tabela/filtros, popup 80vw em 1906/1400/1152/1280/1366/1000px centralizado, indicadores sem corte/sobreposição, varredura de overflow interno e textos da lateral, três situações inteiras em 1152/1280/1366px, lateral adaptável, 90vh, galeria proporcional até 55vh e coluna única 800px; FAIL 0\n');
 } finally {
   if (b) await b.fechar();
   servidor.closeAllConnections();
