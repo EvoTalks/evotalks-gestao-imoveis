@@ -3,6 +3,12 @@
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
 um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Campos**, **Histórico** e **Configurações**.
 
+## 0.29.1 — Situação no formulário de edição
+
+A situação do imóvel aparece no início do modal Editar e pode ser alterada por usuários
+com a permissão `mudar_situacao`. Atualizar grava a situação e os campos adicionais;
+falhas mantêm o formulário aberto com os valores digitados.
+
 ## 0.29.0 — Detalhe completo do imóvel
 
 Os filtros de Imóveis ficam alinhados, sem a nota sobre a assistente. Clique no código ou
@@ -60,7 +66,7 @@ Contrato: `GET /imoveis/situacoes` devolve `{ situacoes: { codigo: situacao } }`
 Locados foi removido (menu, navegação, tela e formulário). Chamados, Prestadores,
 cockpit e diálogo de O.S. estão desligados no manifesto, com os arquivos preservados
 integralmente para uma extensão separada. Os helpers de locação e o CSS compartilhado
-continuam disponíveis para esse código. As telas ativas usam cache `?v=0.29.0`;
+continuam disponíveis para esse código. As telas ativas usam cache `?v=0.29.1`;
 as telas dormentes mantêm `?v=0.26.3` para respeitar a preservação sem alteração.
 As seções históricas abaixo descrevem o histórico dessas funcionalidades dormentes.
 
