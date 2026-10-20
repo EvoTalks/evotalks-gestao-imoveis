@@ -3,10 +3,33 @@
 Porte do **portal de taxas do William Imóveis** para dentro do EvoTalks, como extensão nativa:
 um menu superior **Gerenciamento de Imóveis** com **Imóveis**, **Campos**, **Histórico** e **Configurações**.
 
-## 0.27.0 — Situação editável
+## 0.28.0 — Permissões por usuário
+
+Configurações → **Permissões** permite ao administrador buscar usuários pelo nome e
+salvar somente as linhas alteradas. Os seis acessos são Ver Imóveis, Editar imóveis,
+Mudar situação, Criar e editar campos, Ver Histórico e Ver Configurações. O portal
+fornece os padrões: usuário novo vê e edita imóveis; os demais acessos começam negados.
+Administradores (tipo 0) têm tudo marcado e travado. A alteração é gravada no portal e
+vale nas próximas chamadas; cada página mantém sua consulta de permissões em memória.
+
+As abas seguem os acessos; o menu do host continua disponível e o endereço direto
+mostra “Sem acesso a esta tela. Peça ao administrador para liberar.” quando bloqueado.
+Sem edição, os botões Editar/Excluir somem; sem Mudar situação, há apenas o selo colorido.
+Modo local conserva os acessos liberados. Com portal configurado, falha ao consultar
+permissões bloqueia os controles em vez de recorrer aos padrões locais.
+
+As chamadas enviam `X-GI-User-Id` e `X-GI-User-Type`. **É controle de uso, não segurança**:
+o portal confia na identidade declarada e quem tem seu token no navegador consegue
+contornar as restrições. A tela traz esse limite de forma discreta. A lista de usuários
+vem de `omni.users.list()` e a tela usa somente identificador, nome e perfil.
+
+A bancada `test/bancada/permissoes.testar.mjs` cobre administrador e agente, padrões,
+edição, situação, acesso direto, gravação seletiva, escape de HTML e recusas 403.
+
+## 0.27.0 — Situação editável (histórico)
 
 Imóveis tem seletor de Situação por linha: Disponível (verde), Reservado (âmbar) e
-Indisponível (cinza). Quem acessa a tela pode editar; a gravação vai ao portal com
+Indisponível (cinza). Na 0.27.0, quem acessava a tela podia editar; a gravação vai ao portal com
 o autor. Imóvel sem registro é Disponível. Reservado e Indisponível não são oferecidos
 pela Williane. O filtro Situação atua na página carregada e combina com Finalidade e Estado.
 Falha ao salvar restaura o valor anterior. Sem portal ou mapa disponível, a coluna mostra
@@ -18,7 +41,7 @@ Contrato: `GET /imoveis/situacoes` devolve `{ situacoes: { codigo: situacao } }`
 Locados foi removido (menu, navegação, tela e formulário). Chamados, Prestadores,
 cockpit e diálogo de O.S. estão desligados no manifesto, com os arquivos preservados
 integralmente para uma extensão separada. Os helpers de locação e o CSS compartilhado
-continuam disponíveis para esse código. As telas ativas usam cache `?v=0.27.0`;
+continuam disponíveis para esse código. As telas ativas usam cache `?v=0.28.0`;
 as telas dormentes mantêm `?v=0.26.3` para respeitar a preservação sem alteração.
 As seções históricas abaixo descrevem o histórico dessas funcionalidades dormentes.
 

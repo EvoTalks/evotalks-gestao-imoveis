@@ -52,9 +52,9 @@ test('F18 criação segura usa início da operação mesmo após resposta demora
   const r = await GI.chamadosCriarSeguro(dados);
   assert.equal(r.chamado.id, 3);
 });
-test('manifest 0.27.0 mantém só as quatro telas ativas, sem configuração de manutenção', () => {
+test('manifest 0.28.0 mantém só as quatro telas ativas, sem configuração de manutenção', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.27.0');
+  assert.equal(m.version, '0.28.0');
   assert.equal(m.contributions.length, 1);
   assert.deepEqual(m.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']);
   for (const item of m.contributions[0].items) {
@@ -266,7 +266,7 @@ test('HTTP integrado: fixtures, resumo, contagens reais, autenticação e todas 
   await new Promise(r => servidor.listen(0, '127.0.0.1', r));
   t.after(() => { servidor.closeAllConnections(); return new Promise(r => servidor.close(r)); });
   const base = 'http://127.0.0.1:' + servidor.address().port;
-  async function get(rota) { const r = await fetch(base + '/api/ext' + rota, { headers: { Authorization: 'Bearer bancada-sintetica' } }); assert.equal(r.status, 200); return r.json(); }
+  async function get(rota) { const r = await fetch(base + '/api/ext' + rota, { headers: { Authorization: 'Bearer bancada-sintetica', 'X-GI-User-Id': '9999', 'X-GI-User-Type': '0' } }); assert.equal(r.status, 200); return r.json(); }
   for (const rota of ['/chamados', '/prestadores', '/config/manutencao', '/contatos/9901/chamados', '/locacoes/1/chamados', '/atendimentos/vinculados']) assert.equal((await fetch(base + '/api/ext' + rota)).status, 401);
   const lista = await get('/chamados');
   assert.equal(lista.total, 8); assert.equal(new Set(lista.rows.map(c => c.status)).size, 8);

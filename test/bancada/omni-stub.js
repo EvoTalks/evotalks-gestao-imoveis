@@ -38,6 +38,7 @@
   ];
   contatos.push({ id: 9905, name: 'Contato Sem Residência Demonstração', phone: '00000000005', document: '00000000000' });
   var usuarios = [ctx.user, { id: 9998, name: 'Agente Demonstração Dois', type: 2 }, { id: 9997, name: 'Agente Demonstração Três', type: 2 }];
+  if (params.has('permissoes-teste')) usuarios.push({ id: 9996, name: 'Administrador Demonstração', type: 0 });
   if (params.has('semnome')) ctx.user = Object.assign({}, ctx.user, { name: '' });
   var chats = [8801, 8802, 8803, 8804].map(function (n, i) { return {
     id: n, contactId: i === 3 ? null : 9901 + i, userId: i === 2 ? 9998 : 9999, queueId: i === 2 ? 92 : 91,
@@ -120,7 +121,7 @@
       if (ctx.config.modoDemonstracao) return Promise.reject(new Error('Demonstração: HTTP bloqueado.'));
       var url = new URL(op.url);
       if (url.origin !== 'http://portal.bancada.invalid') return Promise.reject(new Error('Portal externo bloqueado na bancada.'));
-      window.bancada.chamadas.push({ caminho: url.pathname + url.search, method: op.method, body: op.body, timeout: op.timeout, autor: op.headers['X-GI-Autor'] });
+      window.bancada.chamadas.push({ caminho: url.pathname + url.search, method: op.method, body: op.body, timeout: op.timeout, autor: op.headers['X-GI-Autor'], userId: op.headers['X-GI-User-Id'], userType: op.headers['X-GI-User-Type'] });
       if (params.has('situacao-mapa-invalido') && /\/imoveis\/situacoes$/.test(url.pathname)) return Promise.resolve({ status: 200, body: '{"situacoes":null}' });
       if (params.has('situacao-fora') && /\/imoveis\/situacoes$/.test(url.pathname)) return Promise.resolve({ status: 503, body: '{"erro":"situacao_indisponivel"}' });
       if (window.bancada.falharSituacao && /\/imoveis\/.+\/situacao$/.test(url.pathname)) return Promise.resolve({ status: 422, body: '{"erro":"situacao_invalida"}' });

@@ -36,6 +36,7 @@ export function criarFixturePortal() {
       chamados.unshift(r.corpo.chamado); return r;
     }
     if (method !== 'GET') return resposta({ erro: 'fixture_somente_leitura' },405);
+    if (rota === '/permissoes/eu') return resposta({ administrador: false, padrao: {}, permissoes: { ver_imoveis: true, editar_imoveis: true, mudar_situacao: true, gerenciar_campos: true, ver_historico: true, ver_configuracoes: true } });
     if (rota === '/info') return resposta({ ok: true, bancada: true });
     if (rota === '/campos') return resposta({ campos: [] });
     if (rota === '/preenchidos') return resposta({ preenchidos: {} });

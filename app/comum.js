@@ -128,6 +128,7 @@
           });
         })
         .then(function () { return GI.definirModo(); })
+        .then(function () { if (GI.modo === 'portal' || GI.modo === 'local') return GI.permissoes(); })
         .then(function () { GI.mostrarModo(); })
         .then(function () { return fn(ctx); })
         .catch(function (e) { GI.erroFatal(e); })
@@ -258,6 +259,8 @@
   GI.mensagemErro = function (err) {
     err = err || {}; var d = err.dados || {}, codigo = d.erro || err.code || err.message;
     if (err.status === 0 || /Http failure response|Unknown Error|ERR_[A-Z_]+|NetworkError|Failed to fetch|\bstatus 0\b|extensionsruntime/i.test([typeof err === 'string' ? err : '', err.message, err.code, d.erro, d.detalhe].join(' '))) return 'Não consegui falar com o servidor. Confira sua conexão e tente de novo.';
+    if (codigo === 'sem_permissao') return 'Você não tem permissão para ' + ({ ver_imoveis: 'ver Imóveis', editar_imoveis: 'editar imóveis', mudar_situacao: 'mudar a situação', gerenciar_campos: 'criar e editar campos', ver_historico: 'ver o Histórico', ver_configuracoes: 'ver Configurações' }[d.permissao] || 'esta operação') + '.';
+    if (codigo === 'permissao_invalida') return 'Confira o usuário e as seis permissões antes de salvar.';
     if (err.status === 429) codigo = 'rate_limited';
     if (codigo === 'dados_invalidos' || (err.status === 422 || err.status === 400) && d.campos) {
       if (!d.campos) return 'Confira os dados informados antes de salvar.';
@@ -373,7 +376,8 @@
     var cab = {
       "Authorization": "Bearer " + tokenDoPortal(),
       "X-GI-Autor": GI.autorCabecalho(GI.usuario()),
-      "X-GI-User-Id": String((ctx && ctx.user && ctx.user.id) || "")
+      "X-GI-User-Id": String((ctx && ctx.user && ctx.user.id) || ""),
+      "X-GI-User-Type": String(ctx && ctx.user && ctx.user.type != null ? ctx.user.type : 4)
     };
     if (temCorpo) cab["Content-Type"] = "application/json";
     return cab;
@@ -449,6 +453,41 @@
     });
   }
   GI.chamarPortal = chamar;
+
+  var permissoesAtuais = null, leituraPermissoes = null;
+  GI.CHAVES_PERMISSOES = ['ver_imoveis', 'editar_imoveis', 'mudar_situacao', 'gerenciar_campos', 'ver_historico', 'ver_configuracoes'];
+  GI.permissoes = function (reler) {
+    if (GI.modo === 'local') {
+      var livres = {};
+      GI.CHAVES_PERMISSOES.forEach(function (k) { livres[k] = true; });
+      return Promise.resolve({ permissoes: livres, administrador: false, padrao: {} });
+    }
+    if (GI.modo !== 'portal') return Promise.reject(new Error('Permissões exigem o portal conectado.'));
+    if (reler) { permissoesAtuais = null; leituraPermissoes = null; }
+    if (permissoesAtuais) return Promise.resolve(permissoesAtuais);
+    if (leituraPermissoes) return leituraPermissoes;
+    leituraPermissoes = GI.chamarPortal('/permissoes/eu').then(function (r) {
+      if (!r || !r.permissoes || !r.padrao) throw new Error('Não foi possível consultar as permissões. Reabra a tela.');
+      permissoesAtuais = r; return r;
+    }).catch(function (err) { leituraPermissoes = null; throw err; });
+    return leituraPermissoes;
+  };
+  GI.pode = function (chave) {
+    return GI.modo === 'local' || GI.modo === 'demonstracao' || !!(permissoesAtuais && permissoesAtuais.permissoes[chave] === true);
+  };
+  GI.exigirPermissao = function (chave) {
+    if (GI.modo === 'portal-fora') { document.body.classList.remove('gi-permissoes-pendentes'); return true; }
+    if (GI.pode(chave)) { document.body.classList.remove('gi-permissoes-pendentes'); return true; }
+    Array.prototype.forEach.call(document.body.children, function (no) {
+      if (!no.classList.contains('gi-topo') && no.tagName !== 'SCRIPT') no.hidden = true;
+    });
+    var aviso = document.createElement('p');
+    aviso.className = 'gi-vazio'; aviso.id = 'gi-sem-acesso';
+    aviso.textContent = 'Sem acesso a esta tela. Peça ao administrador para liberar.';
+    document.body.appendChild(aviso);
+    GI.ajustarAltura();
+    return false;
+  };
 
   GI.SITUACOES = [
     { valor: 'disponivel', rotulo: 'Disponível', classe: 'gi-estado-ok' },
@@ -1192,12 +1231,12 @@
 
   GI.cabecalho = function (ativo) {
     var telas = [
-      { id: 'gi-imoveis',   nome: 'Imóveis' },
-      { id: 'gi-campos',    nome: 'Campos' },
-      { id: 'gi-historico', nome: 'Histórico' },
-      { id: 'gi-config', nome: 'Configurações' }
+      { id: 'gi-imoveis',   nome: 'Imóveis', permissao: 'ver_imoveis' },
+      { id: 'gi-campos',    nome: 'Campos', permissao: 'gerenciar_campos' },
+      { id: 'gi-historico', nome: 'Histórico', permissao: 'ver_historico' },
+      { id: 'gi-config', nome: 'Configurações', permissao: 'ver_configuracoes' }
     ];
-    return '<nav class="gi-nav">' + telas.filter(function (t) { return !telaDeGestao(t.id) || GI.gestor(); }).map(function (t) {
+    return '<nav class="gi-nav">' + telas.filter(function (t) { return GI.pode(t.permissao); }).map(function (t) {
       return t.id === ativo
         ? '<span class="gi-nav-item gi-nav-ativo">' + t.nome + '</span>'
         : '<button type="button" class="gi-nav-item" data-tela="' + t.id + '">' + t.nome + '</button>';

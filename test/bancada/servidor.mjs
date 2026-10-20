@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { criarPortalPermissoes } from './portal-permissoes.mjs';
 import { criarPortalSituacao } from './portal-situacao.mjs';
 import { criarPortalChamados } from './portal-chamados.mjs';
 import { readFile } from 'node:fs/promises';
@@ -9,7 +10,7 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {} } = {}) {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [] } = {}) {
   if (fixture && portalRealUrl) throw new Error('Fixture não pode usar portal real.');
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
@@ -24,6 +25,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
   ];
   let proximoId = 4;
   const historico = {};
+  const valores = {};
   const locacoes = [
     { id: 1, imovel_codigo: 'DEMO-002', imovel_titulo: produtos[1].name, imovel_tipo: 'Casa', imovel_bairro: 'Bairro Exemplo', imovel_cidade: 'Cidade Fictícia', fim: dia(28),
       contatos: [{ contato_id: 9901, papel: 'locatario', nome: contatos[0].name, telefone: contatos[0].phone },
@@ -34,6 +36,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
     dia_vencimento: 10, observacao: null, origem: 'manual', criada_por: 'Agente Demonstração', criada_em: new Date().toISOString(),
     atualizada_em: new Date().toISOString(), encerrada_em: null, ...l }));
   const situacao = criarPortalSituacao(situacoes);
+  const controle = criarPortalPermissoes(permissoes);
   const manutencao = criarPortalChamados({ locacoes });
   manutencao.falharUpload(falhasUpload);
   const candidatas = [{ codigo: 'DEMO-SAIDA', titulo: 'Imóvel que Saiu do Anúncio Demonstração', bairro: 'Bairro Fictício', saiu_em: new Date().toISOString() }];
@@ -92,7 +95,7 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
         if (destinoReal) {
           const destino = new URL(url.pathname + url.search, destinoReal);
           const headers = {};
-          for (const nome of ['authorization', 'x-gi-autor', 'x-gi-user-id', 'content-type']) if (req.headers[nome]) headers[nome] = req.headers[nome];
+          for (const nome of ['authorization', 'x-gi-autor', 'x-gi-user-id', 'x-gi-user-type', 'content-type']) if (req.headers[nome]) headers[nome] = req.headers[nome];
           const resposta = await fetch(destino, { method: req.method, headers, redirect: 'manual',
             ...(req.method === 'GET' || req.method === 'HEAD' ? {} : { body: req, duplex: 'half' }) });
           const volta = {};
@@ -112,14 +115,22 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
           dados = JSON.parse(texto || '{}');
         }
         const autor = req.headers['x-gi-autor'] || 'Agente Demonstração';
+        const respostaPermissoes = controle.responder(req.method, rota, dados, req.headers);
+        if (respostaPermissoes) return json(respostaPermissoes.status, respostaPermissoes.corpo);
         const respostaSituacao = situacao.responder(req.method, rota, dados, autor);
         if (respostaSituacao) return json(respostaSituacao.status, respostaSituacao.corpo);
         const respostaManutencao = manutencao.responder(req.method, rota, q, dados, autor);
         if (respostaManutencao) { for (const [k, v] of Object.entries(respostaManutencao.headers || {})) res.setHeader(k, v); return json(respostaManutencao.status, respostaManutencao.corpo); }
         if (rota === '/info') return json(200, { ok: true, bancada: true });
-        if (rota === '/campos') return json(200, { campos: [] });
+        if (rota === '/config') return json(200, { urlFeed: { definida: false }, intervaloHoras: 6, sync: {} });
+        if (rota === '/historico') return json(200, { eventos: [] });
+        if (rota === '/campos') return json(200, { campos });
         if (rota === '/preenchidos') return json(200, { preenchidos: {} });
-        if (rota.startsWith('/valores/')) return json(200, { valores: [], entradas: [] });
+        if (rota.startsWith('/valores/')) {
+          const codigo = decodeURIComponent(rota.slice('/valores/'.length));
+          if (req.method === 'POST') valores[codigo] = copia(dados.entradas || []);
+          return json(200, { valores: valores[codigo] || [], entradas: valores[codigo] || [] });
+        }
         if (rota === '/locacoes/mapa') return json(200, { locados: Object.fromEntries(locacoes.filter(l => ativa(l) && l.imovel_codigo).map(l => [l.imovel_codigo,
           { locacao_id: l.id, contrato_numero: l.contrato_numero, locatario_nome: l.contatos.find(c => c.papel === 'locatario')?.nome }])) });
         if (rota === '/locacoes/candidatas') {

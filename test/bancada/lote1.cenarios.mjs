@@ -78,7 +78,7 @@ export async function testarLote1(b, origem, conferir) {
 
   for (const perfil of ['atendente', 'supervisor', 'admin']) {
     await b.navegar(origem + '/app/os.html' + painel + '&chamado=' + salvo.id + '&perfil=' + perfil); await livre();
-    assert.ok(await b.avaliar(() => bancada.chamadas.length <= 4), 'edição usa 3 chamadas além do /info');
+    assert.ok(await b.avaliar(() => bancada.chamadas.length <= 5), 'edição usa 3 chamadas além de /info e /permissoes/eu');
     await b.clicar('#c-salvar-nota');
     assert.match(await texto('[data-recado-form]'), /Escreva uma nota/);
     assert.match(await texto('.gi-modal-recado'), /Escreva uma nota/);

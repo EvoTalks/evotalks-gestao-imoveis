@@ -201,12 +201,13 @@ try {
   await b.navegar(base); await pronto();
   const cota = await b.avaliar(async () => {
     let recusadas = 0;
+    const iniciais = bancada.chamadas.length;
     for (let i = 0; i < 31; i++) {
       try { await GI.chamarPortal('/locacoes?prova=' + i); } catch (err) { if (err.status === 429) recusadas++; else throw err; }
     }
-    return { recusadas, enviadas: bancada.chamadas.length };
+    return { recusadas, enviadas: bancada.chamadas.length, iniciais };
   });
-  assert.equal(cota.enviadas, 30); assert.equal(cota.recusadas, 4);
+  assert.equal(cota.enviadas, 30); assert.equal(cota.recusadas, cota.iniciais + 1);
   prova('cota local impede ultrapassar 30 requisições por minuto');
 
   await b.navegar(base + '?escrita=1&cenario=recusar'); await pronto();

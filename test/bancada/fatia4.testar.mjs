@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
+import { PERMISSOES_PADRAO } from './portal-permissoes.mjs';
 import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.27.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.28.0');
 
-const servidor = criarServidor();
+const servidor = criarServidor({ permissoes: { 9999: { ...PERMISSOES_PADRAO, ver_configuracoes: true } } });
 // O contrato legado de configuração é independente do simulador de manutenção.
 const atender = servidor.listeners('request')[0];
 servidor.removeAllListeners('request');
@@ -248,7 +249,7 @@ try {
   await b.esperar(() => document.querySelector('#gi-corpo').textContent.includes('Nenhum'));
   prova('Prestadores: cadastro, edição, categorias, filtros, vazio, desativação e reativação preservam o cadastro');
 
-  await b.navegar(origem + '/app/config.html'); await b.esperar(() => !document.querySelector('#m-campos').disabled);
+  await b.navegar(origem + '/app/config.html?perfil=admin'); await b.esperar(() => !document.querySelector('#m-campos').disabled);
   assert.equal(await valor('#m-alcada'), '250,00');
   await b.preencher('#m-alcada', '300,25'); await b.preencher('#m-alta-resposta', '90'); await b.preencher('#m-normal-solucao', '144');
   await b.clicar('#b-manutencao-salvar'); await b.esperar(() => document.querySelector('#m-resultado').textContent.includes('salva e conferida'));
@@ -305,7 +306,7 @@ try {
   assert.equal(await b.avaliar(() => document.querySelectorAll('#c-orcamentos img, #c-aprovacao img, #c-prestador img, #c-visita img').length), 0);
   assert.equal(await valor('#c-visita-inicio'), ''); assert.equal(await b.avaliar(() => !!window.executouHostil), false);
   await capturar('fatia4-13-chamado-hostil', '#c-orcamentos'); await fechar();
-  await b.navegar(origem + '/app/config.html'); await b.esperar(() => !document.querySelector('#m-campos').disabled);
+  await b.navegar(origem + '/app/config.html?perfil=admin'); await b.esperar(() => !document.querySelector('#m-campos').disabled);
   await b.avaliar(h => { const original = omni.http.request; omni.http.request = async op => {
     const r = await original(op); if (op.url.endsWith('/config/manutencao') && op.method === 'GET') r.body = JSON.stringify({ alcada_centavos: h, sla: h }); return r; }; }, hostil);
   await b.clicar('#b-manutencao-reler'); await b.esperar(() => document.querySelector('#m-resultado').textContent.includes('inválida'));
@@ -318,16 +319,16 @@ try {
   assert.equal(await b.avaliar(() => { const m = document.querySelector('.gi-modal'); return m.scrollWidth <= m.clientWidth + 1; }), true); await fechar();
   await b.navegar(origem + '/app/prestadores.html?tema=escuro'); await b.esperar(() => !!document.querySelector('[data-editar]'));
   await b.captura('fatia4-15-prestadores-390-escuro'); await b.clicar('#b-novo'); await b.captura('fatia4-16-novo-prestador-390-escuro'); await fechar();
-  await b.navegar(origem + '/app/config.html?tema=escuro'); await b.esperar(() => !document.querySelector('#m-campos').disabled); await b.captura('fatia4-17-config-390-escuro');
+  await b.navegar(origem + '/app/config.html?tema=escuro&perfil=admin'); await b.esperar(() => !document.querySelector('#m-campos').disabled); await b.captura('fatia4-17-config-390-escuro');
   for (const tela of ['prestadores', 'config']) for (const modo of ['local', 'fora']) {
     await b.navegar(origem + '/app/' + tela + '.html?modo=' + modo);
-    await b.esperar(tela => tela === 'config' ? document.querySelector('#gi-negado').style.display === 'block' : document.querySelector('#b-novo').disabled, tela);
+    await b.esperar(tela => tela === 'config' ? (GI.modo === 'portal-fora' ? !!document.querySelector('#gi-sem-acesso') : document.querySelector('#gi-negado').style.display === 'block') : document.querySelector('#b-novo').disabled, tela);
     assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST').length), 0);
     assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
   }
   for (const tela of ['prestadores', 'config']) {
     await b.navegar(origem + '/app/' + tela + '.html?demonstracao=1');
-    await b.esperar(tela => tela === 'config' ? document.querySelector('#gi-negado').style.display === 'block' : document.querySelector('#b-novo').disabled, tela);
+    await b.esperar(tela => tela === 'config' ? (GI.modo === 'portal-fora' ? !!document.querySelector('#gi-sem-acesso') : document.querySelector('#gi-negado').style.display === 'block') : document.querySelector('#b-novo').disabled, tela);
     assert.equal(await b.avaliar(() => bancada.rede.length), 0); assert.equal(await b.avaliar(() => bancada.chamadas.length), 0); assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
   }
   assert.deepEqual(b.erros, []);

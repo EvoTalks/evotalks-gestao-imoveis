@@ -643,3 +643,6 @@ body.gi-com-modal > *:not(.gi-modal-fundo) {
   background:#fff!important;color:#1e1e1e;color-scheme:light}
 .gi-modal :is(.gi-modal-topo,.gi-modal-topo h2,.gi-modal-imovel,.gi-modal-imovel-titulo){color:#1e1e1e}
 .gi-modal .gi-modal-imovel{background:#f2f2f2!important}
+
+/* Telas ativas aguardam a autorização antes de exibir os controles. */
+body.gi-permissoes-pendentes > :not(.gi-topo):not(.gi-erro):not(script):not(#gi-sem-acesso) { display: none; }

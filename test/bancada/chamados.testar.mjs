@@ -1,18 +1,19 @@
 import { testarHistorico } from './vinculos.cenarios.mjs';
 import assert from 'node:assert/strict';
+import { PERMISSOES_PADRAO } from './portal-permissoes.mjs';
 import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { testarLoteY } from './lote-y.cenarios.mjs';
 import { testarFotos } from './fotos.cenarios.mjs';
 import { testarStatus } from './status.cenarios.mjs';
 import { testarSimplificacao } from './simplificar.cenarios.mjs';
-const servidor = criarServidor();
+const servidor = criarServidor({ permissoes: { 9999: { ...PERMISSOES_PADRAO, ver_configuracoes: true } } });
 await new Promise(resolve => servidor.listen(0, '127.0.0.1', resolve));
 const origem = 'http://127.0.0.1:' + servidor.address().port;
 let b;
 try {
   b = await abrirChromium();
-  const vinculosServidor = criarServidor();
+  const vinculosServidor = criarServidor({ permissoes: { 9999: { ...PERMISSOES_PADRAO, ver_configuracoes: true } } });
   await new Promise(r => vinculosServidor.listen(0, '127.0.0.1', r));
   try { await testarHistorico(b, 'http://127.0.0.1:' + vinculosServidor.address().port); }
   finally { vinculosServidor.closeAllConnections(); await new Promise(r => vinculosServidor.close(r)); }
@@ -36,7 +37,7 @@ try {
     if (modo === 'demonstracao') assert.equal(await b.avaliar(() => bancada.rede.length), 0);
   }
   await testarLoteY(b, origem);
-  const statusServidor = criarServidor();
+  const statusServidor = criarServidor({ permissoes: { 9999: { ...PERMISSOES_PADRAO, ver_configuracoes: true } } });
   await new Promise(resolve => statusServidor.listen(0, '127.0.0.1', resolve));
   try { await testarStatus(b, 'http://127.0.0.1:' + statusServidor.address().port); }
   finally { statusServidor.closeAllConnections(); await new Promise(resolve => statusServidor.close(resolve)); }
