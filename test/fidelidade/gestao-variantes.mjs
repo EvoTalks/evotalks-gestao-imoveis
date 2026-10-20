@@ -37,7 +37,9 @@ export async function testarGestao() {
         await capturar(b, s.seletor, path.join(SAIDA,'gestao-variantes',quadro+'-'+tema+'.png')); capturas++;
         cores.push(await b.avaliar(sel => getComputedStyle(document.querySelector(sel)).backgroundColor, s.seletor));
       }
-      assert.notEqual(cores[0], cores[1], quadro + ': tema escuro efetivo');
+      // 0.26.3: a janela de edição fica clara nos dois temas; as demais telas seguem o tema.
+      if (s.seletor.includes('gi-modal')) assert.deepEqual(cores, ['rgb(255, 255, 255)', 'rgb(255, 255, 255)'], quadro + ': modal claro nos dois temas');
+      else assert.notEqual(cores[0], cores[1], quadro + ': tema escuro efetivo');
       if (quadro === 'marcar') {
         await b.clicar('[data-modo="catalogo"]');
         assert.equal(await b.avaliar(() => document.querySelector('#l-catalogo').hidden), false);

@@ -27,6 +27,8 @@ Na versão 0.26.0, o cockpit pede Título obrigatório e mostra o valor na revis
 Na versão 0.26.1, só ações, abas e filtros recebem visual de botão; resumo, links e selos/status mantêm o formato compacto de 12–13 px com a tipografia do host.
 Na versão 0.26.2, todo campo de digitar (texto, busca, número, data, seleção e área de texto), nas telas e no cockpit, fica branco com texto preto, mesmo com o EvoTalks no tema escuro (pedido do Marco de 20/10/2026). O seletor de status da lista mantém a cor do status.
 
+Na versão 0.26.3, a janela de edição (como "Editar imóvel") fica sempre clara, com fundo branco e texto preto, também com o EvoTalks no tema escuro (pedido do Marco de 20/10/2026).
+
 O recorte de sucesso conserva as ações da 0.26.0; sua diferença de pixels permanece igual neste ajuste.
 
 O tema dos controles está em `app/controles-atendimento.css`, carregado apenas pelo cockpit e pelo diálogo (`#gi-os`, incluindo seus modais). Ações com fontes de 13–14 px, peso 500 (600 na seleção), ícones secundários de 32×32 px, abas/chips ativos com fundo suave, foco visível e estados hover/ativo/desabilitado substituem a tipografia pequena, a caixa alta e as pílulas escuras do desenho. A fonte dos controles é a família enviada pelo host. Isso altera as dimensões dos recortes do cockpit; nenhuma máscara ou tolerância de fidelidade foi ampliada. As páginas de Gestão fora do atendimento conservam seus estilos.
@@ -36,7 +38,7 @@ O tema dos controles está em `app/controles-atendimento.css`, carregado apenas 
 ## Arquivos
 
 ```
-manifest.json          identidade 0.26.2, config e contribuições
+manifest.json          identidade 0.26.3, config e contribuições
 app/comum.js           SDK omni, persistência, catálogo, locações e formatação
 app/locacao.js         modal compartilhado de cadastro/edição e encerramento de locações
 app/estilo.css         tema por tokens --ext-* (segue a whitelabel da instância)
