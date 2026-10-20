@@ -30,7 +30,7 @@ try {
     assert.match(await b.avaliar(()=>document.querySelector('.dv-foto-contador').textContent),/8 fotos/);
     assert.match(await b.avaliar(()=>document.querySelector('.dv-foto-mais').textContent),/\+3/);
     const geometria=await b.avaliar(()=>{const m=document.querySelector('.gi-visualizacao'),r=m.getBoundingClientRect();return {w:r.width,h:r.height,y:r.y,x:r.x,cols:getComputedStyle(m.querySelector('.dv-grade')).gridTemplateColumns,cor:getComputedStyle(m).color,bg:getComputedStyle(m).backgroundColor};});
-    assert.equal(geometria.w,1120);assert.ok(geometria.h<=850);assert.equal(geometria.x,140);
+    assert.equal(geometria.w,1280);assert.ok(geometria.h<=900);assert.equal(geometria.x,60);
     assert.match(geometria.cols,/340px$/);assert.notEqual(geometria.cor,geometria.bg);
     if(tema==='escuro') assert.notEqual(geometria.bg,'rgb(255, 255, 255)');
     assert.equal(await b.avaliar(()=>!!window.__xss||!!document.querySelector('.gi-modal [onerror]')),false);

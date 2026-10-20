@@ -141,7 +141,7 @@
 .gi .gi-visualizacao .lb-mini[aria-current="true"]{opacity:1;border-color:var(--gi-surface)}
 
 
-.gi .gi-visualizacao { width:min(1120px,calc(100vw - 32px)); min-width:0; max-height:85vh; height:auto; font:14px/1.45 var(--gi-font); --gi-fraco:var(--ext-color-text-muted,#8c8c8c); --gi-borda2:var(--gi-borda); --gi-sombra-opcao:0 1px 3px rgba(0,0,0,.12); --gi-sombra-foto:0 1px 4px rgba(0,0,0,.15); --gi-sombra-modal:0 24px 64px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.08); }
+.gi .gi-visualizacao { width:min(1280px,calc(100vw - 32px)); min-width:0; max-height:90vh; height:auto; font:14px/1.45 var(--gi-font); --gi-fraco:var(--ext-color-text-muted,#8c8c8c); --gi-borda2:var(--gi-borda); --gi-sombra-opcao:0 1px 3px rgba(0,0,0,.12); --gi-sombra-foto:0 1px 4px rgba(0,0,0,.15); --gi-sombra-modal:0 24px 64px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.08); }
 .gi-visualizacao h1,.gi-visualizacao h2,.gi-visualizacao h3,.gi-visualizacao p,.gi-visualizacao dl,.gi-visualizacao dd {margin:0}
 .gi-visualizacao button {font-family:inherit;color:inherit}
 .gi-visualizacao .i {width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
