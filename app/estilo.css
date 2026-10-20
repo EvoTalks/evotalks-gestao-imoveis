@@ -615,3 +615,17 @@ body.gi-com-modal > *:not(.gi-modal-fundo) {
     --gi-acao:var(--ext-color-primary, #e5e7eb);
   }
 }
+
+/* 0.26.2: campo de digitar é sempre branco com texto preto, inclusive com o
+   EvoTalks no tema escuro (pedido do Marco, 20/10/2026). Vale para todas as
+   telas e o cockpit; o seletor de status da lista mantém a cor do status.
+   :where() zera a especificidade para foco, desabilitado e caixa decidirem. */
+:where(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=button],[type=submit],[type=reset],[type=image],[type=hidden]),select:not(.gi-status-select),textarea,.inp),#c-status{background-color:#fff!important;color:#000!important;border-color:#c4c4c4!important;caret-color:#000;color-scheme:light}
+:where(input,select,textarea,.inp):focus,#c-status:focus{border-color:#1e1e1e!important}
+:where(input,select:not(.gi-status-select),textarea):disabled,#c-status:disabled{background-color:#f2f2f2!important;color:#555!important}
+:where(input,textarea)::placeholder{color:#757575!important;opacity:1}
+:where(select:not(.gi-status-select)) option,#c-status option{background:#fff;color:#000}
+:where(.gi-campo-caixa,#c-valor-caixa){background:#fff!important;color:#000;box-shadow:inset 0 0 0 1px #c4c4c4}
+:where(.gi-campo-caixa,#c-valor-caixa):focus-within{box-shadow:inset 0 0 0 1px #1e1e1e}
+:where(.gi-campo-caixa,#c-valor-caixa) label{color:#5f5f5f!important}
+:is(.gi-campo-caixa,#c-valor-caixa) :is(input,select,textarea,#c-status){border-color:transparent!important}
