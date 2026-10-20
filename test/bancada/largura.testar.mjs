@@ -30,23 +30,27 @@ try {
       }
     }
   }
-  for (const largura of [1906, 1152, 800]) {
-    await b.viewport(largura, 883);
+  for (const [largura, altura] of [[1906,1000], [1400,1000], [800,883], [1906,600]]) {
+    await b.viewport(largura, altura);
     await b.navegar(origem + '/app/imoveis.html?perfil=admin');
     await b.esperar(() => !!document.querySelector('[data-detalhe]'));
     await b.clicar('[data-detalhe]');
     await b.esperar(() => !!document.querySelector('.dv-cabeca'));
     const m = await b.avaliar(() => {
       const el = document.querySelector('.gi-visualizacao'), r = el.getBoundingClientRect();
-      return {w:r.width,h:r.height,x:r.x,janela:document.documentElement.clientWidth,cols:getComputedStyle(el.querySelector('.dv-grade')).gridTemplateColumns};
+      return {w:r.width,h:r.height,x:r.x,janela:document.documentElement.clientWidth,galeria:el.querySelector('.dv-galeria,.dv-sem-foto').getBoundingClientRect().height,cols:getComputedStyle(el.querySelector('.dv-grade')).gridTemplateColumns};
     });
-    assert.equal(m.w, Math.min(1280, largura - 32));
+    assert.ok(Math.abs(m.w - (largura < 900 ? largura - 32 : largura * .8)) <= 1, 'largura dinâmica');
+    if (largura === 1400) assert.ok(Math.abs(m.galeria - 380) <= 1, 'galeria fiel ao desenho');
+    if (largura >= 900) assert.ok(m.galeria <= altura * .55 + 1, 'galeria até 55vh');
+    if (largura === 1906 && altura === 1000) assert.ok(m.galeria > 380, 'galeria cresce com a largura');
+    if (largura === 800) assert.equal(m.galeria, 300);
     assert.ok(Math.abs(m.x - (m.janela - m.w) / 2) <= 1, 'centralizado');
-    assert.ok(m.h <= 883 * .9, 'altura até 90%');
+    assert.ok(m.h <= altura * .9, 'altura até 90%');
     if (largura === 800) assert.equal(m.cols.split(' ').length, 1);
   }
   assert.deepEqual(b.erros, []);
-  process.stdout.write('PASS largura: quatro telas 1906/1360px, fidelidade 1360px 0 % de diferença frente ao teto anterior, tabela/filtros, popup 1280/1120px centralizado, 90vh e coluna única 800px; FAIL 0\n');
+  process.stdout.write('PASS largura: quatro telas 1906/1360px, fidelidade 1360px 0 % de diferença frente ao teto anterior, tabela/filtros, popup 80vw em 1906/1400px centralizado, 90vh, galeria proporcional até 55vh e coluna única 800px; FAIL 0\n');
 } finally {
   if (b) await b.fechar();
   servidor.closeAllConnections();

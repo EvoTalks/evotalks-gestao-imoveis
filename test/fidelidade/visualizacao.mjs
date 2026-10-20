@@ -67,7 +67,7 @@ try {
       fonte:getComputedStyle(m).fontFamily };
   });
   await fotosNeutras(b);
-  const tamanho = await capturarEstavel(b,path.join(saida,'desenho.png'));
+  await capturarEstavel(b,path.join(saida,'desenho.png'));
   const campos = ['IPTU','Seguro incêndio','Taxa de administração','Taxa de contrato','Vagas extras','Aceita pet','Mobiliado','Observação da administração'].map((rotulo,i)=>({id:i+1,rotulo,tipo:i<4?'valor':i===6?'checkbox':'texto',ativo:true,ordem:i+1}));
   const valores = [184000,4200,52000,35000].map((valor_centavos,i)=>({campo_id:i+1,valor_centavos,recorrencia:['anual','mensal','mensal','unica'][i]})).concat([
     {campo_id:6,valor_texto:'Sim, até 10kg'}, {campo_id:7,valor_texto:'sim'}, {campo_id:8,valor_texto:'Visitas com 24 h de antecedência.'}
@@ -78,7 +78,7 @@ try {
   imovel.imagens=imovel.imagens.slice(1);
   servidor=criarServidor({portalRealUrl:null,campos,detalhes:{5357422:{imovel,valores}},produtosSinteticos:produtos});
   await new Promise(r=>servidor.listen(0,'127.0.0.1',r));
-  await b.viewport(tamanho.largura+32,2200);
+  await b.viewport(1400,2200);
   await b.navegar('http://127.0.0.1:'+servidor.address().port+'/app/imoveis.html?perfil=admin');
   await b.esperar(()=>!!document.querySelector('[data-detalhe="5357422"]'));
   await b.avaliar(()=>{const cfg=GI.cfg;GI.cfg=(k,d)=>k==='prefixoCodigo'?'535':cfg(k,d);});
