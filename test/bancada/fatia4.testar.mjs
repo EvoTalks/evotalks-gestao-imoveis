@@ -4,7 +4,7 @@ import { criarServidor } from './servidor.mjs';
 import { abrirChromium } from './chromium.mjs';
 import { readFileSync } from 'node:fs';
 
-assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.28.0');
+assert.equal(JSON.parse(readFileSync(new URL('../../manifest.json', import.meta.url))).version, '0.29.0');
 
 const servidor = criarServidor({ permissoes: { 9999: { ...PERMISSOES_PADRAO, ver_configuracoes: true } } });
 // O contrato legado de configuração é independente do simulador de manutenção.
@@ -322,13 +322,13 @@ try {
   await b.navegar(origem + '/app/config.html?tema=escuro&perfil=admin'); await b.esperar(() => !document.querySelector('#m-campos').disabled); await b.captura('fatia4-17-config-390-escuro');
   for (const tela of ['prestadores', 'config']) for (const modo of ['local', 'fora']) {
     await b.navegar(origem + '/app/' + tela + '.html?modo=' + modo);
-    await b.esperar(tela => tela === 'config' ? (GI.modo === 'portal-fora' ? !!document.querySelector('#gi-sem-acesso') : document.querySelector('#gi-negado').style.display === 'block') : document.querySelector('#b-novo').disabled, tela);
+    await b.esperar(tela => tela === 'config' ? (document.querySelector('#gi-negado').style.display === 'block' && document.querySelector('#gi-painel').style.display === 'none') : document.querySelector('#b-novo').disabled, tela);
     assert.equal(await b.avaliar(() => bancada.chamadas.filter(c => c.method === 'POST').length), 0);
     assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
   }
   for (const tela of ['prestadores', 'config']) {
     await b.navegar(origem + '/app/' + tela + '.html?demonstracao=1');
-    await b.esperar(tela => tela === 'config' ? (GI.modo === 'portal-fora' ? !!document.querySelector('#gi-sem-acesso') : document.querySelector('#gi-negado').style.display === 'block') : document.querySelector('#b-novo').disabled, tela);
+    await b.esperar(tela => tela === 'config' ? (document.querySelector('#gi-negado').style.display === 'block' && document.querySelector('#gi-painel').style.display === 'none') : document.querySelector('#b-novo').disabled, tela);
     assert.equal(await b.avaliar(() => bancada.rede.length), 0); assert.equal(await b.avaliar(() => bancada.chamadas.length), 0); assert.equal(await b.avaliar(() => bancada.gravacoesStorage), 0);
   }
   assert.deepEqual(b.erros, []);

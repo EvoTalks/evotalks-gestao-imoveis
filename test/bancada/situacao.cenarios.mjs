@@ -20,7 +20,7 @@ export async function testarSituacao(b, origem) {
     assert.doesNotMatch(await b.avaliar(() => document.querySelector('#gi-nav').textContent), /Locados|Chamados|Prestadores/);
     assert.equal(await b.avaliar(() => document.querySelectorAll('[data-locacao]').length), 0);
   }
-  assert.match(await b.avaliar(() => document.querySelector('.gi-barra').textContent), /Reservado e Indisponível não são oferecidos pela Williane\./);
+  assert.doesNotMatch(await b.avaliar(() => document.querySelector('.gi-barra').textContent), /Reservado e Indisponível não são oferecidos pela Williane\./);
   for (const [situacao, codigo] of [['disponivel', 'DEMO-001'], ['reservado', 'DEMO-002'], ['indisponivel', 'DEMO-003']]) {
     await b.preencher('#f-situacao', situacao);
     assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('[data-situacao]')].map(e => e.dataset.situacao)), [codigo]);

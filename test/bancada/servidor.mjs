@@ -10,7 +10,7 @@ const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const dia = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [] } = {}) {
+export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [], detalhes = {} } = {}) {
   if (fixture && portalRealUrl) throw new Error('Fixture não pode usar portal real.');
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
@@ -126,6 +126,10 @@ export function criarServidor({ falhasUpload = 0, portalRealUrl = process.env.PO
         if (rota === '/historico') return json(200, { eventos: [] });
         if (rota === '/campos') return json(200, { campos });
         if (rota === '/preenchidos') return json(200, { preenchidos: {} });
+        if (req.method === 'GET' && rota.startsWith('/imovel/')) {
+          const codigo = decodeURIComponent(rota.slice('/imovel/'.length));
+          return detalhes[codigo] ? json(200, copia(detalhes[codigo])) : json(404, { erro: 'nao_encontrado' });
+        }
         if (rota.startsWith('/valores/')) {
           const codigo = decodeURIComponent(rota.slice('/valores/'.length));
           if (req.method === 'POST') valores[codigo] = copia(dados.entradas || []);
