@@ -1,0 +1,10 @@
+/* Complementos compartilhados pelas quatro telas ativas. */
+.gi-estado .gi-ponto { background: currentColor; width: 8px; height: 8px; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--gi-acao); outline-offset: 2px; }
+body.gi { min-height:0; margin:0; }
+#gi-total { margin-left:auto; }
+body.gi.gi-com-modal { width:100%; }
+.gi .gi-estado .gi-ponto-off { background:var(--gi-mudo); opacity:.5; }
+.gi .gi-estado .gi-ponto-pendente { background:var(--gi-pendente); }
+.gi .gi-estado .gi-ponto-ok { background:var(--gi-ok); }
+body.gi.gi-com-modal { overflow:visible; min-height:100vh; }

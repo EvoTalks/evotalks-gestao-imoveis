@@ -619,7 +619,7 @@ body.gi-com-modal > *:not(.gi-modal-fundo) {
 
 /* 0.26.2: campo de digitar é sempre branco com texto preto, inclusive com o
    EvoTalks no tema escuro (pedido do Marco, 20/10/2026). Vale para todas as
-   telas e o cockpit; o seletor de status da lista mantém a cor do status.
+   telas; os seletores conservam as cores de cada situação.
    :where() zera a especificidade para foco, desabilitado e caixa decidirem. */
 :where(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=button],[type=submit],[type=reset],[type=image],[type=hidden]),select:not(.gi-status-select),textarea,.inp),#c-status{background-color:#fff!important;color:#000!important;border-color:#c4c4c4!important;caret-color:#000;color-scheme:light}
 :where(input,select,textarea,.inp):focus,#c-status:focus{border-color:#1e1e1e!important}

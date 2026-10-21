@@ -8,7 +8,7 @@ let arquivos = 0, inline = 0, erros = 0;
 const manifest = path.join(raiz, 'manifest.json');
 const versao = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).version : null;
 function auditarEstilosEVisibilidade() {
-  for (const arquivo of ['app/estilo.css', 'app/chamados.css']) {
+  for (const arquivo of ['app/estilo.css', 'app/compartilhado.css']) {
     const nome = path.join(raiz, arquivo);
     if (!existsSync(nome)) continue;
     const css = readFileSync(nome, 'utf8');
@@ -25,26 +25,9 @@ function auditarEstilosEVisibilidade() {
     porId.set(contribuicao.id, contribuicao);
     for (const item of contribuicao.items || []) porId.set(item.id, item);
   }
-  if (!['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'].some(id => porId.has(id))) return;
-  if (['0.27.0', '0.28.0', '0.29.0', '0.29.1', '0.30.0', '0.31.0', '0.31.1', '0.31.2'].includes(dados.version)) {
-    for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-os']) if (porId.has(id)) {
-      erros++; process.stderr.write('manifest.json: contribuição desligada: ' + id + '.\n');
-    }
-  }
-  const restritos = ['gi-locados', 'gi-chamados', 'gi-prestadores'];
   const semRestricao = ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config'];
-  for (const id of restritos) {
-    if (!porId.has(id)) continue;
-    const visibilidade = porId.get(id)?.visibility;
-    if (JSON.stringify(visibilidade) !== JSON.stringify({ userIds: [1, 515, 528, 531] })) {
-      erros++; process.stderr.write('manifest.json: ' + id + ' deve restringir userIds exatamente a [1,515,528,531], sem userTypes.\n');
-    }
-  }
-  for (const id of ['gi-cockpit', 'gi-os']) {
-    if (!porId.has(id)) continue;
-    if (JSON.stringify(porId.get(id)?.visibility?.userTypes) !== '[0,1,2]') {
-      erros++; process.stderr.write('manifest.json: ' + id + ' deve definir userTypes exatamente a [0,1,2].\n');
-    }
+  for (const id of ['gi-locados', 'gi-chamados', 'gi-prestadores', 'gi-cockpit', 'gi-os']) if (porId.has(id)) {
+    erros++; process.stderr.write('manifest.json: contribuição desligada: ' + id + '.\n');
   }
   for (const id of semRestricao) if (porId.get(id)?.visibility) {
     erros++; process.stderr.write('manifest.json: ' + id + ' não deve restringir visibilidade própria.\n');
@@ -66,8 +49,7 @@ function visitar(pasta) {
     else if (/\.(?:js|mjs|cjs)$/.test(item.name)) { arquivos++; validar(nome); }
     else if (/\.html$/.test(item.name)) {
       const html = readFileSync(nome, 'utf8');
-      // Arquivos dormentes são preservados integralmente na 0.27.0.
-      const versaoHtml = ['0.27.0', '0.28.0', '0.29.0', '0.29.1', '0.30.0', '0.31.0', '0.31.1', '0.31.2'].includes(versao) && /^(painel|os|chamados|prestadores)\.html$/.test(item.name) ? '0.26.3' : versao;
+      const versaoHtml = versao;
       for (const tag of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
         const atributo = tag[0].match(/<(script|link)\b[^>]*?\b(src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
         if (versao && atributo) {
