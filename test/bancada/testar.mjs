@@ -1,2 +1,2 @@
-// A bancada principal acompanha o fluxo ativo da extensão 0.29.1.
+// Bancada principal das telas ativas.
 import './situacao.testar.mjs';

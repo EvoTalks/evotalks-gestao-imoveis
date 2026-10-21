@@ -64,20 +64,12 @@ try {
   b = await abrirChromium();
   const total = {};
   for (const tema of ['claro', 'escuro']) {
-    await b.viewport(315, 1100);
-    await b.navegar(origem + '/app/painel.html?escrita=1&tema=' + tema);
-    await b.esperar(() => !!document.querySelector('[data-gestao]'));
-    await b.clicar('#cp-tab-novo');
-    if (await b.avaliar(() => !!document.querySelector('#cp-novo-imovel'))) await b.preencher('#cp-novo-imovel', await b.avaliar(() => document.querySelector('#cp-novo-imovel').options[1].value));
-    await b.esperar(() => !!document.querySelector('#cp-titulo'));
-    total['cockpit-novo-' + tema] = await campos('cockpit-novo-' + tema);
     await b.viewport(1280, 900);
-    await b.navegar(origem + '/app/os.html?chamado=1&targetchat=8802&tema=' + tema);
-    await b.esperar(() => !!document.querySelector('#c-orc-nome') && !document.querySelector('#c-status').disabled);
-    total['os-' + tema] = await campos('os-' + tema);
-    for (const tela of ['chamados', 'imoveis',  'prestadores']) {
-      await b.navegar(origem + '/app/' + tela + '.html?tema=' + tema);
-      await b.esperar(() => document.readyState === 'complete' && !!document.querySelector('input, select, textarea'));
+    for (const tela of ['imoveis', 'campos', 'historico', 'config']) {
+      await b.navegar(origem + '/app/' + tela + '.html?perfil=admin&tema=' + tema);
+      await b.esperar(() => !document.body.classList.contains('gi-permissoes-pendentes') && !!document.querySelector('#gi-nav .gi-nav-ativo'));
+      if (tela === 'campos') { await b.clicar('#b-novo'); await b.esperar(() => !!document.querySelector('#m-nome')); }
+      await b.esperar(() => !!document.querySelector('input, select, textarea'));
       total[tela + '-' + tema] = await campos(tela + '-' + tema);
     }
   }

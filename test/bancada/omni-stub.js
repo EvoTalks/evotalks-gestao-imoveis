@@ -9,8 +9,7 @@
   document.body.insertBefore(banner, document.body.firstChild);
   var ctx = { user: { id: Number(params.get('usuario')) || 9999, name: 'Agente Demonstração', type: 2 }, config: {
     portalUrl: modo === 'local' ? '' : 'http://portal.bancada.invalid',
-    portalToken: modo === 'local' ? '' : 'bancada-sintetica', marca: 'DEMONSTRACAO', prefixoCodigo: 'DEMO-',
-    cockpitAbreChamado: params.get('escrita') === '1', modoDemonstracao: params.get('demonstracao') === '1'
+    portalToken: modo === 'local' ? '' : 'bancada-sintetica', marca: 'DEMONSTRACAO', prefixoCodigo: 'DEMO-'
   }, theme: { tokens: {} } };
   if (params.get('tema') === 'escuro') ctx.theme.tokens = {
     '--ext-color-bg': '#17191d', '--ext-color-surface': '#24272e', '--ext-color-surface-alt': '#30343d',
@@ -28,8 +27,7 @@
   window.fetch = localFetch;
   var armazenamento = {}, assinantes = {};
   if (params.get('sdk') === 'hostil') ctx.user.name = 'Agente “Sintético” 😀';
-  ctx.contribution = { params: params.has('chamado') && !params.has('semparams') ? { chamadoId: params.get('chamado'), chatId: params.get('targetchat'), contatoId: params.get('contato') || (params.has('lote1') ? 9913 : 9901) } : {} };
-  if (params.has('alvo')) armazenamento['gi-os-alvo'] = { chamadoId: Number(params.get('alvo')), contatoId: 9901, em: Date.now() - Number(params.get('idade') || 0) };
+  ctx.contribution = { params: {} };
   var contatos = [
     { id: 9901, name: 'Locatário Demonstração Um', phone: '00000000001', document: '00000000000', email: 'um@example.invalid' },
     { id: 9902, name: 'Locatário Demonstração Dois', phone: '00000000002', document: '00000000000', email: 'dois@example.invalid' },
@@ -128,7 +126,6 @@
       if (modo === 'fora' && !window.bancada.portalRestaurado) return Promise.resolve({ status: 503, body: JSON.stringify({ erro: 'portal_indisponivel' }) });
       return localFetch(url.pathname + url.search, { method: op.method, headers: op.headers, body: op.body }).then(function (r) {
         return r.text().then(function (body) {
-          if (window.bancada.perderResposta && op.method === 'POST' && /\/chamados$/.test(url.pathname)) { window.bancada.perderResposta = false; return falhar('timeout', 'Resposta perdida após gravar'); }
           return { status: r.status, body: body };
         });
       });
@@ -156,16 +153,15 @@
     } },
     storage: { get: function (k) {
       if (params.has('semstorage')) return falhar('indisponivel', 'Storage indisponível.');
-      var valor = Object.hasOwn(armazenamento, k) ? armazenamento[k] : (k === 'gi-os-alvo' || k === 'gi-pessoa-v1' || k === 'gi-cockpit-snapshots-v1' && params.has('persistir')) ? JSON.parse(sessionStorage.getItem(k) || 'null') : undefined;
+      var valor = armazenamento[k];
       return Promise.resolve(valor);
     }, set: function (k, v) {
       if (params.has('semstorage')) return falhar('indisponivel', 'Storage indisponível.');
       window.bancada.gravacoesStorage++; armazenamento[k] = v;
-      if (k === 'gi-os-alvo' || k === 'gi-pessoa-v1' || k === 'gi-cockpit-snapshots-v1' && params.has('persistir')) sessionStorage.setItem(k, JSON.stringify(v));
       return Promise.resolve();
     }, remove: function (k) {
       if (params.has('semstorage')) return falhar('indisponivel', 'Storage indisponível.');
-      delete armazenamento[k]; if (k === 'gi-os-alvo') sessionStorage.removeItem(k);
+      delete armazenamento[k];
       window.bancada.remocoesStorage = (window.bancada.remocoesStorage || 0) + 1;
       return Promise.resolve({ key: k, removed: true });
     } },
@@ -176,7 +172,7 @@
       window.bancada.aberturas.push({ id: id, params: dados || {} });
       if (window.bancada.falharContribuicao) return falhar(window.bancada.falharContribuicao, 'Contribuição indisponível.');
       if (window.bancada.navegarContribuicao === false) return Promise.resolve({ opened: true });
-      var telas = { 'gi-os': 'os', 'gi-imoveis': 'imoveis', 'gi-campos': 'campos', 'gi-historico': 'historico', 'gi-config': 'config', 'gi-chamados': 'chamados', 'gi-prestadores': 'prestadores', 'gi-cockpit': 'painel' };
+      var telas = { 'gi-imoveis': 'imoveis', 'gi-campos': 'campos', 'gi-historico': 'historico', 'gi-config': 'config' };
       if (!telas[id]) return Promise.reject(new Error('Tela não simulada.'));
       var query = new URLSearchParams(location.search);
       if (dados && dados.chamadoId) query.set('chamado', dados.chamadoId);

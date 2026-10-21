@@ -6,7 +6,6 @@
 
   var GI = {};
   // Liberação temporária do teste: remover junto com userIds no manifest.
-  GI.GESTORES_EXTRA = [531];
   var ctx = null;
 
   /* ---------------------------------------------------------------- contexto */
@@ -42,59 +41,6 @@
   };
   GI.usuariosOrdenados = function () {
     return GI.usuarios().then(function () { return ordemUsuarios.slice(); });
-  };
-
-  /* A plataforma conserva o contato do chat; esta preferência só é da extensão. */
-  var pessoas = Object.create(null);
-  var pessoasPendentes = Object.create(null);
-  function podarPessoas() {
-    Object.keys(pessoas).forEach(function (k) {
-      var p = pessoas[k], idade = p && Date.now() - Number(p.em);
-      if (!GI.id(k) || !p || !GI.id(p.contactId) || !Number.isFinite(idade) || idade < 0 || idade > 7 * 86400000) delete pessoas[k];
-    });
-  }
-  GI.pessoas = {
-    ler: function (semStorage) {
-      if (semStorage) return Promise.resolve();
-      return Promise.resolve().then(function () { return omni.storage.get('gi-pessoa-v1'); }).then(function (r) {
-        var atuais = Object.create(null);
-        Object.keys(r || {}).forEach(function (k) {
-          var p = r[k];
-          if (p && GI.id(p.contactId)) atuais[k] = { contactId: GI.id(p.contactId), nome: String(p.nome || ''), em: p.em };
-        });
-        Object.keys(pessoasPendentes).forEach(function (k) {
-          if (Object.hasOwn(pessoas, k)) atuais[k] = pessoas[k];
-          else delete atuais[k];
-        });
-        pessoas = atuais;
-        podarPessoas();
-      }).catch(function () {});
-    },
-    obter: function (c) { podarPessoas(); return c && pessoas[String(c.id)] || null; },
-    escolher: function (c, p, semStorage) {
-      return GI.pessoas.ler(semStorage).then(function () {
-        if (!c || !GI.id(c.id)) return;
-        if (p && GI.id(p.id)) pessoas[String(c.id)] = { contactId: GI.id(p.id), nome: GI.nomeContato(p), em: Date.now() };
-        else delete pessoas[String(c.id)];
-        podarPessoas();
-        if (!semStorage) return Promise.resolve().then(function () { return omni.storage.set('gi-pessoa-v1', pessoas); }).then(function () {
-          delete pessoasPendentes[String(c.id)];
-        }).catch(function () { pessoasPendentes[String(c.id)] = true; });
-      });
-    }
-  };
-  GI.contatoEfetivo = function (c) { var p = GI.pessoas.obter(c); return p ? p.contactId : GI.id(c && c.contactId); };
-  GI.telefoneDiscreto = function (v) {
-    var telefone = String(v || ''), digitos = telefone.replace(/\D/g, '');
-    if (/^55\d{10,11}$/.test(digitos)) digitos = digitos.slice(2);
-    if (/^\(\d{2}\) \d ••••-\d{4}$/.test(telefone) && telefone === telefone.trim()) return telefone;
-    if (digitos.length >= 10) return '(' + digitos.slice(0, 2) + ') ' + (digitos.length >= 11 ? digitos.charAt(2) + ' ' : '') + '••••-' + digitos.slice(-4);
-    return digitos ? '••••' + (digitos.length > 4 ? '-' + digitos.slice(-4) : '') : '';
-  };
-  GI.mascaraCpf = function (v) {
-    var texto = String(v || ''), d = texto.replace(/\D/g, '');
-    if (/^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto)) return texto;
-    return d.length === 11 ? '***.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-**' : '—';
   };
 
   /** Troca o ID pelo nome quando der; devolve o valor original quando não. */
@@ -203,23 +149,6 @@
     GI.recado(texto, 'erro', modal && modal.querySelector('[data-recado-form]')); GI.ajustarAltura();
   };
   GI.id = function (v) { var n = Number(v); return Number.isSafeInteger(n) && n > 0 ? n : null; };
-  GI.textoOuNull = function (v) { return typeof v !== 'string' && typeof v !== 'number' || typeof v === 'number' && !Number.isFinite(v) || String(v).trim() === '' ? null : String(v); };
-  GI.nomeContato = function (pessoa, chat) {
-    pessoa = pessoa || {}; chat = chat || {};
-    var contatoId = GI.id(pessoa.id) || GI.contatoEfetivo(chat), outro = contatoId && contatoId !== GI.id(chat.contactId);
-    var reserva = outro ? {} : chat.contact || {};
-    var valores = [pessoa.name, reserva.name, pessoa.phone, reserva.phone];
-    for (var i = 0; i < valores.length; i++) if (GI.textoOuNull(valores[i])) return String(valores[i]).trim();
-    return 'Contato ' + (outro && GI.id(chat.contactId) ? '#' : '') + (contatoId || 'sem identificação');
-  };
-  GI.dataDoChat = function (v) {
-    if (typeof v === 'number') {
-      if (!Number.isFinite(v) || v <= 0) return null;
-      if (v < 1e11) v *= 1000;
-    } else if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(v) || !/(Z|[+-]\d{2}:?\d{2})$/i.test(v)) return null;
-    var d = new Date(v), ano = d.getUTCFullYear();
-    return Number.isFinite(d.getTime()) && ano >= 2000 && ano <= 2100 ? d.toISOString() : null;
-  };
   GI.mostrarDemonstracao = function () {
     var ativo = GI.cfg('modoDemonstracao', false) === true || new URLSearchParams(location.search).get('demonstracao') === '1';
     var faixa = document.getElementById('gi-demo-global');
@@ -238,24 +167,13 @@
   };
   GI.autorCabecalho = function (v) { return String(v || '').replace(/[^\x00-\xff]/g, '?').replace(/[\x00-\x20\x7f-\x9f]+/g, ' ').trim(); };
   var errosPortal = {
-    locacao_encerrada: 'Esta locação foi encerrada. Escolha outra locação ativa.',
-    nao_encontrada: 'Esta locação não foi encontrada. Atualize a consulta.', nao_encontrado: 'Este registro não foi encontrado. Atualize a consulta.',
+    nao_encontrado: 'Este registro não foi encontrado. Atualize a consulta.',
     api_desabilitada: 'A conexão do portal está desabilitada. Verifique a configuração.', falha_interna: 'O portal não conseguiu concluir a operação. Tente de novo em instantes.',
     situacao_invalida: 'Situação inválida.',
     codigo_invalido: 'Código do imóvel inválido.',
-    imovel_ja_locado: 'Este imóvel já está locado. Inclua o contato na locação existente.',
-    aprovacao_pendente: 'Aguardando o proprietário. Registre a decisão em Gestão → Aprovação.',
-    aprovacao_recusada: 'O proprietário recusou o orçamento. Escolha outro orçamento antes de aprovar.',
-    aprovacao_nao_necessaria: 'Este orçamento não precisa de aprovação do proprietário.',
-    sem_visita: 'Agende a visita antes de mudar para Agendado.', sem_orcamento_escolhido: 'Escolha um orçamento antes de mudar para Aprovação.',
-    limite_anexos: 'O limite de fotos foi atingido. Envie menos arquivos.', arquivo_grande: 'Esta foto é muito grande. Escolha uma foto menor.',
-    orcamento_escolhido: 'O orçamento escolhido não pode ser removido. Escolha outro orçamento primeiro.',
-    chamado_encerrado: 'Este chamado está encerrado. Use Reabrir para voltar à Triagem.',
     rate_limited: 'Limite de consultas atingido. Aguarde um minuto e tente novamente.', rate_limit: 'Limite de consultas atingido. Aguarde um minuto e tente novamente.'
   };
-  var rotulosCampos = { titulo: 'Título', imovel: 'Imóvel', imovel_codigo: 'Imóvel', locacao_id: 'Imóvel', nome: 'Nome', telefone: 'Telefone', contato_id: 'Contato', solicitante: 'Solicitante',
-    valor: 'Valor', valor_centavos: 'Valor', valor_estimado_centavos: 'Valor estimado', canal: 'Canal', chat_id: 'Atendimento', protocolo: 'Protocolo', fila: 'Fila', iniciado_em: 'Início do atendimento',
-    disponibilidade: 'Quando dá para entrar', chaves: 'Chaves / acesso', sem_cliente: 'Autoriza entrar sem o cliente', acesso: 'Acesso', user_id: 'Atendente', file_ref: 'Arquivo', descricao: 'Descrição', categoria: 'Categoria', prioridade: 'Prioridade', texto: 'Nota', inicio: 'Início', fim: 'Fim', contatos: 'Contatos', contrato_numero: 'Contrato', prestador_nome: 'Prestador', aluguel: 'Aluguel', valor_aluguel_centavos: 'Aluguel', dia_vencimento: 'Vencimento', garantia: 'Garantia', endereco: 'Endereço', bairro: 'Bairro', cidade: 'Cidade', tipo: 'Tipo', papel: 'Papel', email: 'E-mail', observacao: 'Observação' };
+  var rotulosCampos = { titulo: 'Título', imovel: 'Imóvel', imovel_codigo: 'Imóvel', nome: 'Nome', valor: 'Valor', valor_centavos: 'Valor', descricao: 'Descrição', tipo: 'Tipo', observacao: 'Observação' };
   GI.mensagemErro = function (err) {
     err = err || {}; var d = err.dados || {}, codigo = d.erro || err.code || err.message;
     if (err.status === 0 || /Http failure response|Unknown Error|ERR_[A-Z_]+|NetworkError|Failed to fetch|\bstatus 0\b|extensionsruntime/i.test([typeof err === 'string' ? err : '', err.message, err.code, d.erro, d.detalhe].join(' '))) return 'Não consegui falar com o servidor. Confira sua conexão e tente de novo.';
@@ -267,7 +185,7 @@
       if (d.campos.valor_estimado_centavos && /orçamento escolhido/i.test(String(d.campos.valor_estimado_centavos))) return 'Valor estimado: o valor vem do orçamento escolhido. Para mudar, escolha outro orçamento.';
       return Object.keys(d.campos).map(function (k) {
         var chave = k.split('.').pop(), rotulo = Object.hasOwn(rotulosCampos, chave) ? rotulosCampos[chave] : null;
-        if (!rotulo) return 'Não foi possível abrir o chamado. Confira os dados e tente de novo.';
+        if (!rotulo) return 'Não foi possível concluir. Confira os dados e tente de novo.';
         var motivo = String(d.campos[k]);
         if (/^Informe um texto/.test(motivo)) motivo = 'preencha este campo com texto válido.';
         return rotulo + ': ' + motivo;
@@ -280,20 +198,6 @@
     if (err.status || /\bHTTP\b/i.test(codigo || '') || /^[a-z_]+$/.test(codigo || '')) return 'Não foi possível concluir a operação. Tente de novo em instantes.';
     return err.message || 'Não foi possível concluir a operação. Tente de novo em instantes.';
   };
-  GI.criarFila = function (limite) {
-    var pendentes = [], ativos = 0;
-    function proxima() {
-      while (ativos < limite && pendentes.length) {
-        (function (tarefa) {
-          ativos++;
-          Promise.resolve().then(tarefa.fn).then(tarefa.resolve, tarefa.reject).finally(function () { ativos--; proxima(); });
-        })(pendentes.shift());
-      }
-    }
-    return function (fn) { return new Promise(function (resolve, reject) { pendentes.push({ fn: fn, resolve: resolve, reject: reject }); proxima(); }); };
-  };
-  GI.filaArquivos = GI.criarFila(4);
-
   /* --------------------------------------------------------------- guardados
 
      DOIS MODOS, e é aqui — e só aqui — que a diferença mora:
@@ -320,28 +224,6 @@
   function tokenDoPortal() { return String(GI.cfg('portalToken', '')).trim(); }
 
   GI.usaPortal = function () { return !!(baseDoPortal() && tokenDoPortal()); };
-
-  GI.CHAVE_SNAPSHOTS = 'gi-cockpit-snapshots-v1';
-  GI.CHAVE_ESCRITA = 'gi-ultima-escrita';
-  GI.instanciaId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  GI.pendenciaExterna = 0;
-  GI.invalidarSnapshots = function () {
-    // A marca independe da leitura/invalidação do cache: cada operação é opcional.
-    var marca, invalidacao;
-    function publicarMarca() { return omni.storage.set(GI.CHAVE_ESCRITA, { em: Date.now(), por: GI.instanciaId }); }
-    try {
-      marca = Promise.resolve().then(function () { return omni.storage.get(GI.CHAVE_ESCRITA); }).then(function (v) {
-        if (typeof GI.cockpitCarregadoEm === 'function' && v && v.por !== GI.instanciaId && v.em > GI.cockpitCarregadoEm()) GI.pendenciaExterna = Math.max(GI.pendenciaExterna, v.em);
-        return publicarMarca();
-      }, publicarMarca).catch(function () {});
-    } catch (_) { marca = Promise.resolve(); }
-    try {
-      invalidacao = Promise.resolve(omni.storage.get(GI.CHAVE_SNAPSHOTS)).then(function (snapshot) {
-        if (snapshot) return omni.storage.set(GI.CHAVE_SNAPSHOTS, { origem: GI.cfg('portalUrl', ''), rows: [] });
-      }).catch(function () {});
-    } catch (_) { invalidacao = Promise.resolve(); }
-    return Promise.all([marca, invalidacao]);
-  };
 
   /* Como a chamada sai daqui, e por que NÃO é sempre fetch.
      A CSP do contêiner libera em connect-src apenas o origin de onde o HTML
@@ -438,7 +320,6 @@
     var url = baseDoPortal() + caminho;
     return Promise.resolve().then(function () { return mesmaOrigem() ? viaFetch(url, opcoes) : viaOmni(url, opcoes); }).then(function (r) {
       var metodo = String(opcoes.method || (opcoes.corpo !== undefined ? 'POST' : 'GET')).toUpperCase();
-      if (/^(POST|PUT|PATCH|DELETE)$/.test(metodo)) return GI.invalidarSnapshots().then(function () { return r; });
       return r;
     }).catch(function (err) {
       if (!(err instanceof Error) || !Object.isExtensible(err)) {
@@ -506,39 +387,6 @@
   GI.salvarSituacao = function (codigo, situacao) {
     if (GI.modo !== 'portal') return Promise.reject(new Error('Situação exige o portal conectado'));
     return GI.chamarPortal('/imoveis/' + encodeURIComponent(codigo) + '/situacao', { corpo: { situacao: situacao } });
-  };
-
-  /* Locações são compartilhadas com a assistente: nunca têm cópia no storage. */
-  function chamarLocacoes(caminho, corpo) {
-    if (GI.modo !== 'portal') return Promise.reject(new Error('Locados exigem o portal conectado'));
-    return GI.chamarPortal(caminho, corpo === undefined ? undefined : { corpo: corpo });
-  }
-  GI.locacoes = function (filtros) {
-    var qs = Object.keys(filtros || {}).filter(function (k) {
-      return filtros[k] !== '' && filtros[k] !== null && filtros[k] !== undefined;
-    }).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(filtros[k]); });
-    return chamarLocacoes('/locacoes' + (qs.length ? '?' + qs.join('&') : ''));
-  };
-  GI.locacoesMapa = function () {
-    return chamarLocacoes('/locacoes/mapa').then(function (r) { return r.locados || {}; });
-  };
-  GI.locacoesCandidatas = function (dias) { return chamarLocacoes('/locacoes/candidatas?dias=' + encodeURIComponent(dias || 60)); };
-  GI.locacoesObter = function (id) { return chamarLocacoes('/locacoes/' + encodeURIComponent(id)); };
-  GI.locacoesCriar = function (dados) { return chamarLocacoes('/locacoes', dados); };
-  GI.locacoesAtualizar = function (id, dados) { return chamarLocacoes('/locacoes/' + encodeURIComponent(id), dados); };
-  GI.locacoesEncerrar = function (id, motivo) { return chamarLocacoes('/locacoes/' + encodeURIComponent(id) + '/encerrar', { motivo: motivo }); };
-  GI.buscarContatos = function (termo) {
-    if (!global.omni || !omni.contacts || !omni.contacts.search) {
-      return Promise.reject(new Error('Busca de contatos indisponível neste perfil.'));
-    }
-    return Promise.resolve().then(function () {
-      return omni.contacts.search(String(termo || '').trim(), { limit: 100 });
-    }).then(function (r) {
-      var lista = Array.isArray(r) ? r : (r && (r.contacts || r.rows)) || GI.lista(r);
-      return lista.filter(function (c) { return c && GI.id(c.id); }).map(function (c) {
-        return { id: GI.id(c.id), name: GI.nomeContato(c), phone: GI.textoOuNull(c.phone) || '', email: GI.textoOuNull(c.email) || '' };
-      });
-    });
   };
 
   function ler(chave, padrao) {
@@ -971,20 +819,6 @@
     return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  GI.janelaVisita = function (inicio, fim) {
-    var a = new Date(inicio), b = new Date(fim);
-    if (!inicio || !Number.isFinite(a.getTime())) return '';
-    function dia(d) { return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '') + ' ' + d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); }
-    function hora(d) { return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(/:00$/, 'h').replace(':', 'h'); }
-    return dia(a) + ' · ' + hora(a) + (fim && Number.isFinite(b.getTime()) ? ' às ' + (a.toLocaleDateString('pt-BR') !== b.toLocaleDateString('pt-BR') ? dia(b) + ' · ' : '') + hora(b) : '');
-  };
-
-  GI.slaSolucaoTexto = function (config, prioridade) {
-    var sla = config && config.sla, regra = sla && Object.hasOwn(sla, prioridade) && sla[prioridade];
-    var horas = regra && Number(regra.solucao_h);
-    return Number.isFinite(horas) && horas > 0 ? horas + 'h' : '';
-  };
-
   GI.escapar = function (s) {
     return String(s === undefined || s === null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1241,13 +1075,7 @@
 
   /* -------------------------------------------------------------- navegação */
 
-  function telaDeGestao(id) { return ['gi-locados', 'gi-chamados', 'gi-prestadores'].indexOf(id) >= 0; }
-  GI.gestor = function () {
-    var c = GI.ctx(), u = c && c.user;
-    return !!(u && (u.type === 0 || GI.GESTORES_EXTRA.indexOf(Number(u.id)) !== -1));
-  };
   GI.abrirTela = function (contributionId) {
-    if (telaDeGestao(contributionId) && !GI.gestor()) { GI.aviso('Esta tela é exclusiva do administrador.', 'info'); return; }
     try {
       var r = omni.ui.openContribution(contributionId);
       if (r && r.catch) r.catch(function () { GI.aviso('Abra pelo menu Gerenciamento de Imóveis.', 'info'); });
