@@ -9,7 +9,7 @@
   document.body.insertBefore(banner, document.body.firstChild);
   var ctx = { user: { id: Number(params.get('usuario')) || 9999, name: 'Agente Demonstração', type: 2 }, config: {
     portalUrl: modo === 'local' ? '' : 'http://portal.bancada.invalid',
-    portalToken: modo === 'local' ? '' : 'bancada-sintetica', marca: 'DEMONSTRACAO', prefixoCodigo: 'DEMO-'
+    portalToken: modo === 'local' ? '' : 'bancada-sintetica', permitirEnvio: !params.has('semenvio'), marca: 'DEMONSTRACAO', prefixoCodigo: 'DEMO-'
   }, theme: { tokens: {} } };
   if (params.get('tema') === 'escuro') ctx.theme.tokens = {
     '--ext-color-bg': '#17191d', '--ext-color-surface': '#24272e', '--ext-color-surface-alt': '#30343d',
@@ -62,6 +62,18 @@
     (assinantes[nome] || []).slice().forEach(function (fn) { fn(copia(dados)); });
   }
   window.bancada = { toasts: [], chamadas: [], gravacoesStorage: 0, mensagens: [], eventos: [], rede: [], aberturas: [], fechamentos: 0, navegarContribuicao: true };
+  /* atrasoSelecao (ms): getSelected() segue devolvendo o chat anterior, como o host faz por ~6 s. */
+  var atrasado = { ativo: false, id: null };
+  window.bancada.alturas = [];
+  window.bancada.selecionarChat = function (n) {
+    if (window.bancada.atrasoSelecao) {
+      atrasado = { ativo: true, id: selecionado };
+      var marca = atrasado;
+      setTimeout(function () { marca.ativo = false; }, window.bancada.atrasoSelecao);
+    }
+    selecionado = n == null ? null : Number(n);
+    emitir('omniChatSelected', n == null ? null : chat(n));
+  };
   window.omni = {
     queueTypes: Object.freeze({ WHATSAPP: 0, TELEGRAM: 1, MESSENGER: 2, WEBCHAT: 3, INSTAGRAM: 4, WEBCHAT_V2: 47 }),
     on: function (nome, fn) { (assinantes[nome] || (assinantes[nome] = [])).push(fn); return function () { window.omni.off(nome, fn); }; },
@@ -69,7 +81,7 @@
     queues: { list: function () { return window.bancada.falharLista ? falhar('rate_limit', 'Limite de consultas.') : Promise.resolve([{ id: 91, name: 'Fila Um' }, { id: 92, name: 'Fila Dois' }, { id: 93, name: 'Fila Supervisor' }]); } },
     users: { list: function () { return params.has('semusuarios') ? falhar('indisponivel', 'Lista indisponível.') : Promise.resolve(copia(usuarios)); } },
     chats: {
-      getSelected: function () { return Promise.resolve(copia(chat(selecionado) || null)); },
+      getSelected: function () { return Promise.resolve(copia(chat(atrasado.ativo ? atrasado.id : selecionado) || null)); },
       get: function (n) { return chat(n) ? Promise.resolve(copia(chat(n))) : falhar('not_found', 'Atendimento não encontrado.'); },
       listMine: function () { if (window.bancada.falharLista) return falhar('rate_limit', 'Limite de consultas.'); return Promise.resolve(copia(chats.filter(function (c) { return c.userId === ctx.user.id; }))); },
       listByQueue: function (queueId) {
@@ -97,7 +109,7 @@
       sendMessage: function (n, payload) {
         if (!chat(n)) return falhar('not_found', 'Atendimento não encontrado.');
         if (window.bancada.recusarEnvio) return falhar('forbidden', 'Janela de 24 horas encerrada.');
-        if (!payload || !payload.text && !payload.fileUrl) return falhar('bad_args', 'Mensagem vazia.');
+        if (!payload || !payload.text && !payload.fileUrl && !payload.fileId) return falhar('bad_args', 'Mensagem vazia.');
         if (window.bancada.semConfirmarEnvio) return Promise.resolve({ sent: false });
         window.bancada.mensagens.push({ chatId: Number(n), payload: copia(payload) });
         return Promise.resolve({ sent: true, id: 'DEMO-ENVIO-' + window.bancada.mensagens.length });
@@ -165,7 +177,7 @@
       window.bancada.remocoesStorage = (window.bancada.remocoesStorage || 0) + 1;
       return Promise.resolve({ key: k, removed: true });
     } },
-    ui: { resize: function () { return Promise.resolve(); }, toast: function (msg, tipo) {
+    ui: { resize: function (h) { window.bancada.alturas.push(h); return Promise.resolve(); }, toast: function (msg, tipo) {
       window.bancada.toasts.push({ texto: String(msg), tipo: tipo });
       banner.textContent = 'BANCADA LOCAL · ' + msg;
     }, close: function () { window.bancada.fechamentos++; return Promise.resolve(); }, openContribution: function (id, dados) {

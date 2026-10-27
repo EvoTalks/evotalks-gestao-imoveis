@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imóveis</title>
+<link rel="stylesheet" href="estilo.css?v=0.34.0">
+<link rel="stylesheet" href="cockpit.css?v=0.34.0">
+</head>
+<body class="cp-body">
+<main class="cp" id="cp" aria-label="Busca de imóveis">
+
+  <!-- ------------------------------------------------------------ lista -->
+  <section class="cp-vista" id="cp-lista">
+    <div class="cp-topo">
+      <p class="cp-destino" id="cp-destino" role="status" aria-live="polite">Nenhum atendimento aberto</p>
+      <input id="cp-q" type="search" autocomplete="off" placeholder="Buscar imóvel (código, bairro, palavra…)" aria-label="Buscar imóvel">
+      <div class="cp-filtros" role="group" aria-label="Filtros">
+        <div class="cp-seg" role="group" aria-label="Transação">
+          <button type="button" data-trans="Venda" aria-pressed="false">Venda</button>
+          <button type="button" data-trans="Locacao" aria-pressed="false">Locação</button>
+        </div>
+        <select id="cp-cidade" aria-label="Cidade"><option value="">Cidade</option></select>
+        <select id="cp-bairro" aria-label="Bairro"><option value="">Bairro</option></select>
+        <select id="cp-quartos" aria-label="Quartos">
+          <option value="">Quartos</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option>
+        </select>
+        <input id="cp-valor" type="text" inputmode="numeric" autocomplete="off" placeholder="Valor até (R$)" aria-label="Valor até, em reais">
+        <button type="button" id="cp-limpar" class="cp-limpar" hidden>Limpar</button>
+      </div>
+      <div class="cp-meta">
+        <span id="cp-contagem" role="status" aria-live="polite">carregando…</span>
+        <span id="cp-dica-envio" class="cp-dica"></span>
+      </div>
+    </div>
+    <div class="cp-recado" id="cp-recado" role="status" aria-live="polite" hidden></div>
+    <div class="cp-rolagem" id="cp-rolagem">
+      <ul class="cp-itens" id="cp-itens"></ul>
+      <p class="cp-vazio" id="cp-vazio" hidden>Nenhum imóvel encontrado com esses filtros.</p>
+      <div class="cp-erro" id="cp-erro" role="alert" hidden><span id="cp-erro-txt"></span><button type="button" class="cp-btn" id="cp-tentar">Tentar de novo</button></div>
+      <button type="button" class="cp-mais" id="cp-mais" hidden>Carregar mais</button>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- detalhe -->
+  <section class="cp-vista" id="cp-detalhe" hidden>
+    <div class="cp-topo cp-topo--detalhe">
+      <div class="cp-linha"><button type="button" class="cp-voltar" id="cp-voltar">← Voltar</button><p class="cp-destino" id="cp-destino-d">Nenhum atendimento aberto</p></div>
+      <span class="cp-dica" id="cp-dica-envio-d"></span>
+    </div>
+    <div class="cp-recado" id="cp-recado-d" role="status" aria-live="polite" hidden></div>
+    <div class="cp-rolagem" id="cp-corpo"></div>
+  </section>
+
+  <div class="cp-ampliada" id="cp-ampliada" hidden role="dialog" aria-modal="true" aria-label="Foto ampliada">
+    <button type="button" class="cp-ampliada-x" id="cp-ampliada-x" aria-label="Fechar foto">×</button>
+    <img id="cp-ampliada-img" alt="Foto ampliada">
+  </div>
+
+  <p class="cp-estado" id="cp-estado" hidden></p>
+</main>
+<script src="comum.js?v=0.34.0"></script>
+<script src="busca.js?v=0.34.0"></script>
+<script src="visualizacao.js?v=0.34.0"></script>
+<script src="cockpit.js?v=0.34.0"></script>
+</body>
+</html>

@@ -90,7 +90,7 @@ export async function testarSituacao(b, origem) {
   assert.equal(await b.avaliar(() => document.querySelector('[data-situacao]').getAttribute('aria-label')), 'Situação de ><img src=x onerror=window.__situacaoXss=1>');
   const manifest = await (await fetch(origem + '/manifest.json')).json();
   assert.deepEqual(manifest.contributions[0].items.map(i => i.id), ['gi-imoveis', 'gi-campos', 'gi-historico', 'gi-config']);
-  assert.equal(manifest.contributions.length, 1);
+  assert.deepEqual(manifest.contributions.map(c => c.id), ['gestao-imoveis', 'gi-busca']);
   assert.equal((await fetch(origem + '/app/locados.html')).status, 404);
   assert.equal((await fetch(origem + '/app/locacao.js')).status, 404);
   assert.deepEqual(b.erros, []);

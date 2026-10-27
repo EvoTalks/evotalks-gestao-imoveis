@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "evotalks.gestao-imoveis",
-  "version": "0.33.3",
+  "version": "0.34.0",
   "name": "Gerenciamento de Imóveis",
   "description": "Gestão de Imóveis com situação (Disponível, Reservado, Indisponível), campos internos e histórico de autoria.",
   "author": {
@@ -33,6 +33,13 @@
       "type": "string",
       "default": "535",
       "help": "O código do site não mostra o prefixo da imobiliária (5350060 vira 0060)."
+    },
+    {
+      "key": "permitirEnvio",
+      "label": "Permitir enviar imóveis ao cliente pelo painel",
+      "type": "boolean",
+      "default": false,
+      "help": "Liga os botões de envio do card e das fotos no painel Imóveis do atendimento."
     },
     {
       "key": "rotulo",
@@ -96,6 +103,19 @@
           }
         }
       ]
+    },
+    {
+      "id": "gi-busca",
+      "type": "chatPanel",
+      "title": "Imóveis",
+      "url": "app/cockpit.html",
+      "visibility": {
+        "userTypes": [
+          0,
+          1,
+          2
+        ]
+      }
     }
   ],
   "icon": "app/icone-casa.svg"
