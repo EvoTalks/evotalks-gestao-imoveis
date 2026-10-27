@@ -6,7 +6,7 @@
     var estado = op.estado;
     try { if (op.layout) C.validar(op.layout, GI.modo === 'local'); } catch (e) { op.layout = null; }
     var layout = C.mesclar(op.layout,estado.campos), filtros = {}, ordem = null;
-    var tabela = document.querySelector('#gi-lista table'), timer, popover, ultimoFoco;
+    var tabela = document.querySelector('#gi-lista table'), timer, popover, colunaAberta, catalogoAplicado;
     var gravacoes = {}, revisoes = {}, valoresEm = 0, cargaValores = null, camposEmCache = '', mapaColunas = {}, chaveSessao = 'gi.filtros.' + GI.idUsuarioColunas();
     try { var salvo = JSON.parse(sessionStorage.getItem(chaveSessao)); if (salvo && salvo.filtros && typeof salvo.filtros === 'object' && Object.keys(salvo.filtros).every(function (id) { return Array.isArray(salvo.filtros[id]); })) { filtros = salvo.filtros; ordem = salvo.ordem; } } catch (e) { /* storage indisponível */ }
     function porId(id) { return layout.filter(function (c) { return c.id === id; })[0]; }
@@ -75,12 +75,13 @@
     }
     function completo() { return !!(Object.keys(filtros).length || ordem || estado.filtroEstado || estado.filtroSituacao); }
     function buscar() {
+      var base = catalogoAplicado; catalogoAplicado = null;
       if (!completo()) {
         var precisa = visiveis().some(function (c) { return !!c.campo; });
         return Promise.all([GI.buscarImoveis({termo:estado.termo,finalidade:estado.finalidade,pagina:estado.pagina,porPagina:estado.porPagina}), precisa ? carregarValores() : Promise.resolve()]).then(function (r) { return r[0]; });
       }
       var inicio = Date.now();
-      return catalogo().then(function (todos) {
+      return (base ? Promise.resolve(base) : catalogo()).then(function (todos) {
         var linhas = todos.filter(function (p) {
           return (!estado.filtroSituacao || op.situacao(p.internalcode) === estado.filtroSituacao) &&
             (!estado.filtroEstado || (op.quantos(p.internalcode) > 0) === (estado.filtroEstado === 'preenchido'));
@@ -94,19 +95,24 @@
         return { itens:linhas.slice(inicioPagina,inicioPagina + estado.porPagina),total:linhas.length,ms:Date.now()-inicio,completo:true };
       });
     }
-    function fechar() { if (!popover) return; popover.remove(); popover = null; if (ultimoFoco && document.contains(ultimoFoco)) ultimoFoco.focus(); }
-    document.addEventListener('keydown',function (e) { if (e.key === 'Escape') fechar(); });
+    var pedidoFunil = 0;
+    function fechar(teclado) { pedidoFunil++; if (!popover) return; popover.remove(); popover = null; var origem = tabela.querySelector('[data-funil="' + colunaAberta + '"]'); colunaAberta = null; if (teclado === true && origem) origem.focus({preventScroll:true}); }
+    document.addEventListener('keydown',function (e) { if (e.key === 'Escape') fechar(true); });
     document.addEventListener('pointerdown',function (e) { if (popover && !popover.contains(e.target) && !e.target.closest('[data-funil]')) fechar(); });
     function funil(id,botao) {
-      fechar(); ultimoFoco = botao; botao.disabled = true;
+      if (popover && colunaAberta === id) { fechar(true); return; }
+      fechar(); var pedido = ++pedidoFunil; botao.disabled = true;
       catalogo(id).then(function (todos) {
-        if (!document.contains(botao)) return;
+        if (pedido !== pedidoFunil) return;
+        var atual = tabela.querySelector('[data-funil="' + id + '"]'); if (!atual) return;
+        botao = atual;
+        Array.prototype.forEach.call(document.querySelectorAll('.gi-col-popover'),function (o) { o.remove(); });
         var c = porId(id), selecionados = filtros[id] ? filtros[id].slice() : null;
+        colunaAberta = id;
         popover = document.createElement('div'); popover.className = 'gi-col-popover'; popover.setAttribute('role','dialog'); popover.setAttribute('aria-label','Filtro de ' + c.titulo);
         var numerico = id === 'valor' || id === 'codigo' || id === 'preenchido' || c.campo && (c.campo.tipo === 'numero' || c.campo.tipo === 'valor');
         popover.innerHTML = '<strong>' + GI.escapar(c.titulo) + '</strong><button type="button" data-ordem="asc">' + (numerico ? 'Menor → maior' : 'Classificar A→Z') + '</button><button type="button" data-ordem="desc">' + (numerico ? 'Maior → menor' : 'Classificar Z→A') + '</button>' +
-          '<button type="button" data-limpar>Limpar filtro desta coluna</button><input aria-label="Buscar valores" type="search" placeholder="Buscar valores"><label><input type="checkbox" data-todos checked> (Selecionar tudo)</label><div class="gi-col-valores"></div><small data-limite></small><div>Alinhar: <button type="button" data-alinhar="esquerda">Esquerda</button><button type="button" data-alinhar="centro">Centro</button><button type="button" data-alinhar="direita">Direita</button></div>' +
-          '<label><input type="checkbox" data-vertical' + (c.vertical ? ' checked' : '') + '> Texto vertical</label><button type="button" data-ocultar>Ocultar coluna</button><div><button type="button" data-ok>OK</button><button type="button" data-cancelar>Cancelar</button></div>';
+          '<input aria-label="Buscar valores" type="search" placeholder="Buscar valores"><label><input type="checkbox" data-todos checked> <span data-rotulo-todos>(Selecionar tudo)</span></label><div class="gi-col-valores"></div><small data-limite></small>';
         document.body.appendChild(popover);
         var painel = popover, rect = botao.getBoundingClientRect();
         painel.style.left = Math.max(8,Math.min(rect.left,innerWidth - 300)) + 'px'; painel.style.top = Math.max(8,Math.min(rect.bottom,innerHeight - painel.offsetHeight - 8)) + 'px';
@@ -114,8 +120,19 @@
         todos.forEach(function (p) { distintosTodos[C.chave(valor(p,id))] = true; });
         var todosDistintos = Object.keys(distintosTodos);
         if (!selecionados) selecionados = todosDistintos.slice();
+        function aplicar() {
+          if (selecionados.length > 0 && todosDistintos.every(function (v) { return selecionados.indexOf(v) >= 0; })) delete filtros[id];
+          else filtros[id] = selecionados.slice();
+          catalogoAplicado = todos;
+          atualizar();
+        }
+        function marcarOrdem() {
+          Array.prototype.forEach.call(painel.querySelectorAll('[data-ordem]'),function (b) { b.setAttribute('aria-pressed',String(!!(ordem && ordem.id === id && ordem.desc === (b.getAttribute('data-ordem') === 'desc')))); });
+        }
         function lista() {
-          var r = C.distintos(todos,id,valor,painel.querySelector('input[type=search]').value);
+          var busca = painel.querySelector('input[type=search]').value;
+          painel.querySelector('[data-rotulo-todos]').textContent = busca ? '(Selecionar todos os resultados)' : '(Selecionar tudo)';
+          var r = C.distintos(todos,id,valor,busca);
           painel.querySelector('.gi-col-valores').innerHTML = r.itens.map(function (x) { return '<label><input type="checkbox" data-valor="' + GI.escapar(x.valor) + '"' + (selecionados.indexOf(x.valor) >= 0 ? ' checked' : '') + '> ' + GI.escapar(id === 'valor' && x.valor !== '' ? GI.dinheiro(Number(x.valor)) : c.campo && c.campo.tipo === 'valor' && x.valor !== '' ? GI.dinheiro(Math.round(Number(x.valor) * 100)) : x.texto) + ' (' + x.contagem + ')</label>'; }).join('');
           painel.querySelector('[data-limite]').textContent = r.total > 1000 ? 'Lista limitada a 1.000 valores. Use a busca.' : '';
           function conferirTodos() {
@@ -124,17 +141,22 @@
             painel.querySelector('[data-todos]').indeterminate = quantidade > 0 && quantidade < r.itens.length;
           }
           conferirTodos();
-          Array.prototype.forEach.call(painel.querySelectorAll('[data-valor]'),function (b) { b.onchange = function () { var v = b.getAttribute('data-valor'); selecionados = selecionados.filter(function (x) { return x !== v; }); if (b.checked) selecionados.push(v); conferirTodos(); }; });
+          Array.prototype.forEach.call(painel.querySelectorAll('[data-valor]'),function (b) { b.onchange = function () { var v = b.getAttribute('data-valor'); selecionados = selecionados.filter(function (x) { return x !== v; }); if (b.checked) selecionados.push(v); conferirTodos(); aplicar(); }; });
         }
         painel.querySelector('input[type=search]').oninput = lista;
-        painel.querySelector('[data-todos]').onchange = function (e) { C.distintos(todos,id,valor,painel.querySelector('input[type=search]').value).itens.forEach(function (x) { selecionados = selecionados.filter(function (v) { return v !== x.valor; }); if (e.target.checked) selecionados.push(x.valor); }); lista(); };
-        Array.prototype.forEach.call(painel.querySelectorAll('[data-ordem]'),function (b) { b.onclick = function () { ordem = {id:id,desc:b.getAttribute('data-ordem') === 'desc'}; fechar(); atualizar(); }; });
-        painel.querySelector('[data-limpar]').onclick = function () { delete filtros[id]; if (ordem && ordem.id === id) ordem = null; fechar(); atualizar(); };
-        Array.prototype.forEach.call(painel.querySelectorAll('[data-alinhar]'),function (b) { b.onclick = function () { c.alinhamento = b.getAttribute('data-alinhar'); fechar(); mudou(); }; });
-        painel.querySelector('[data-vertical]').onchange = function (e) { c.vertical = e.target.checked; fechar(); mudou(); };
-        painel.querySelector('[data-ocultar]').onclick = function () { c.visivel = false; fechar(); mudou(); };
-        painel.querySelector('[data-cancelar]').onclick = fechar;
-        painel.querySelector('[data-ok]').onclick = function () { if (selecionados.length > 0 && todosDistintos.every(function (v) { return selecionados.indexOf(v) >= 0; })) delete filtros[id]; else filtros[id] = selecionados; fechar(); atualizar(); };
+        painel.querySelector('[data-todos]').onchange = function (e) {
+          var busca = painel.querySelector('input[type=search]').value;
+          var resultados = todosDistintos.filter(function (v) { return (v || '(Vazias)').toLowerCase().indexOf(busca.toLowerCase()) >= 0; });
+          if (e.target.checked) selecionados = busca ? resultados : todosDistintos.slice();
+          else selecionados = selecionados.filter(function (v) { return resultados.indexOf(v) < 0; });
+          lista(); aplicar();
+        };
+        Array.prototype.forEach.call(painel.querySelectorAll('[data-ordem]'),function (b) { b.onclick = function () {
+          var desc = b.getAttribute('data-ordem') === 'desc';
+          ordem = ordem && ordem.id === id && ordem.desc === desc ? null : {id:id,desc:desc};
+          marcarOrdem(); aplicar();
+        }; });
+        marcarOrdem();
         painel.onkeydown = function (e) {
           if (e.key !== 'Tab') return;
           var focus = painel.querySelectorAll('button,input'), first = focus[0], last = focus[focus.length-1];
@@ -152,13 +174,14 @@
         var inicio = e.clientX, largura = th.getBoundingClientRect().width, alvo = null, ativo = false;
         th.onpointermove = function (ev) {
           if (Math.abs(ev.clientX-inicio) < 4 && !ativo) return;
-          ativo = true;
+          ativo = true; if (resize) th.classList.add('gi-col-redimensionando');
           if (resize) { c.largura = Math.max(40,Math.min(1200,Math.round(largura + ev.clientX - inicio))); th.style.width = c.largura + 'px'; tabela.querySelector('col[data-coluna="' + c.id + '"]').style.width = c.largura + 'px'; }
           else { Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (h) { h.classList.remove('gi-col-destino'); }); var h = document.elementFromPoint(ev.clientX,ev.clientY); h = h && h.closest('th'); if (h && h !== th && h.hasAttribute('data-coluna')) { alvo = h.getAttribute('data-coluna'); h.classList.add('gi-col-destino'); } }
         };
-        function fim() { th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; if (ativo) { if (!resize && alvo) mover(c.id,alvo); mudou(); } }
+        function fim() { th.classList.remove('gi-col-redimensionando'); th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; if (ativo) { if (!resize && alvo) mover(c.id,alvo); mudou(); } }
         th.onpointerup = fim; th.onpointercancel = fim;
       };
+      if (c.id === 'funcoes') return;
       th.querySelector('[data-redimensionar]').ondblclick = function () { c.largura = null; mudou(); };
     }
     function desenhar() {
@@ -166,12 +189,15 @@
       var padrao = C.padrao([]), largurasPadrao = {};
       padrao.forEach(function (c) { largurasPadrao[c.id] = c.largura; });
       var personalizado = cols.some(function (c) { return !!c.campo || c.largura !== largurasPadrao[c.id]; });
+      // No layout fixo, uma coluna sem largura absorve a sobra; assim Funções nunca passa de LARGURA_FUNCOES.
+      var absorve = personalizado ? (cols.filter(function (c) { return c.id === 'imovel'; })[0] || cols.filter(function (c) { return c.id !== 'funcoes'; }).slice(-1)[0] || {}).id : null;
+      function larg(c) { return c.id === absorve ? null : c.largura; }
       tabela.style.tableLayout = personalizado ? 'fixed' : '';
       tabela.style.minWidth = personalizado ? cols.reduce(function (s,c) { return s + (c.largura || 220); },0) + 'px' : '';
       tabela.style.overflowWrap = personalizado ? 'anywhere' : '';
       if (!grupo) { grupo = document.createElement('colgroup'); tabela.insertBefore(grupo,tabela.firstChild); }
-      grupo.innerHTML = cols.map(function (c) { return '<col data-coluna="' + GI.escapar(c.id) + '"' + (c.largura ? ' style="width:' + c.largura + 'px"' : '') + '>'; }).join('');
-      tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '" data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"' + (c.largura ? ' style="width:' + c.largura + 'px"' : '') + '><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span><span data-redimensionar role="separator" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span></th>'; }).join('');
+      grupo.innerHTML = cols.map(function (c) { return '<col data-coluna="' + GI.escapar(c.id) + '"' + (larg(c) ? ' style="width:' + larg(c) + 'px"' : '') + '>'; }).join('');
+      tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '" data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"' + (larg(c) ? ' style="width:' + larg(c) + 'px"' : '') + '><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span>' + (c.id === 'funcoes' ? '' : '<span data-redimensionar role="separator" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span>') + '</th>'; }).join('');
       Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (th) { var c = porId(th.getAttribute('data-coluna')); arrastar(th,c); var b = th.querySelector('[data-funil]'); if (b) b.onclick = function () { funil(c.id,b); }; });
       Array.prototype.forEach.call(tabela.querySelectorAll('tbody tr'),function (tr,i) {
         var cells = Array.prototype.slice.call(tr.children), fixas = ['capa','codigo','imovel','bairro','valor','preenchido','status','situacao','funcoes'];
@@ -182,6 +208,7 @@
           var td, indice = fixas.indexOf(c.id);
           if (indice >= 0) td = cells[indice];
           else { td = document.createElement('td'); var v = lancamento(p.internalcode,c.id.slice(6)); td.innerHTML = GI.escapar(C.textoCampo(c.campo,v,GI)); if (v && v.obs) td.title = v.obs; }
+          td.setAttribute('data-coluna',c.id);
           td.classList.remove('gi-direita');
           td.classList.add('gi-alinha-' + c.alinhamento); tr.appendChild(td);
         });
@@ -192,7 +219,7 @@
       GI.modal({titulo:'Colunas',largura:900,corpo:'<div id="gi-editor-colunas"></div><button type="button" id="gi-col-padrao" class="btn">Restaurar padrão</button>',rotuloOk:'Salvar',aoAbrir:function () {
         var caixa = document.getElementById('gi-editor-colunas');
         function montar() {
-          caixa.innerHTML = rascunho.map(function (c,i) { return '<div class="gi-col-editor-linha" data-indice="' + i + '">' + (c.id !== 'funcoes' ? '<span data-arrastar aria-label="Arrastar ' + GI.escapar(c.titulo) + '">⋮⋮</span>' : '<span class="gi-col-sem-alca"></span>') + '<label><input type="checkbox" data-visivel' + (c.visivel ? ' checked' : '') + (c.id === 'funcoes' ? ' disabled' : '') + '> ' + GI.escapar(c.titulo) + '</label><button type="button" data-subir aria-label="Subir ' + GI.escapar(c.titulo) + '"' + (i === 0 || c.id === 'funcoes' ? ' disabled' : '') + '>↑</button><button type="button" data-descer aria-label="Descer ' + GI.escapar(c.titulo) + '"' + (i >= rascunho.length-2 ? ' disabled' : '') + '>↓</button><input type="number" data-largura min="40" max="1200" aria-label="Largura de ' + GI.escapar(c.titulo) + '" placeholder="auto" value="' + (c.largura || '') + '"><div>' + ['esquerda','centro','direita'].map(function (a) { return '<button type="button" data-alinhamento="' + a + '" aria-pressed="' + (c.alinhamento === a) + '">' + a + '</button>'; }).join('') + '</div><label><input type="checkbox" data-vertical' + (c.vertical ? ' checked' : '') + '> Texto vertical</label></div>'; }).join('');
+          caixa.innerHTML = rascunho.map(function (c,i) { return '<div class="gi-col-editor-linha" data-indice="' + i + '">' + (c.id !== 'funcoes' ? '<span data-arrastar aria-label="Arrastar ' + GI.escapar(c.titulo) + '">⋮⋮</span>' : '<span class="gi-col-sem-alca"></span>') + '<label><input type="checkbox" data-visivel' + (c.visivel ? ' checked' : '') + (c.id === 'funcoes' ? ' disabled' : '') + '> ' + GI.escapar(c.titulo) + '</label><button type="button" data-subir aria-label="Subir ' + GI.escapar(c.titulo) + '"' + (i === 0 || c.id === 'funcoes' ? ' disabled' : '') + '>↑</button><button type="button" data-descer aria-label="Descer ' + GI.escapar(c.titulo) + '"' + (i >= rascunho.length-2 ? ' disabled' : '') + '>↓</button><input type="number" data-largura min="40" max="1200" aria-label="Largura de ' + GI.escapar(c.titulo) + '" placeholder="auto" value="' + (c.largura || '') + '"' + (c.id === 'funcoes' ? ' disabled' : '') + '><div>' + ['esquerda','centro','direita'].map(function (a) { return '<button type="button" data-alinhamento="' + a + '" aria-pressed="' + (c.alinhamento === a) + '">' + a + '</button>'; }).join('') + '</div><label><input type="checkbox" data-vertical' + (c.vertical ? ' checked' : '') + '> Texto vertical</label></div>'; }).join('');
           Array.prototype.forEach.call(caixa.children,function (linha,i) {
             var c = rascunho[i];
             linha.querySelector('[data-visivel]').onchange = function (e) { c.visivel = e.target.checked; };

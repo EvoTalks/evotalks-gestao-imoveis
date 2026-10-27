@@ -32,16 +32,17 @@ try {
  assert.match(await b.avaliar(()=>document.querySelector('#gi-resumo').textContent),/0 imóveis/);
  } else if(caso===2){
  await b.clicar('[data-funil="codigo"]');await b.esperar(()=>!!document.querySelector('[data-todos]'));
- await b.clicar('[data-todos]');await b.clicar('[data-valor="001"]');await b.clicar('[data-ok]');
+ await b.clicar('[data-todos]');await b.clicar('[data-valor="001"]');await b.clicar('[data-funil="codigo"]');
  await b.preencher('#f-termo','DEMO-002');await b.clicar('#b-buscar');
  await b.clicar('[data-funil="codigo"]');await b.esperar(()=>!!document.querySelector('[data-valor="002"]'));
- await b.clicar('[data-ok]');await b.esperar(()=>!document.querySelector('.gi-col-popover'));
+ await b.clicar('[data-funil="codigo"]');await b.esperar(()=>!document.querySelector('.gi-col-popover'));
  assert.equal(await b.avaliar(()=>!!document.querySelector('[data-excluir="DEMO-002"]')),false);
  } else if(caso===3){
  const r=await b.avaliar(()=>{const t=document.querySelector('th[data-coluna="valor"] .gi-col-titulo').getBoundingClientRect(),f=document.querySelector('[data-funil="valor"]').getBoundingClientRect();return {dy:Math.abs(t.y+t.height/2-f.y-f.height/2),dx:f.x-t.right};});
  assert.ok(r.dy<2&&r.dx>=0&&r.dx<10,JSON.stringify(r));
  await writeFile(new URL('../resultados-colunas/correcao-cabecalho-horizontal.png',import.meta.url),Buffer.from((await b.cdp('Page.captureScreenshot',{format:'png'})).data,'base64'));
- await b.clicar('[data-funil="valor"]');await b.esperar(()=>!!document.querySelector('.gi-col-popover [data-vertical]'));await b.clicar('.gi-col-popover [data-vertical]');
+ await b.clicar('#b-colunas');await b.esperar(()=>!!document.querySelector('#gi-editor-colunas'));
+ await b.avaliar(()=>[...document.querySelectorAll('.gi-col-editor-linha')].find(l=>l.textContent.includes('Valor')).querySelector('[data-vertical]').click());await b.clicar('.gi-modal [data-ok]');await b.esperar(()=>!document.querySelector('.gi-modal'));
  const v=await b.avaliar(()=>{const h=document.querySelector('th[data-coluna="valor"]').getBoundingClientRect(),t=document.querySelector('th[data-coluna="valor"] .gi-col-titulo').getBoundingClientRect(),f=document.querySelector('[data-funil="valor"]').getBoundingClientRect();return {dy:f.y-t.bottom,dx:Math.abs(f.x+f.width/2-h.x-h.width/2)};});
  assert.ok(v.dy>=0&&v.dx<2,JSON.stringify(v));
  await writeFile(new URL('../resultados-colunas/correcao-cabecalho-vertical.png',import.meta.url),Buffer.from((await b.cdp('Page.captureScreenshot',{format:'png'})).data,'base64'));

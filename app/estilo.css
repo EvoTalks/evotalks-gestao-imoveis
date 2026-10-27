@@ -698,3 +698,13 @@ body.gi-permissoes-pendentes > :not(.gi-topo):not(.gi-erro):not(script):not(#gi-
 .gi .gi-col-cabecalho:not(.gi-col-cabecalho-vertical) { max-width:calc(100% - 10px); }
 .gi .gi-col-cabecalho:not(.gi-col-cabecalho-vertical) .gi-col-titulo { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gi .gi-col-cabecalho:not(.gi-col-cabecalho-vertical) .gi-col-funil { position:absolute; left:100%; top:50%; transform:translateY(-50%); }
+
+/* Separadores sem acrescentar largura às colunas. */
+.gi [data-redimensionar]::after { content:''; position:absolute; top:0; bottom:0; left:50%; width:1px; transform:translateX(-50%); background:#c5cbcf; }
+.gi [data-redimensionar]:hover::after,
+.gi .gi-col-redimensionando [data-redimensionar]::after { width:2px; background:#2A2E30; }
+.gi #gi-lista [data-coluna="funcoes"]:not(col) { position:sticky; right:0; z-index:3; background:var(--gi-surface); box-shadow:inset 1px 0 #c5cbcf,-3px 0 5px #0001; }
+.gi #gi-lista th[data-coluna="funcoes"] { z-index:4; }
+.gi #gi-lista tbody tr:hover [data-coluna="funcoes"] { background:linear-gradient(var(--gi-acao-suave),var(--gi-acao-suave)),linear-gradient(var(--gi-surface),var(--gi-surface)); }
+.gi .gi-col-popover [aria-pressed=true] { background:#2A2E30; color:#fff; }
+.gi #gi-lista [data-coluna="funcoes"] button svg { pointer-events:none; }
