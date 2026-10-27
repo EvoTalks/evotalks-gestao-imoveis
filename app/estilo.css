@@ -708,3 +708,4 @@ body.gi-permissoes-pendentes > :not(.gi-topo):not(.gi-erro):not(script):not(#gi-
 .gi #gi-lista tbody tr:hover [data-coluna="funcoes"] { background:linear-gradient(var(--gi-acao-suave),var(--gi-acao-suave)),linear-gradient(var(--gi-surface),var(--gi-surface)); }
 .gi .gi-col-popover [aria-pressed=true] { background:#2A2E30; color:#fff; }
 .gi #gi-lista [data-coluna="funcoes"] button svg { pointer-events:none; }
+.gi [data-espacador] { padding:0; }

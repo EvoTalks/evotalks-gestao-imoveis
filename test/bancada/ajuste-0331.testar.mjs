@@ -94,14 +94,14 @@ await caso('correção: dois pedidos rápidos abrem só o último popover',async
  await b.esperar(()=>!!document.querySelector('.gi-col-popover'));await new Promise(r=>setTimeout(r,400));
  assert.deepEqual(await b.avaliar(()=>[...document.querySelectorAll('.gi-col-popover')].map(p=>p.getAttribute('aria-label'))),['Filtro de Bairro']);
 });
-await caso('Funções fica em 104 px com table-layout fixed e Imóvel largo',async()=>{
+await caso('Funções fica em 104 px com table-layout fixed: Imóvel 300 px e espaçador com a sobra',async()=>{
  await b.cdp('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});await abrir();
  await b.clicar('#b-colunas');await b.esperar(()=>!!document.querySelector('[data-largura]'));
  await b.avaliar(()=>{for(const l of document.querySelectorAll('.gi-col-editor-linha')){const v=l.querySelector('[data-visivel]');if(l.textContent.includes('Campo adicional')&&v.checked)v.click();
   if(/^\s*⋮⋮\s*Imóvel/.test(l.textContent)||l.querySelector('label').textContent.trim()==='Imóvel'){const i=l.querySelector('[data-largura]');i.value='300';i.dispatchEvent(new Event('input',{bubbles:true}));}}});
  await b.clicar('.gi-modal [data-ok]');await b.esperar(()=>!document.querySelector('.gi-modal')&&!document.querySelector('th[data-coluna="campo:1"]')&&!!document.querySelector('th[data-coluna="imovel"]'));
- const r=await b.avaliar(()=>{const t=document.querySelector('.gi-tabela-rolagem'),f=document.querySelector('th[data-coluna="funcoes"]').getBoundingClientRect();return {w:f.width,delta:Math.abs(f.right-t.getBoundingClientRect().right),sobra:t.scrollWidth-t.clientWidth,fixed:getComputedStyle(document.querySelector('#gi-lista table')).tableLayout};});
- assert.equal(r.fixed,'fixed');assert.equal(r.w,104,JSON.stringify(r));assert.ok(r.delta<=1,JSON.stringify(r));
+ const r=await b.avaliar(()=>{const t=document.querySelector('.gi-tabela-rolagem'),f=document.querySelector('th[data-coluna="funcoes"]').getBoundingClientRect();return {w:f.width,delta:Math.abs(f.right-t.getBoundingClientRect().right),sobra:t.scrollWidth-t.clientWidth,imovel:document.querySelector('th[data-coluna="imovel"]').getBoundingClientRect().width,esp:document.querySelector('th[data-espacador]').getBoundingClientRect().width,fixed:getComputedStyle(document.querySelector('#gi-lista table')).tableLayout};});
+ assert.equal(r.fixed,'fixed');assert.equal(Math.round(r.imovel),300,JSON.stringify(r));assert.ok(r.esp>0,JSON.stringify(r));assert.equal(r.w,104,JSON.stringify(r));assert.ok(r.delta<=1,JSON.stringify(r));
  await b.cdp('Emulation.setDeviceMetricsOverride',{width:900,height:1000,deviceScaleFactor:1,mobile:false});
  await b.esperar(()=>{const t=document.querySelector('.gi-tabela-rolagem');return t.scrollWidth>t.clientWidth;});
  const e=await b.avaliar(()=>({imovel:document.querySelector('th[data-coluna="imovel"]').getBoundingClientRect().width,funcoes:document.querySelector('th[data-coluna="funcoes"]').getBoundingClientRect().width}));

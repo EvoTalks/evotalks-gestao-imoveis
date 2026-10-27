@@ -63,9 +63,9 @@ test('ativos: erros simples, campos ativos, códigos e falhas de rede', () => {
   }
 });
 
-test('ativos: manifest 0.33.1 monta só quatro telas e cabeçalho segue sua ordem', () => {
+test('ativos: manifest 0.33.2 monta só quatro telas e cabeçalho segue sua ordem', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.33.1');
+  assert.equal(m.version, '0.33.2');
   assert.equal(m.contributions.length, 1);
   assert.deepEqual(m.contributions[0].items.map(i => i.id), paginas.map(p => 'gi-' + p));
   assert.deepEqual(m.contributions[0].items.map(i => i.url), paginas.map(p => 'app/' + p + '.html'));

@@ -1,4 +1,4 @@
-# Gerenciamento de Imóveis — 0.33.1
+# Gerenciamento de Imóveis — 0.33.2
 
 Quatro telas: Imóveis, Campos, Histórico e Configurações.
 Ordens de serviço estão na extensão `evotalks.ordens-servico`.
@@ -97,7 +97,9 @@ Sempre restrito a você primeiro: a entrega é **imediata** para todo usuário q
 
 Execute `node --test test/*.test.mjs`, `node test/checar.mjs` e cada `test/bancada/*.testar.mjs` com timeout de 280 segundos.
 
-### Colunas (0.33.1)
+### Colunas (0.33.2)
 Na tela Imóveis, **Colunas** define visibilidade, ordem, largura, alinhamento e texto vertical por usuário. Arraste cabeçalhos ou suas bordas; o funil filtra e ordena o catálogo inteiro. Filtros temporários ficam nesta sessão. Um campo Sim/Não pode ser marcado como **Fora da Williane** na tela Campos.
 
 Na 0.33.1, separadores destacam as bordas dos cabeçalhos. Funções encerra a tabela com 104 px fixos e permanece visível durante a rolagem horizontal. O funil aplica classificação e seleção imediatamente; aparência e visibilidade continuam no botão Colunas.
+
+Na 0.33.2, arrastar a borda direita de uma coluna muda só a largura dela, como no Excel: no primeiro movimento as larguras renderizadas são congeladas, as colunas à esquerda ficam paradas e a sobra vira um espaço vazio antes de Funções.
