@@ -165,18 +165,22 @@
         lista(); painel.querySelector('input[type=search]').focus();
       }).catch(GI.erroFatal).then(function () { botao.disabled = false; });
     }
+    var arrastando = false, redesenhoPendente = false;
     function arrastar(th,c) {
+      var daAlca = false;
       th.onpointerdown = function (e) {
+        daAlca = e.target.hasAttribute('data-redimensionar');
         if (e.button !== 0 || e.target.closest('button')) return;
-        var resize = e.target.hasAttribute('data-redimensionar');
+        var resize = daAlca;
         if (!resize && c.id === 'funcoes') return;
         e.preventDefault(); th.setPointerCapture(e.pointerId);
         var inicio = e.clientX, largura = 0, alvo = null, ativo = false;
+        arrastando = true;
         th.onpointermove = function (ev) {
           if (resize) {
             if (!ativo) {
-              if (ev.clientX === inicio) return;
-              // Primeiro movimento: congela todas as larguras renderizadas, sem salto visual.
+              if (Math.abs(ev.clientX - inicio) < 4) return;
+              // Passou da zona morta: congela todas as larguras renderizadas, sem salto visual.
               ativo = true; th.classList.add('gi-col-redimensionando'); congelar(); largura = c.largura;
             }
             c.largura = Math.max(40,Math.min(1200,Math.round(largura + ev.clientX - inicio)));
@@ -187,11 +191,22 @@
           ativo = true;
           Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (h) { h.classList.remove('gi-col-destino'); }); var h = document.elementFromPoint(ev.clientX,ev.clientY); h = h && h.closest('th'); if (h && h !== th && h.hasAttribute('data-coluna')) { alvo = h.getAttribute('data-coluna'); h.classList.add('gi-col-destino'); }
         };
-        function fim() { th.classList.remove('gi-col-redimensionando'); th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; if (ativo) { if (!resize && alvo) mover(c.id,alvo); mudou(); } }
+        function fim() {
+          th.classList.remove('gi-col-redimensionando'); th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; arrastando = false;
+          if (ativo) { if (!resize && alvo) mover(c.id,alvo); redesenhoPendente = false; mudou(); }
+          else if (redesenhoPendente) { redesenhoPendente = false; op.redesenhar(); }
+        }
         th.onpointerup = fim; th.onpointercancel = fim;
       };
       if (c.id === 'funcoes') return;
-      th.querySelector('[data-redimensionar]').ondblclick = function () { c.largura = null; mudou(); };
+      // Com a captura do ponteiro o duplo clique chega ao th, não à alça: vale quando o gesto começou na alça.
+      th.ondblclick = function (e) {
+        if (!daAlca && !(e.target.hasAttribute && e.target.hasAttribute('data-redimensionar'))) return;
+        daAlca = false;
+        // Layout nunca mexido: já está nas larguras padrão, nada a mudar nem gravar.
+        if (!personalizado(visiveis())) return;
+        c.largura = larguraDe({id:c.id,largura:null},largurasPadrao()); mudou();
+      };
     }
     function largurasPadrao() {
       var mapa = {};
@@ -200,7 +215,7 @@
     }
     function personalizado(cols) {
       var padroes = largurasPadrao();
-      return cols.some(function (c) { return !!c.campo || c.largura !== padroes[c.id]; });
+      return !cols.some(function (c) { return c.id === 'imovel'; }) || cols.some(function (c) { return !!c.campo || c.largura !== padroes[c.id]; });
     }
     function larguraDe(c, padroes) {
       if (c.id === 'funcoes') return C.LARGURA_FUNCOES;
@@ -248,23 +263,34 @@
     }
     function desenhar() {
       var cols = visiveis();
+      // Arraste em curso: o th com captura não pode ser recriado. Corpo e geometria seguem, o cabeçalho é refeito ao soltar.
+      if (arrastando) redesenhoPendente = true;
+      else desenharCabecalho(cols);
+      desenharCorpo(cols);
+      geometria(cols);
+    }
+    function desenharCabecalho(cols) {
       tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '" data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span>' + (c.id === 'funcoes' ? '' : '<span data-redimensionar role="separator" title="Arraste para ajustar a largura" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span>') + '</th>'; }).join('');
       Array.prototype.forEach.call(tabela.querySelectorAll('th[data-coluna]'),function (th) { var c = porId(th.getAttribute('data-coluna')); arrastar(th,c); var b = th.querySelector('[data-funil]'); if (b) b.onclick = function () { funil(c.id,b); }; });
+    }
+    function desenharCorpo(cols) {
       Array.prototype.forEach.call(tabela.querySelectorAll('tbody tr'),function (tr,i) {
-        var cells = Array.prototype.slice.call(tr.children), fixas = ['capa','codigo','imovel','bairro','valor','preenchido','status','situacao','funcoes'];
-        if (cells.length !== 9) { if (cells[0]) cells[0].colSpan = cols.length; return; }
-        var p = estado.itens[i];
+        // A espaçadora não conta: desenhar() pode rodar de novo sobre linhas já montadas.
+        var cells = Array.prototype.filter.call(tr.children,function (x) { return !x.hasAttribute('data-espacador'); }), fixas = ['capa','codigo','imovel','bairro','valor','preenchido','status','situacao','funcoes'];
+        var nova = cells.length === 9 && !cells[0].hasAttribute('data-coluna');
+        if (!nova && !(cells[0] && cells[0].hasAttribute('data-coluna'))) { if (cells[0]) cells[0].colSpan = cols.length; return; }
+        var p = estado.itens[i], existentes = {};
+        cells.forEach(function (x,k) { existentes[nova ? fixas[k] : x.getAttribute('data-coluna')] = x; });
         while (tr.firstChild) tr.removeChild(tr.firstChild);
         cols.forEach(function (c) {
-          var td, indice = fixas.indexOf(c.id);
-          if (indice >= 0) td = cells[indice];
-          else { td = document.createElement('td'); var v = lancamento(p.internalcode,c.id.slice(6)); td.innerHTML = GI.escapar(C.textoCampo(c.campo,v,GI)); if (v && v.obs) td.title = v.obs; }
+          var td = existentes[c.id];
+          if (!td) { td = document.createElement('td'); var v = lancamento(p.internalcode,c.id.slice(6)); td.innerHTML = GI.escapar(C.textoCampo(c.campo,v,GI)); if (v && v.obs) td.title = v.obs; }
           td.setAttribute('data-coluna',c.id);
+          td.className = td.className.replace(/\bgi-alinha-\S+/g,'').trim();
           td.classList.remove('gi-direita');
           td.classList.add('gi-alinha-' + c.alinhamento); tr.appendChild(td);
         });
       });
-      geometria(cols);
     }
     function editor() {
       var rascunho = layout.map(function (c) { var n = C.copiar(c); n.titulo = c.titulo; return n; });

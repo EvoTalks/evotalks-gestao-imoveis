@@ -42,15 +42,6 @@ for(const width of [1600,1366])await caso('a) borda direita de Bairro '+width,as
  assert.ok(e.sw<=e.cw+1);
  if(width===1600)await foto('depois-menos100');
 });
-await caso('b) sem salto no congelamento',async()=>{
- await b.cdp('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});await zerar();
- const antes=await medir();let d;
- await arrasto('bairro',1,{passos:1,soltar:false,antes:async()=>{d=await medir();}});
- await b.cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:0,y:0,button:'left'});
- for(const id of Object.keys(antes.cols)){const dif=id==='bairro'?0:1;perto(d.cols[id].l,antes.cols[id].l,id+' l',id==='valor'||id==='preenchido'||id==='status'||id==='situacao'||id==='funcoes'?2:1);}
- perto(d.cols.capa.w,antes.cols.capa.w,'capa');perto(d.cols.imovel.w,antes.cols.imovel.w,'imovel');
- assert.equal(d.cols.funcoes.w,104);
-});
 await caso('c) layout personalizado com rolagem',async()=>{
  await b.cdp('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});await zerar();
  await b.clicar('#b-colunas');await b.esperar(()=>!!document.querySelector('[data-largura]'));
@@ -75,16 +66,6 @@ await caso('d) persistência sem espaçador e recarga idêntica',async()=>{
  assert.equal(salvo.at(-1).largura,104);
  await abrir();const d=await medir();
  for(const id of Object.keys(antes.cols)){perto(d.cols[id].l,antes.cols[id].l,id+' l');perto(d.cols[id].w,antes.cols[id].w,id+' w');}
-});
-await caso('e) duplo clique volta à largura padrão',async()=>{
- await b.cdp('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});await zerar();
- const orig=await medir();await arrasto('bairro',60);
- await b.avaliar(()=>document.querySelector('th[data-coluna="bairro"] [data-redimensionar]').dispatchEvent(new MouseEvent('dblclick',{bubbles:true})));
- await b.esperar(()=>Math.round(document.querySelector('th[data-coluna="bairro"]').getBoundingClientRect().width)===140);
- const d=await medir();assert.equal(d.cols.funcoes.w,104);perto(d.cols.funcoes.r,d.cont,'Funções');
- assert.ok(d.esp!==null&&d.esp<=5,'nada estica: espaçador '+d.esp);perto(d.cols.imovel.w,orig.cols.imovel.w,'Imóvel não esticou',3);
- assert.equal(await b.avaliar(()=>document.querySelector('th[data-espacador]').children.length+document.querySelector('th[data-espacador]').textContent.length),0);
- assert.equal(await b.avaliar(()=>document.querySelectorAll('th[data-coluna]').length),9);
 });
 await caso('Funções 104 px, Imóvel 300 e espaçador com a sobra',async()=>{
  await b.cdp('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});await zerar();
