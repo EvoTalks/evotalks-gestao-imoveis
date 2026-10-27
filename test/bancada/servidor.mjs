@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const raiz = fileURLToPath(new URL('../../', import.meta.url));
 const normalizar = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const copia = v => JSON.parse(JSON.stringify(v));
-export function criarServidor({ portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [], detalhes = {}, capas = {}, produtosSinteticos = null, valoresColunas = {}, colunasFora = false } = {}) {
+export function criarServidor({ portalRealUrl = process.env.PORTAL_REAL_URL, fixture = null, situacoes = {}, permissoes = {}, campos = [], detalhes = {}, capas = {}, produtosSinteticos = null, valoresColunas = {}, colunasFora = false, busca = null } = {}) {
   if (fixture && portalRealUrl) throw new Error('Fixture não pode usar portal real.');
   const destinoReal = portalRealUrl ? new URL(portalRealUrl) : null;
   if (destinoReal && !['127.0.0.1', 'localhost', '[::1]'].includes(destinoReal.hostname)) throw new Error('Portal real da bancada deve ser local.');
@@ -76,6 +76,8 @@ export function criarServidor({ portalRealUrl = process.env.PORTAL_REAL_URL, fix
         const autor = req.headers['x-gi-autor'] || 'Agente Demonstração';
         const respostaPermissoes = controle.responder(req.method, rota, dados, req.headers);
         if (respostaPermissoes) return json(respostaPermissoes.status, respostaPermissoes.corpo);
+        const respostaBusca = busca && busca.responder(req.method, rota, q, dados, req.headers);
+        if (respostaBusca) return json(respostaBusca.status, respostaBusca.corpo);
         if (rota === '/imoveis/capas') return json(200, { capas: Object.fromEntries((url.searchParams.get('codigos') || '').split(',').filter(Boolean).map(c => [c, capas[c] || null])) });
         const respostaSituacao = situacao.responder(req.method, rota, dados, autor);
         if (respostaSituacao) return json(respostaSituacao.status, respostaSituacao.corpo);

@@ -1,7 +1,17 @@
-# Gerenciamento de Imóveis — 0.33.3
+# Gerenciamento de Imóveis — 0.34.0
 
 Quatro telas: Imóveis, Campos, Histórico e Configurações.
 Ordens de serviço estão na extensão `evotalks.ordens-servico`.
+
+## 0.34.0 — Cockpit de busca de imóveis
+
+Novo painel de atendimento (`chatPanel` **Imóveis**, `app/cockpit.html`): busca por palavra-chave, filtros
+(Venda/Locação, cidade, bairro, quartos, valor até), lista de cards com foto e selos (Reservado, Indisponível,
+Restrição) e detalhe com galeria, campos copiáveis e seção interna. Fala só com o portal
+(`/busca`, `/busca/opcoes`, `/imovel/:codigo`, `/imovel/:codigo/card`, `/imovel/:codigo/fotos`); valores em centavos,
+`valor_max` em reais. O envio ao cliente é feito pelo SDK (`omni.chats.sendMessage(chatId, { text, fileId })`) e
+fica desligado até ligar **Permitir enviar imóveis ao cliente pelo painel** nas Configurações da extensão. Fora da janela
+de 24 h o painel avisa e não tenta de novo. O tamanho acompanha o painel do host (320 a 600 px, sem rolagem horizontal).
 
 ## 0.30.0 — Capas e situação
 
