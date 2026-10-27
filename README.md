@@ -1,4 +1,4 @@
-# Gerenciamento de Imóveis — 0.32.0
+# Gerenciamento de Imóveis — 0.33.0
 
 Quatro telas: Imóveis, Campos, Histórico e Configurações.
 Ordens de serviço estão na extensão `evotalks.ordens-servico`.
@@ -96,3 +96,6 @@ Sempre restrito a você primeiro: a entrega é **imediata** para todo usuário q
 `manifest.json` monta as quatro páginas HTML de `app/`. Todas usam `estilo.css`, `compartilhado.css` e `comum.js`; Imóveis também usa `visualizacao.css` e `visualizacao.js`. O ícone é `icone-casa.svg`.
 
 Execute `node --test test/*.test.mjs`, `node test/checar.mjs` e cada `test/bancada/*.testar.mjs` com timeout de 280 segundos.
+
+### Colunas (0.33.0)
+Na tela Imóveis, **Colunas** define visibilidade, ordem, largura, alinhamento e texto vertical por usuário. Arraste cabeçalhos ou suas bordas; o funil filtra e ordena o catálogo inteiro. Filtros temporários ficam nesta sessão. Um campo Sim/Não pode ser marcado como **Fora da Williane** na tela Campos.

@@ -132,7 +132,7 @@ try {
   await b.avaliar(()=>{const pode=GI.pode;GI.pode=chave=>chave==='editar_imoveis'?false:pode(chave);});await abrir();
   assert.equal(await b.avaliar(()=>!!document.querySelector('[data-editar-imovel]')),false);await fechar();
   await b.navegar(origem+'/app/imoveis.html?perfil=admin');await b.esperar(()=>!!document.querySelector('[data-detalhe]'));
-  await b.preencher('#f-situacao','disponivel');await abrir();await b.clicar('[data-sit="indisponivel"]');await b.esperar(()=>document.querySelector('[data-situacao-recado]').textContent==='Situação salva');
+  await b.preencher('#f-situacao','disponivel');await b.esperar(()=>!!document.querySelector('[data-detalhe="5357422"].gi-capa'));await abrir();await b.clicar('[data-sit="indisponivel"]');await b.esperar(()=>document.querySelector('[data-situacao-recado]').textContent==='Situação salva');
   assert.equal(await b.avaliar(()=>!!document.querySelector('[data-situacao="5357422"]')),false);await fechar();
 
   // Faixa visível real: iframe de 3000px, rolado pelo host.
