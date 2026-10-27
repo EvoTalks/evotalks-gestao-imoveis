@@ -6,7 +6,7 @@ const w = {}; vm.runInNewContext(readFileSync('app/colunas.js','utf8'), {window:
 const C = w.GIColunas, json = x => JSON.parse(JSON.stringify(x));
 const campo = {id:1,nome:'Restrição',tipo:'simnao',ativo:true};
 test('padrão preserva as nove larguras e campos ocultos', () => {
- const l=C.padrao([campo]); assert.deepEqual(json(l.filter(c=>!c.campo).map(c=>c.largura)),[88,92,null,140,115,121,115,190,150]); assert.equal(l[8].visivel,false); assert.equal(l[4].alinhamento,'direita');
+ const l=C.padrao([campo]); assert.deepEqual(json(l.filter(c=>!c.campo).map(c=>c.largura)),[88,92,null,140,115,121,115,190,C.LARGURA_FUNCOES]); assert.equal(l[8].visivel,false); assert.equal(l[4].alinhamento,'direita');
 });
 test('mescla: novo oculto, apagado/inativo some, fixa retorna e funções encerra',()=>{
  const l=C.mesclar([C.padrao()[8],C.padrao()[1]], [campo,{id:2,ativo:false}]); assert.equal(l.at(-1).id,'funcoes'); assert.equal(l.at(-1).visivel,true); assert.equal(l.length,10); assert.equal(l.find(c=>c.id==='campo:1').visivel,false);
@@ -92,4 +92,13 @@ test('Correção 2: ausência no lote apaga valor individual antigo',async()=>{
 test('largura de Preenchido salva pelo usuário permanece em 105 px',()=>{
  const salvo=json(C.padrao());salvo.find(c=>c.id==='preenchido').largura=105;
  assert.equal(C.mesclar(salvo,[]).find(c=>c.id==='preenchido').largura,105);
+});
+
+test('0.33.1: Funções tem largura fixa no padrão, mescla e gravação',()=>{
+ assert.equal(C.LARGURA_FUNCOES,104);
+ assert.equal(C.padrao().at(-1).largura,C.LARGURA_FUNCOES);
+ const salvo=json(C.padrao());salvo.at(-1).largura=150;
+ assert.equal(C.mesclar(salvo,[]).at(-1).largura,C.LARGURA_FUNCOES);
+ assert.equal(C.validar(salvo).at(-1).largura,C.LARGURA_FUNCOES);
+ assert.equal(C.copiar(salvo.at(-1)).largura,C.LARGURA_FUNCOES);
 });

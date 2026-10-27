@@ -3,8 +3,9 @@
   'use strict';
   var ids = ['capa','codigo','imovel','bairro','valor','preenchido','status','situacao','funcoes'];
   var titulos = ['Capa','Código','Imóvel','Bairro','Valor','Preenchido','Status','Situação','Funções'];
-  var larguras = [88,92,null,140,115,121,115,190,150];
-  function copiar(c) { return { id:c.id, visivel:c.visivel, largura:c.largura, alinhamento:c.alinhamento, vertical:c.vertical }; }
+  var LARGURA_FUNCOES = 104;
+  var larguras = [88,92,null,140,115,121,115,190,LARGURA_FUNCOES];
+  function copiar(c) { return { id:c.id, visivel:c.visivel, largura:c.id === 'funcoes' ? LARGURA_FUNCOES : c.largura, alinhamento:c.alinhamento, vertical:c.vertical }; }
   function padrao(campos) {
     var fixas = ids.map(function (id,i) { return { id:id, titulo:titulos[i], visivel:true, largura:larguras[i], alinhamento:id === 'valor' || id === 'funcoes' ? 'direita' : 'esquerda', vertical:false }; });
     return fixas.slice(0,8).concat((campos || []).filter(function (c) { return c.ativo !== false; }).map(function (c) {
@@ -34,7 +35,7 @@
       else resultado.push(c);
     });
     var funcoes = resultado.filter(function (c) { return c.id === 'funcoes'; })[0];
-    funcoes.visivel = true;
+    funcoes.visivel = true; funcoes.largura = LARGURA_FUNCOES;
     return resultado.filter(function (c) { return c.id !== 'funcoes'; }).concat([funcoes]);
   }
   function chave(v) { return v === null || v === undefined || v === '' ? '' : String(v); }
@@ -64,5 +65,5 @@
     if (campo.tipo === 'simnao') return lancamento.valor === '' || lancamento.valor == null ? '—' : String(lancamento.valor).toLowerCase() === 'sim' || lancamento.valor === true ? 'Sim' : 'Não';
     return GI.valorLegivel(campo,{ valor:lancamento.valor, recorrencia:lancamento.recorrencia, obs:'' }) || '—';
   }
-  global.GIColunas = { padrao:padrao, mesclar:mesclar, validar:validar, filtrar:filtrar, ordenar:ordenar, distintos:distintos, textoCampo:textoCampo, chave:chave, copiar:copiar };
+  global.GIColunas = { LARGURA_FUNCOES:LARGURA_FUNCOES, padrao:padrao, mesclar:mesclar, validar:validar, filtrar:filtrar, ordenar:ordenar, distintos:distintos, textoCampo:textoCampo, chave:chave, copiar:copiar };
 })(window);

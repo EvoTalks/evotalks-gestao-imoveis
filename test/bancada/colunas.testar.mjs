@@ -11,7 +11,7 @@ try {
  const esperar=()=>b.esperar(()=>document.querySelectorAll('#gi-corpo tr').length===25);
  const post=()=>b.avaliar(()=>bancada.chamadas.filter(c=>c.method==='POST'&&c.caminho.endsWith('/colunas/eu')).map(c=>JSON.parse(c.body)));
  await b.navegar(url); await esperar();
- assert.deepEqual(await b.avaliar(()=>[...document.querySelectorAll('col')].map(c=>c.style.width)),['88px','92px','','140px','115px','121px','115px','190px','150px']);
+ assert.deepEqual(await b.avaliar(()=>[...document.querySelectorAll('col')].map(c=>c.style.width)),['88px','92px','','140px','115px','121px','115px','190px','104px']);
  assert.equal(await b.avaliar(()=>bancada.rede.some(r=>r.includes('limit=500'))),false,'padrão não carrega catálogo');
  async function arrastar(selector,dx,target) {
    const ponto=await b.avaliar(s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};},selector);
@@ -31,7 +31,8 @@ try {
  await b.navegar(url); await esperar(); assert.equal(await b.avaliar(()=>!!document.querySelector('th[data-coluna="campo:1"]')),true);
  await b.clicar('[data-funil="campo:1"]'); await b.esperar(()=>!!document.querySelector('[data-valor="Sim"]'));
  assert.match(await b.avaliar(()=>document.querySelector('.gi-col-valores').textContent),/Sim \(15\)/);
- await b.clicar('[data-todos]'); await b.clicar('[data-valor="Sim"]'); await b.clicar('[data-ok]');
+ await b.clicar('[data-todos]'); await b.clicar('[data-valor="Sim"]');
+ await b.cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',windowsVirtualKeyCode:27});
  await b.esperar(()=>document.querySelectorAll('#gi-corpo tr').length===15);
  assert.equal(await b.avaliar(()=>[...document.querySelectorAll('[data-situacao]')].every(e=>Number(e.dataset.situacao.slice(-3))>=51)),true);
  assert.match(await b.avaliar(()=>document.querySelector('#gi-resumo').textContent),/15 imóveis/);
@@ -41,13 +42,16 @@ try {
  await b.preencher('.gi-col-popover input[type=search]','Si');assert.equal(await b.avaliar(()=>document.querySelectorAll('.gi-col-valores label').length),1);
  await b.cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',windowsVirtualKeyCode:27});await b.esperar(()=>!document.querySelector('.gi-col-popover'));
  assert.equal(await b.avaliar(()=>document.activeElement.dataset.funil),'campo:1');
- await b.clicar('[data-funil="campo:1"]');await b.esperar(()=>!!document.querySelector('.gi-col-popover'));await b.clicar('.gi-col-popover [data-cancelar]');assert.equal(await b.avaliar(()=>document.querySelectorAll('#gi-corpo tr').length),15);
+ await b.clicar('[data-funil="campo:1"]');await b.esperar(()=>!!document.querySelector('.gi-col-popover'));await b.clicar('[data-funil="campo:1"]');assert.equal(await b.avaliar(()=>document.querySelectorAll('#gi-corpo tr').length),15);
  assert.ok((await post()).every(p=>!p.layout||p.layout.every(c=>Object.keys(c).sort().join(',')==='alinhamento,id,largura,vertical,visivel')),'portal recebe só layout');
  await b.clicar('[data-funil="imovel"]'); await b.esperar(()=>!!document.querySelector('[data-ordem="desc"]')); await b.clicar('[data-ordem="desc"]');
  await b.esperar(()=>document.querySelector('#gi-corpo tr').textContent.includes('DEMO-065'));
- await b.clicar('[data-funil="campo:1"]'); await b.esperar(()=>!!document.querySelector('[data-alinhar="centro"]')); await b.clicar('[data-alinhar="centro"]');
+ await b.cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',windowsVirtualKeyCode:27});
+ await b.clicar('#b-colunas');await b.esperar(()=>!!document.querySelector('#gi-editor-colunas'));
+ await b.avaliar(()=>{const l=[...document.querySelectorAll('.gi-col-editor-linha')].find(l=>l.textContent.includes('Possui restrição?'));l.querySelector('[data-vertical]').click();l.querySelector('[data-alinhamento="centro"]').click();});
+ await b.clicar('.gi-modal [data-ok]');
+ await b.esperar(()=>!document.querySelector('.gi-modal'));
  assert.equal(await b.avaliar(()=>document.querySelector('th[data-coluna="campo:1"]').classList.contains('gi-alinha-centro')),true);
- await b.clicar('[data-funil="campo:1"]'); await b.esperar(()=>!!document.querySelector('.gi-col-popover [data-vertical]')); await b.clicar('.gi-col-popover [data-vertical]');
  assert.equal(await b.avaliar(()=>getComputedStyle(document.querySelector('th[data-coluna="campo:1"] .gi-col-titulo')).writingMode),'vertical-rl');
  await b.clicar('#b-limpar'); await esperar();
  await b.preencher('#f-estado','preenchido'); await b.esperar(()=>document.querySelector('#gi-resumo').textContent.includes('65 imóveis'));
