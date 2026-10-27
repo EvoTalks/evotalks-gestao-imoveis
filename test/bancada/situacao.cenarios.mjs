@@ -23,9 +23,11 @@ export async function testarSituacao(b, origem) {
   assert.doesNotMatch(await b.avaliar(() => document.querySelector('.gi-barra').textContent), /Reservado e Indisponível não são oferecidos pela Williane\./);
   for (const [situacao, codigo] of [['disponivel', 'DEMO-001'], ['reservado', 'DEMO-002'], ['indisponivel', 'DEMO-003']]) {
     await b.preencher('#f-situacao', situacao);
+    await b.esperar(c => document.querySelectorAll('[data-situacao]').length === 1 && document.querySelector('[data-situacao]').dataset.situacao === c, codigo);
     assert.deepEqual(await b.avaliar(() => [...document.querySelectorAll('[data-situacao]')].map(e => e.dataset.situacao)), [codigo]);
   }
   await b.preencher('#f-situacao', '');
+  await b.esperar(() => document.querySelectorAll('[data-situacao]').length === 3);
   await b.preencher('[data-situacao="DEMO-001"]', 'reservado');
   await b.esperar(() => document.querySelector('[data-situacao="DEMO-001"]').value === 'reservado' && !document.querySelector('[data-situacao="DEMO-001"]').disabled);
   const post = await b.avaliar(() => bancada.chamadas.find(c => c.method === 'POST' && /\/imoveis\/DEMO-001\/situacao$/.test(c.caminho)));
@@ -65,6 +67,7 @@ export async function testarSituacao(b, origem) {
   await b.esperar(() => !document.querySelector('[data-situacao="DEMO-001"]').disabled);
   // Sucesso também reaplica o filtro atual.
   await b.preencher('#f-situacao', 'reservado');
+  await b.esperar(() => !!document.querySelector('[data-situacao="DEMO-001"]'));
   await b.preencher('[data-situacao="DEMO-001"]', 'disponivel');
   await b.esperar(() => !document.querySelector('[data-situacao="DEMO-001"]'));
   for (const query of ['?modo=local', '?situacao-fora=1', '?situacao-mapa-invalido=1']) {

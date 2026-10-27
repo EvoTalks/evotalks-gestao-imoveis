@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Imóveis</title>
-<link rel="stylesheet" href="estilo.css?v=0.32.0">
-<link rel="stylesheet" href="compartilhado.css?v=0.32.0">
-<link rel="stylesheet" href="visualizacao.css?v=0.32.0">
+<link rel="stylesheet" href="estilo.css?v=0.33.0">
+<link rel="stylesheet" href="compartilhado.css?v=0.33.0">
+<link rel="stylesheet" href="visualizacao.css?v=0.33.0">
 </head>
 <body class="gi gi-gestao gi-permissoes-pendentes">
 
@@ -55,6 +55,7 @@
     </div>
     <button class="btn btn-primario" id="b-buscar" type="button">Buscar</button>
     <button class="btn" id="b-limpar" type="button">Limpar</button>
+    <button class="btn" id="b-colunas" type="button">Colunas</button>
   </div>
 
   <div class="gi-tabela-rolagem">
@@ -91,8 +92,10 @@
 </p>
 
 <div class="gi-aviso" id="gi-situacao-aviso" hidden></div>
-<script src="comum.js?v=0.32.0"></script>
-<script src="visualizacao.js?v=0.32.0"></script>
+<script src="comum.js?v=0.33.0"></script>
+<script src="colunas.js?v=0.33.0"></script>
+<script src="colunas-tela.js?v=0.33.0"></script>
+<script src="visualizacao.js?v=0.33.0"></script>
 <script>
 (function () {
   'use strict';
@@ -101,7 +104,7 @@
     pagina: 1, porPagina: 25, termo: '', finalidade: '', filtroEstado: '', filtroSituacao: '',
     itens: [], campos: [], valores: {}, preenchidos: {}, situacoes: null, gravando: Object.create(null)
   };
-  var geracao = 0;
+  var geracao = 0, colunasTela, resumoPadrao = '';
   var capas = Object.create(null), listaVisivel = [];
 
   var el = function (id) { return document.getElementById(id); };
@@ -156,6 +159,7 @@
         'Nenhum imóvel nesta página com esses filtros.<br>' +
         '<span class="gi-pequeno">Alargue um filtro por vez — não invente resultado para o cliente.</span>' +
         '</div></td></tr>';
+      if (colunasTela) colunasTela.desenhar();
       GI.ajustarAltura();
       return;
     }
@@ -201,6 +205,7 @@
       '</tr>';
     }).join('');
 
+    if (colunasTela) colunasTela.desenhar();
     Array.prototype.forEach.call(corpo.querySelectorAll('.gi-capa img'), function (img) {
       img.addEventListener('error', function () { img.remove(); });
     });
@@ -227,7 +232,8 @@
           GI.aviso(GI.mensagemErro(err), 'error');
         }).then(function () {
           delete estado.gravando[codigo];
-          desenharLista();
+          if (colunasTela && colunasTela.completo()) carregar().catch(GI.erroFatal);
+          else desenharLista();
         });
       });
     });
@@ -261,8 +267,10 @@
           .then(function () { return eventos.length ? GI.registrarHistorico(eventos) : null; })
           .then(function () {
             estado.valores[codigo] = {};
+            if (colunasTela) colunasTela.atualizarValores(codigo,{});
             anotarPreenchidos(codigo, 0);
             GI.aviso('Informações do imóvel ' + GI.codigoCurto(codigo) + ' excluídas.', 'success');
+            if (colunasTela && colunasTela.completo()) return carregar();
             desenharLista();
           });
       });
@@ -272,11 +280,12 @@
   function carregar() {
     var atual = ++geracao;
     el('gi-corpo').innerHTML = '<tr><td colspan="9" class="gi-mudo">buscando…</td></tr>';
-    return GI.buscarImoveis({
+    return (colunasTela ? colunasTela.buscar() : GI.buscarImoveis({
       termo: estado.termo, finalidade: estado.finalidade, pagina: estado.pagina, porPagina: estado.porPagina
-    }).then(function (r) {
+    })).then(function (r) {
       if (atual !== geracao) return;
       estado.itens = r.itens;
+      el('gi-resumo').innerHTML = r.completo ? r.total + ' imóveis passam no filtro' : resumoPadrao;
       el('gi-pagina').textContent = String(estado.pagina);
       // Uma página incompleta prova o total, mesmo quando o SDK não o informa.
       var totalConhecido = r.total !== null ? r.total : r.itens.length < estado.porPagina ?
@@ -285,7 +294,7 @@
         (totalConhecido !== null ? ' · <span class="gi-total-catalogo">' + GI.escapar(totalConhecido) + '</span> no total' : '');
       el('gi-origem').title = r.ms + ' ms · ' + GI.estrategiaCatalogo;
       el('b-anterior').disabled = estado.pagina <= 1;
-      el('b-proxima').disabled = r.itens.length < estado.porPagina;
+      el('b-proxima').disabled = r.total !== null ? estado.pagina * estado.porPagina >= r.total : r.itens.length < estado.porPagina;
       desenharLista();
       var faltantes = r.itens.map(function (p) { return p.internalcode; }).filter(function (codigo, i, lista) { return !Object.prototype.hasOwnProperty.call(capas, codigo) && lista.indexOf(codigo) === i; });
       faltantes.forEach(function (codigo) { capas[codigo] = null; });
@@ -565,6 +574,7 @@
       return Promise.resolve(true);
     }
 
+    if (colunasTela) colunasTela.iniciarGravacao(codigo);
     var gravarValores = eventos.length ? GI.salvarValoresDoImovel(codigo, novo, estado.campos)
       .then(function () { return GI.registrarHistorico(eventos); }) : Promise.resolve();
     return gravarValores.then(function () {
@@ -578,9 +588,18 @@
         if (Object.keys(novo).length) estado.valores[codigo] = novo;
         else delete estado.valores[codigo];
         anotarPreenchidos(codigo, Object.keys(novo).length);
+        if (colunasTela) colunasTela.atualizarValores(codigo,novo);
+        if (colunasTela && colunasTela.completo()) carregar().catch(GI.erroFatal);
+        else desenharLista();
         GI.aviso((eventos.length ? eventos.length + (eventos.length > 1 ? ' alterações gravadas' : ' alteração gravada') : 'Situação atualizada') +
           ' no imóvel ' + GI.codigoCurto(codigo) + '.', 'success');
         return true;
+      }).then(function (r) {
+        if (colunasTela) colunasTela.finalizarGravacao(codigo);
+        return r;
+      }, function (e) {
+        if (colunasTela) colunasTela.finalizarGravacao(codigo);
+        throw e;
       });
   }
 
@@ -605,14 +624,15 @@
     });
     el('b-limpar').addEventListener('click', function () {
       el('f-termo').value = ''; el('f-finalidade').value = ''; el('f-estado').value = ''; el('f-situacao').value = '';
+      if (colunasTela) colunasTela.limpar();
       estado.termo = ''; estado.finalidade = ''; estado.filtroEstado = ''; estado.filtroSituacao = ''; estado.pagina = 1;
       carregar().catch(GI.erroFatal);
     });
     el('f-estado').addEventListener('change', function () {
-      estado.filtroEstado = el('f-estado').value; desenharLista();
+      estado.filtroEstado = el('f-estado').value; estado.pagina = 1; carregar().catch(GI.erroFatal);
     });
     el('f-situacao').addEventListener('change', function () {
-      estado.filtroSituacao = el('f-situacao').value; desenharLista();
+      estado.filtroSituacao = el('f-situacao').value; estado.pagina = 1; carregar().catch(GI.erroFatal);
     });
     el('f-porpagina').addEventListener('change', function () {
       estado.porPagina = Number(el('f-porpagina').value); estado.pagina = 1;
@@ -626,15 +646,17 @@
     });
 
     return Promise.all([
-      GI.campos(), GI.valores(), GI.preenchidos(), carregarSituacoes()
+      GI.campos(), GI.valores(), GI.preenchidos(), carregarSituacoes(), GI.layoutColunas().catch(function () { return null; })
     ]).then(function (r) {
       estado.campos = r[0];
       estado.valores = r[1];
       estado.preenchidos = r[2];
+      colunasTela = GI.iniciarColunas({ estado:estado, layout:r[4], carregar:carregar, redesenhar:desenharLista, quantos:quantosPreenchidos, situacao:situacaoDoImovel });
       var ativos = estado.campos.filter(function (c) { return c.ativo !== false; }).length;
       var comInfo = Object.keys(estado.preenchidos).length;
       el('gi-resumo').innerHTML = '<span class="gi-contagem-campos">' + ativos + '</span> campo' + (ativos === 1 ? '' : 's') + ' em uso · ' +
         comInfo + ' imóve' + (comInfo === 1 ? 'l' : 'is') + ' com informação preenchida';
+      resumoPadrao = el('gi-resumo').innerHTML;
       return carregar();
     });
   });

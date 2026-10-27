@@ -31,6 +31,12 @@ try {
 async function comparar(nome) {
   const resultado = await b.avaliar(async ({ anterior, atual }) => {
     await document.fonts.ready;
+    // As capas redesenham a tabela: compare o mesmo DOM depois da carga assíncrona.
+    await new Promise(resolve => {
+      let timer; const observer = new MutationObserver(adiar);
+      function adiar() { clearTimeout(timer); timer = setTimeout(() => { observer.disconnect(); resolve(); },150); }
+      observer.observe(document.body,{childList:true,subtree:true}); adiar();
+    });
     let link = document.querySelector('link[href^="compartilhado.css"]');
     const style = document.createElement('style'); link.replaceWith(style);
     const elementos = [...document.body.querySelectorAll('*')].filter(e => !['SCRIPT', 'STYLE'].includes(e.tagName));

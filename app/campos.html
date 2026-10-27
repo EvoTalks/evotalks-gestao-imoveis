@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campos</title>
-<link rel="stylesheet" href="estilo.css?v=0.32.0">
-<link rel="stylesheet" href="compartilhado.css?v=0.32.0">
+<link rel="stylesheet" href="estilo.css?v=0.33.0">
+<link rel="stylesheet" href="compartilhado.css?v=0.33.0">
 </head>
 <body class="gi gi-gestao gi-permissoes-pendentes">
 
@@ -48,7 +48,7 @@
   sugestão inicial: quem lança em cada imóvel pode trocar (IPTU anual num, parcelado em outro).
 </p>
 
-<script src="comum.js?v=0.32.0"></script>
+<script src="comum.js?v=0.33.0"></script>
 <script>
 (function () {
   'use strict';
@@ -122,6 +122,7 @@
       var id = GI.escapar(String(c.id));
       return '<tr>' +
         '<td><strong>' + GI.escapar(c.nome) + '</strong>' +
+          (c.oculta_williane && c.tipo === 'simnao' ? '<span class="gi-chip">Fora da Williane</span>' : '') +
           (c.tipo === 'selecao' ? '<div class="gi-ajuda">' + GI.escapar((c.opcoes || []).join(' · ')) + '</div>' : '') +
         '</td>' +
         '<td>' + GI.escapar(GI.nomeTipo(c.tipo)) + '</td>' +
@@ -180,6 +181,7 @@
           '<label for="m-opcoes">Opções (uma por vírgula)</label>' +
           '<input id="m-opcoes" type="text" placeholder="Sim até 10kg, Sim, Não"></div>' +
       '</div>' +
+      '<label id="m-caixa-williane"><input type="checkbox" id="m-williane"> Tirar o imóvel da busca da Williane quando marcado</label>' +
       '<p class="gi-ajuda" id="m-ajuda" style="margin:10px 2px 0"></p>';
 
     GI.modal({
@@ -201,6 +203,7 @@
   /* `p` é o prefixo dos ids — 'm' no modal de criar, 'e' no de editar. */
   function formaDoFormulario(p) {
     var tipo = el(p + '-tipo').value;
+    el(p + '-caixa-williane').style.display = tipo === 'simnao' ? 'block' : 'none';
     el(p + '-caixa-opc').style.display = (tipo === 'selecao') ? 'flex' : 'none';
     el(p + '-caixa-rec').style.display = (tipo === 'valor') ? 'flex' : 'none';
     var t = GI.TIPOS.filter(function (x) { return x.id === tipo; })[0];
@@ -218,7 +221,7 @@
       throw new Error('Já existe um campo com esse nome — dois rótulos parecidos viram duas taxas diferentes.');
     }
 
-    var campo = { id: novoId(nome), nome: nome, tipo: tipo, ativo: true };
+    var campo = { id: novoId(nome), nome: nome, tipo: tipo, ativo: true, oculta_williane: tipo === 'simnao' && el('m-williane').checked };
 
     if (tipo === 'selecao') {
       var opcoes = String(el('m-opcoes').value || '').split(',')
@@ -258,6 +261,7 @@
           '<label for="e-opcoes">Opções (uma por vírgula)</label>' +
           '<input id="e-opcoes" type="text" value="' + GI.escapar((campo.opcoes || []).join(', ')) + '"></div>' +
       '</div>' +
+      '<label id="e-caixa-williane"><input type="checkbox" id="e-williane"> Tirar o imóvel da busca da Williane quando marcado</label>' +
       '<p class="gi-ajuda" id="e-ajuda" style="margin:10px 2px 0"></p>' +
       (n ? '<p class="gi-ajuda" style="margin:6px 2px 0">Este campo está preenchido em ' + n +
            ' imóve' + (n > 1 ? 'is' : 'l') + '. <strong>Inativo</strong> some da tela de lançamento e das ' +
@@ -273,6 +277,7 @@
           var sel = (campo.recorrenciaPadrao || 'mes') === r.id ? ' selected' : '';
           return '<option value="' + r.id + '"' + sel + '>' + r.nome + '</option>';
         }).join('');
+        el('e-williane').checked = campo.oculta_williane === true;
         el('e-estado').value = (campo.ativo === false) ? 'inativo' : 'ativo';
         el('e-tipo').addEventListener('change', function () { formaDoFormulario('e'); });
         formaDoFormulario('e');
@@ -301,6 +306,7 @@
 
     campo.nome = nome;
     campo.tipo = tipo;
+    campo.oculta_williane = tipo === 'simnao' && el('e-williane').checked;
     campo.opcoes = opcoes;
     campo.ativo = el('e-estado').value !== 'inativo';
     if (tipo === 'valor') campo.recorrenciaPadrao = el('e-rec').value;

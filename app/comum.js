@@ -518,6 +518,7 @@
         recorrenciaPadrao: c.recorrencia_padrao,
         ordem: c.ordem,
         ativo: c.ativo !== false,
+        oculta_williane: c.oculta_williane === true,
         emUso: c.em_uso || 0
       };
     });
@@ -545,6 +546,7 @@
   GI.campoCriar = function (campo) {
     return chamar('/campos', { corpo: {
       rotulo: campo.nome,
+      oculta_williane: campo.tipo === 'simnao' && campo.oculta_williane === true,
       tipo: GI.tipoParaPortal(campo.tipo),
       opcoes: campo.opcoes || [],
       recorrenciaPadrao: campo.recorrenciaPadrao || 'mes'
@@ -554,6 +556,7 @@
   GI.campoAtualizar = function (campo) {
     return chamar('/campos/' + campo.id, { corpo: {
       rotulo: campo.nome,
+      oculta_williane: campo.tipo === 'simnao' && campo.oculta_williane === true,
       tipo: GI.tipoParaPortal(campo.tipo),
       opcoes: campo.opcoes || [],
       recorrenciaPadrao: campo.recorrenciaPadrao || 'mes',
@@ -702,21 +705,23 @@
     return where;
   }
 
-  var cacheTudo = null;
+  var cacheTudo = null, cacheTudoEm = 0, cargaTudo = null;
 
   function carregarTudoLocal() {
-    if (cacheTudo) return Promise.resolve(cacheTudo);
+    if (cacheTudo && Date.now() - cacheTudoEm < 180000) return Promise.resolve(cacheTudo);
+    if (cargaTudo) return cargaTudo;
     var acumulado = [];
     function pagina(skip) {
       return pedir('products?limit=500&skip=' + skip).then(function (lote) {
         var arr = GI.lista(lote);
         acumulado = acumulado.concat(arr);
-        if (arr.length === 500 && acumulado.length < 12000) return pagina(skip + 500);
-        cacheTudo = acumulado;
+        if (arr.length === 500) return pagina(skip + 500);
+        cacheTudo = acumulado; cacheTudoEm = Date.now();
         return acumulado;
       });
     }
-    return pagina(0);
+    cargaTudo = pagina(0).then(function (r) { cargaTudo = null; return r; }, function (e) { cargaTudo = null; throw e; });
+    return cargaTudo;
   }
 
   GI.lista = function (resposta) {
@@ -740,6 +745,36 @@
     }
     return true;
   }
+
+  GI.catalogoCompleto = function (filtros) {
+    return carregarTudoLocal().then(function (todos) { return todos.filter(function (p) { return casaLocal(p, filtros || {}); }); });
+  };
+  GI.idUsuarioColunas = function () { return String((ctx && ctx.user && ctx.user.id) || 'local'); };
+  function chaveColunas() { return 'gi.colunas.' + String((ctx && ctx.user && ctx.user.id) || 'local'); }
+  GI.layoutColunas = function () {
+    if (GI.modo === 'portal') return chamar('/colunas/eu').then(function (r) { return r.layout; });
+    if (GI.modo === 'portal-fora') return exigePortal();
+    return ler(chaveColunas(), null);
+  };
+  GI.salvarLayoutColunas = function (layout) {
+    if (layout !== null) layout = global.GIColunas.validar(layout, GI.modo === 'local');
+    if (GI.modo === 'portal') return chamar('/colunas/eu', { corpo:{ layout:layout } });
+    if (GI.modo === 'portal-fora') return exigePortal();
+    return gravar(chaveColunas(),layout);
+  };
+  GI.valoresColunas = function (campos) {
+    if (GI.modo !== 'portal') return GI.valores();
+    var ids = campos.filter(function (c) { return c.ativo !== false; }).map(function (c) { return c.id; });
+    if (!ids.length) return Promise.resolve({});
+    if (ids.length > 30) return Promise.reject(new Error('O portal permite até 30 campos por consulta de colunas.'));
+    return chamar('/valores/colunas?campos=' + ids.join(',')).then(function (r) {
+      var mapa = {};
+      Object.keys(r.valores || {}).forEach(function (codigo) {
+        mapa[codigo] = paraValoresTela(Object.keys(r.valores[codigo]).map(function (id) { return r.valores[codigo][id].valor; }));
+      });
+      return mapa;
+    });
+  };
 
   GI.buscarImoveis = function (filtros) {
     filtros = filtros || {};
