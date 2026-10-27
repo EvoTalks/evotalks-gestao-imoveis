@@ -171,12 +171,21 @@
         var resize = e.target.hasAttribute('data-redimensionar');
         if (!resize && c.id === 'funcoes') return;
         e.preventDefault(); th.setPointerCapture(e.pointerId);
-        var inicio = e.clientX, largura = th.getBoundingClientRect().width, alvo = null, ativo = false;
+        var inicio = e.clientX, largura = 0, alvo = null, ativo = false;
         th.onpointermove = function (ev) {
+          if (resize) {
+            if (!ativo) {
+              if (ev.clientX === inicio) return;
+              // Primeiro movimento: congela todas as larguras renderizadas, sem salto visual.
+              ativo = true; th.classList.add('gi-col-redimensionando'); congelar(); largura = c.largura;
+            }
+            c.largura = Math.max(40,Math.min(1200,Math.round(largura + ev.clientX - inicio)));
+            geometria(visiveis());
+            return;
+          }
           if (Math.abs(ev.clientX-inicio) < 4 && !ativo) return;
-          ativo = true; if (resize) th.classList.add('gi-col-redimensionando');
-          if (resize) { c.largura = Math.max(40,Math.min(1200,Math.round(largura + ev.clientX - inicio))); th.style.width = c.largura + 'px'; tabela.querySelector('col[data-coluna="' + c.id + '"]').style.width = c.largura + 'px'; }
-          else { Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (h) { h.classList.remove('gi-col-destino'); }); var h = document.elementFromPoint(ev.clientX,ev.clientY); h = h && h.closest('th'); if (h && h !== th && h.hasAttribute('data-coluna')) { alvo = h.getAttribute('data-coluna'); h.classList.add('gi-col-destino'); } }
+          ativo = true;
+          Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (h) { h.classList.remove('gi-col-destino'); }); var h = document.elementFromPoint(ev.clientX,ev.clientY); h = h && h.closest('th'); if (h && h !== th && h.hasAttribute('data-coluna')) { alvo = h.getAttribute('data-coluna'); h.classList.add('gi-col-destino'); }
         };
         function fim() { th.classList.remove('gi-col-redimensionando'); th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; if (ativo) { if (!resize && alvo) mover(c.id,alvo); mudou(); } }
         th.onpointerup = fim; th.onpointercancel = fim;
@@ -184,21 +193,63 @@
       if (c.id === 'funcoes') return;
       th.querySelector('[data-redimensionar]').ondblclick = function () { c.largura = null; mudou(); };
     }
-    function desenhar() {
-      var cols = visiveis(), grupo = tabela.querySelector('colgroup');
-      var padrao = C.padrao([]), largurasPadrao = {};
-      padrao.forEach(function (c) { largurasPadrao[c.id] = c.largura; });
-      var personalizado = cols.some(function (c) { return !!c.campo || c.largura !== largurasPadrao[c.id]; });
-      // No layout fixo, uma coluna sem largura absorve a sobra; assim Funções nunca passa de LARGURA_FUNCOES.
-      var absorve = personalizado ? (cols.filter(function (c) { return c.id === 'imovel'; })[0] || cols.filter(function (c) { return c.id !== 'funcoes'; }).slice(-1)[0] || {}).id : null;
-      function larg(c) { return c.id === absorve ? null : c.largura; }
-      tabela.style.tableLayout = personalizado ? 'fixed' : '';
-      tabela.style.minWidth = personalizado ? cols.reduce(function (s,c) { return s + (c.largura || 220); },0) + 'px' : '';
-      tabela.style.overflowWrap = personalizado ? 'anywhere' : '';
+    function largurasPadrao() {
+      var mapa = {};
+      C.padrao(estado.campos).forEach(function (c) { mapa[c.id] = c.largura; });
+      return mapa;
+    }
+    function personalizado(cols) {
+      var padroes = largurasPadrao();
+      return cols.some(function (c) { return !!c.campo || c.largura !== padroes[c.id]; });
+    }
+    function larguraDe(c, padroes) {
+      if (c.id === 'funcoes') return C.LARGURA_FUNCOES;
+      return c.largura || (c.id === 'imovel' ? 300 : padroes[c.id] || 220);
+    }
+    // Congela a tabela padrão (colunas automáticas) em larguras explícitas, mantendo cada borda a menos de 1 px.
+    function congelar() {
+      var cols = visiveis();
+      if (personalizado(cols)) { cols.forEach(function (c) { if (!c.largura && c.id !== 'funcoes') c.largura = larguraDe(c,largurasPadrao()); }); geometria(cols); return; }
+      var ths = Array.prototype.slice.call(tabela.querySelectorAll('th[data-coluna]'));
+      var base = ths[0].getBoundingClientRect().left, anterior = 0;
+      ths.forEach(function (h) {
+        var borda = Math.floor(h.getBoundingClientRect().right - base), c = porId(h.getAttribute('data-coluna'));
+        if (c.id !== 'funcoes') c.largura = Math.max(40,Math.min(1200,borda - anterior));
+        anterior = borda;
+      });
+      geometria(cols);
+    }
+    // Aplica larguras, layout fixo e a coluna espaçadora sem recriar o cabeçalho (preserva o arraste em curso).
+    function geometria(cols) {
+      var fixo = personalizado(cols), padroes = largurasPadrao(), grupo = tabela.querySelector('colgroup');
+      tabela.style.tableLayout = fixo ? 'fixed' : '';
+      tabela.style.minWidth = fixo ? cols.reduce(function (s,c) { return s + larguraDe(c,padroes); },0) + 'px' : '';
+      tabela.style.overflowWrap = fixo ? 'anywhere' : '';
       if (!grupo) { grupo = document.createElement('colgroup'); tabela.insertBefore(grupo,tabela.firstChild); }
-      grupo.innerHTML = cols.map(function (c) { return '<col data-coluna="' + GI.escapar(c.id) + '"' + (larg(c) ? ' style="width:' + larg(c) + 'px"' : '') + '>'; }).join('');
-      tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '" data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"' + (larg(c) ? ' style="width:' + larg(c) + 'px"' : '') + '><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span>' + (c.id === 'funcoes' ? '' : '<span data-redimensionar role="separator" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span>') + '</th>'; }).join('');
-      Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (th) { var c = porId(th.getAttribute('data-coluna')); arrastar(th,c); var b = th.querySelector('[data-funil]'); if (b) b.onclick = function () { funil(c.id,b); }; });
+      Array.prototype.forEach.call(tabela.querySelectorAll('[data-espacador]'),function (e) { e.remove(); });
+      Array.prototype.forEach.call(grupo.querySelectorAll('col'),function (e) { e.remove(); });
+      cols.forEach(function (c) {
+        var col = document.createElement('col'); col.setAttribute('data-coluna',c.id);
+        if (fixo) col.style.width = larguraDe(c,padroes) + 'px';
+        else if (c.largura) col.style.width = c.largura + 'px';
+        grupo.appendChild(col);
+        var th = tabela.querySelector('th[data-coluna="' + c.id + '"]');
+        if (th) th.style.width = fixo ? larguraDe(c,padroes) + 'px' : (c.largura ? c.largura + 'px' : '');
+      });
+      if (!fixo) return;
+      var espacador = document.createElement('col'); espacador.setAttribute('data-espacador',''); grupo.insertBefore(espacador,grupo.lastChild);
+      function inserir(tr, celula) { var f = tr.querySelector('[data-coluna="funcoes"]'); if (f) tr.insertBefore(celula,f); }
+      var th = document.createElement('th'); th.setAttribute('data-espacador',''); th.setAttribute('aria-hidden','true');
+      inserir(tabela.querySelector('thead tr'),th);
+      Array.prototype.forEach.call(tabela.querySelectorAll('tbody tr'),function (tr) {
+        if (tr.querySelector('[data-coluna="funcoes"]')) { var td = document.createElement('td'); td.setAttribute('data-espacador',''); td.setAttribute('aria-hidden','true'); inserir(tr,td); }
+        else if (tr.children.length === 1) tr.children[0].colSpan = cols.length + 1;
+      });
+    }
+    function desenhar() {
+      var cols = visiveis();
+      tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '" data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span>' + (c.id === 'funcoes' ? '' : '<span data-redimensionar role="separator" title="Arraste para ajustar a largura" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span>') + '</th>'; }).join('');
+      Array.prototype.forEach.call(tabela.querySelectorAll('th[data-coluna]'),function (th) { var c = porId(th.getAttribute('data-coluna')); arrastar(th,c); var b = th.querySelector('[data-funil]'); if (b) b.onclick = function () { funil(c.id,b); }; });
       Array.prototype.forEach.call(tabela.querySelectorAll('tbody tr'),function (tr,i) {
         var cells = Array.prototype.slice.call(tr.children), fixas = ['capa','codigo','imovel','bairro','valor','preenchido','status','situacao','funcoes'];
         if (cells.length !== 9) { if (cells[0]) cells[0].colSpan = cols.length; return; }
@@ -213,6 +264,7 @@
           td.classList.add('gi-alinha-' + c.alinhamento); tr.appendChild(td);
         });
       });
+      geometria(cols);
     }
     function editor() {
       var rascunho = layout.map(function (c) { var n = C.copiar(c); n.titulo = c.titulo; return n; });
