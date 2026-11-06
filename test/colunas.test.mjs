@@ -57,7 +57,8 @@ function telaTeste({quantidade=1}={}) {
  const GI={idUsuarioColunas:()=>1,valoresColunas:async()=>json(lote),catalogoCompleto:async()=>linhas,partesCategoria:()=>({})};
  const contexto={window:{GI,GIColunas:C},document:{querySelector:()=>({}),getElementById:()=>({}),addEventListener(){}},sessionStorage:{getItem:()=>JSON.stringify({filtros:{'campo:1':['Sim']}})},setTimeout,clearTimeout,Date};
  vm.runInNewContext(readFileSync('app/colunas-tela.js','utf8'),contexto);
- const tela=GI.iniciarColunas({estado,quantos:()=>1,situacao:()=>''});
+ const layout=json(C.padrao([campo]));layout.find(c=>c.id==='campo:1').visivel=true;
+ const tela=GI.iniciarColunas({estado,layout,quantos:()=>1,situacao:()=>''});
  return {estado,tela,lote:v=>{lote=v;},linhas:v=>{linhas=v;}};
 }
 test('Correção 2: lote novo substitui valores individuais antigos no filtro',async()=>{
@@ -101,4 +102,53 @@ test('0.33.1: Funções tem largura fixa no padrão, mescla e gravação',()=>{
  assert.equal(C.mesclar(salvo,[]).at(-1).largura,C.LARGURA_FUNCOES);
  assert.equal(C.validar(salvo).at(-1).largura,C.LARGURA_FUNCOES);
  assert.equal(C.copiar(salvo.at(-1)).largura,C.LARGURA_FUNCOES);
+});
+
+const ids=l=>l.map(c=>c.id).join();
+const base=()=>C.padrao().map(c=>({...c,visivel:true}));
+test('0.35.0 moverAntes: coloca antes do alvo, Funções segue a última e ocultas ficam no lugar relativo',()=>{
+ const l=base(); l.find(c=>c.id==='preenchido').visivel=false;
+ const r=C.moverAntes(l,'bairro','preenchido'); assert.equal(ids(r),'capa,codigo,imovel,valor,bairro,preenchido,status,situacao,funcoes'); assert.notStrictEqual(r,l);
+ assert.equal(ids(l),'capa,codigo,imovel,bairro,valor,preenchido,status,situacao,funcoes','não altera o original');
+ const m=C.moverAntes(l,'status','bairro'); assert.equal(ids(m),'capa,codigo,imovel,status,bairro,valor,preenchido,situacao,funcoes'); assert.equal(m.find(c=>c.id==='preenchido').visivel,false);
+ assert.equal(ids(C.moverAntes(l,'bairro','situacao')),'capa,codigo,imovel,valor,preenchido,status,bairro,situacao,funcoes');
+ assert.equal(C.moverAntes(l,'bairro','bairro'),l,'mesmo id devolve o próprio layout');
+ assert.equal(C.moverAntes(l,'funcoes','bairro'),l,'Funções nunca se move');
+ assert.equal(C.moverAntes(l,'inexistente','bairro'),l,'id fora do layout devolve o próprio layout');
+});
+test('0.35.0 moverAntes: antesDe nulo, inexistente ou Funções leva a coluna para antes de Funções',()=>{
+ const l=base();
+ for(const antesDe of [null,undefined,'nao-existe','funcoes']) assert.equal(ids(C.moverAntes(l,'capa',antesDe)),'codigo,imovel,bairro,valor,preenchido,status,situacao,capa,funcoes',String(antesDe));
+ assert.equal(C.moverAntes(l,'capa',null).at(-1).id,'funcoes');
+});
+test('0.35.0 pontoDeInsercao: primeiro título cujo meio fica à direita de x',()=>{
+ const t=[{id:'a',esquerda:0,largura:100},{id:'b',esquerda:100,largura:100},{id:'c',esquerda:200,largura:100}];
+ assert.deepEqual(json(C.pontoDeInsercao(t,'z',10)),{antesDe:'a',x:0});
+ assert.deepEqual(json(C.pontoDeInsercao(t,'z',49)),{antesDe:'a',x:0});
+ assert.deepEqual(json(C.pontoDeInsercao(t,'z',50)),{antesDe:'b',x:100},'exatamente no meio ainda não é à direita dele');
+ assert.deepEqual(json(C.pontoDeInsercao(t,'z',151)),{antesDe:'c',x:200});
+ assert.deepEqual(json(C.pontoDeInsercao(t,'z',250)),{antesDe:null,x:300},'depois do meio do último: no fim');
+ assert.deepEqual(json(C.pontoDeInsercao(t,'z',9999)),{antesDe:null,x:300});
+ assert.deepEqual(json(C.pontoDeInsercao(t,'b',120)),{antesDe:'c',x:200},'ignora o próprio título');
+ assert.deepEqual(json(C.pontoDeInsercao([...t,{id:'d',esquerda:300,largura:0}],'z',9999)),{antesDe:null,x:300},'ignora largura 0');
+ assert.equal(C.pontoDeInsercao([],'z',10),null);
+ assert.equal(C.pontoDeInsercao([{id:'z',esquerda:0,largura:100}],'z',10),null,'só o próprio título');
+ assert.equal(C.pontoDeInsercao([{id:'a',esquerda:0,largura:0}],'z',10),null,'só largura 0');
+});
+test('0.35.0 deslocarVisivel: troca com a vizinha visível, ocultas e Funções ficam de fora',()=>{
+ const l=base();
+ assert.equal(ids(C.deslocarVisivel(l,'valor',1)),'capa,codigo,imovel,bairro,preenchido,valor,status,situacao,funcoes','um passo à direita');
+ assert.equal(ids(C.deslocarVisivel(l,'valor',-1)),'capa,codigo,imovel,valor,bairro,preenchido,status,situacao,funcoes','um passo à esquerda');
+ assert.equal(ids(l),'capa,codigo,imovel,bairro,valor,preenchido,status,situacao,funcoes','não altera o original');
+ const o=base(); o.find(c=>c.id==='preenchido').visivel=false;
+ assert.equal(ids(C.deslocarVisivel(o,'valor',1)),'capa,codigo,imovel,bairro,status,preenchido,valor,situacao,funcoes','pula a oculta e troca com a visível seguinte');
+ assert.equal(o.find(c=>c.id==='preenchido').visivel,false);
+ assert.equal(C.deslocarVisivel(l,'capa',-1),l,'ponta esquerda: mesma referência');
+ assert.equal(C.deslocarVisivel(l,'situacao',1),l,'última visível não passa por Funções: mesma referência');
+ assert.equal(C.deslocarVisivel(l,'funcoes',-1),l,'Funções não se move');
+ assert.equal(C.deslocarVisivel(o,'preenchido',1),o,'id oculto: mesma referência');
+ assert.equal(C.deslocarVisivel(l,'nada',1),l,'id inexistente: mesma referência');
+ assert.equal(C.deslocarVisivel(l,'valor',0),l,'passo inválido: mesma referência');
+ assert.equal(C.deslocarVisivel(l,'valor',2),l,'passo inválido: mesma referência');
+ assert.equal(C.deslocarVisivel(l,'valor',1).at(-1).id,'funcoes');
 });

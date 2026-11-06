@@ -1,7 +1,17 @@
-# Gerenciamento de Imóveis — 0.34.1
+# Gerenciamento de Imóveis — 0.35.0
 
 Quatro telas: Imóveis, Campos, Histórico e Configurações.
 Ordens de serviço estão na extensão `evotalks.ordens-servico`.
+
+## 0.35.0 — Colunas da tela Imóveis
+
+- Ao arrastar o título de uma coluna, aparece uma linha azul no ponto onde ela vai cair e um cartão com o nome da coluna acompanha o mouse. Soltar sobre a vizinha da direita agora funciona.
+- A coluna cai antes da primeira cujo meio está à direita do mouse. Soltar sobre Funções deixa a coluna logo antes dela.
+- Soltar longe do cabeçalho, ou apertar Esc durante o arraste, cancela: nada muda e nada é salvo.
+- Com a tabela mais larga que a tela, o arraste rola sozinho quando o mouse chega perto do canto esquerdo ou de Funções.
+- Pelo teclado: com o título em foco, Alt+← e Alt+→ trocam a coluna de lugar com a vizinha visível. Um aviso de leitura de tela informa a nova posição.
+- No botão Colunas, as colunas ocultas aparecem como botões no topo da janela; clicar em um deles mostra a coluna e a coloca antes de Funções. Tudo continua rascunho até Salvar.
+- Coluna oculta não filtra mais: ao ocultar uma coluna que tinha filtro ou ordenação, eles saem e a lista volta à primeira página.
 
 ## 0.34.1 — Tela de Imóveis
 

@@ -38,6 +38,30 @@
     funcoes.visivel = true; funcoes.largura = LARGURA_FUNCOES;
     return resultado.filter(function (c) { return c.id !== 'funcoes'; }).concat([funcoes]);
   }
+  function moverAntes(layout, id, antesDe) {
+    var c = layout.filter(function (x) { return x.id === id; })[0];
+    if (!c || id === 'funcoes' || id === antesDe) return layout;
+    var resto = layout.filter(function (x) { return x !== c; }), i = -1;
+    resto.forEach(function (x, k) { if (x.id === antesDe) i = k; });
+    if (i < 0) resto.forEach(function (x, k) { if (x.id === 'funcoes') i = k; });
+    resto.splice(i < 0 ? resto.length : i, 0, c);
+    return resto;
+  }
+  function pontoDeInsercao(titulos, id, x) {
+    var lista = titulos.filter(function (t) { return t.id !== id && t.largura > 0; });
+    if (!lista.length) return null;
+    for (var i = 0; i < lista.length; i++) if (lista[i].esquerda + lista[i].largura / 2 > x) return { antesDe:lista[i].id, x:lista[i].esquerda };
+    var u = lista[lista.length - 1];
+    return { antesDe:null, x:u.esquerda + u.largura };
+  }
+  function deslocarVisivel(layout, id, passo) {
+    var vis = layout.filter(function (c) { return c.visivel && c.id !== 'funcoes'; }), i = -1;
+    vis.forEach(function (c, k) { if (c.id === id) i = k; });
+    if (i < 0 || (passo !== -1 && passo !== 1) || i + passo < 0 || i + passo >= vis.length) return layout;
+    var a = layout.indexOf(vis[i]), b = layout.indexOf(vis[i + passo]), novo = layout.slice();
+    novo[a] = layout[b]; novo[b] = layout[a];
+    return novo;
+  }
   function chave(v) { return v === null || v === undefined || v === '' ? '' : String(v); }
   function filtrar(linhas, filtros, valor) {
     return linhas.filter(function (p) { return Object.keys(filtros).every(function (id) { return filtros[id].indexOf(chave(valor(p,id))) >= 0; }); });
@@ -65,5 +89,5 @@
     if (campo.tipo === 'simnao') return lancamento.valor === '' || lancamento.valor == null ? '—' : String(lancamento.valor).toLowerCase() === 'sim' || lancamento.valor === true ? 'Sim' : 'Não';
     return GI.valorLegivel(campo,{ valor:lancamento.valor, recorrencia:lancamento.recorrencia, obs:'' }) || '—';
   }
-  global.GIColunas = { LARGURA_FUNCOES:LARGURA_FUNCOES, padrao:padrao, mesclar:mesclar, validar:validar, filtrar:filtrar, ordenar:ordenar, distintos:distintos, textoCampo:textoCampo, chave:chave, copiar:copiar };
+  global.GIColunas = { LARGURA_FUNCOES:LARGURA_FUNCOES, padrao:padrao, mesclar:mesclar, validar:validar, filtrar:filtrar, ordenar:ordenar, distintos:distintos, textoCampo:textoCampo, chave:chave, copiar:copiar, moverAntes:moverAntes, pontoDeInsercao:pontoDeInsercao, deslocarVisivel:deslocarVisivel };
 })(window);

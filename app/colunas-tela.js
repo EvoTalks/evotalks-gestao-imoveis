@@ -13,6 +13,7 @@
     Object.keys(filtros).forEach(function (id) { if (!porId(id) || id === 'capa' || id === 'funcoes') delete filtros[id]; });
     if (ordem && (!porId(ordem.id) || ordem.id === 'capa' || ordem.id === 'funcoes')) ordem = null;
     function visiveis() { return layout.filter(function (c) { return c.visivel; }); }
+    limparOcultas();
     function memorizar() { try { sessionStorage.setItem(chaveSessao,JSON.stringify({filtros:filtros,ordem:ordem})); } catch (e) { /* storage indisponível */ } }
     function gravar(restaurar) {
       clearTimeout(timer);
@@ -22,10 +23,19 @@
     }
     function mudou() { op.redesenhar(); clearTimeout(timer); timer = setTimeout(function () { gravar().catch(function () {}); },600); }
     function atualizar() { memorizar(); estado.pagina = 1; return op.carregar().catch(GI.erroFatal); }
-    function mover(id, alvo) {
-      if (id === 'funcoes' || id === alvo) return;
-      var c = porId(id); layout = layout.filter(function (x) { return x !== c; });
-      var indice = layout.indexOf(porId(alvo)); layout.splice(indice < 0 ? layout.length - 1 : indice,0,c);
+    // Coluna oculta não tem funil na tela: filtro e ordenação dela saem.
+    function limparOcultas() {
+      var saiu = false;
+      Object.keys(filtros).forEach(function (id) { var c = porId(id); if (!c || !c.visivel) { delete filtros[id]; saiu = true; } });
+      if (ordem) { var o = porId(ordem.id); if (!o || !o.visivel) { ordem = null; saiu = true; } }
+      if (saiu) { memorizar(); estado.pagina = 1; }
+    }
+    var anuncio = document.querySelector('#gi-lista .gi-col-anuncio');
+    if (!anuncio) { anuncio = document.createElement('div'); anuncio.className = 'gi-col-anuncio'; anuncio.setAttribute('role','status'); anuncio.setAttribute('aria-live','polite'); document.getElementById('gi-lista').appendChild(anuncio); }
+    function anunciar(texto) { anuncio.textContent = texto; }
+    function anunciarPosicao(c) {
+      var v = visiveis().filter(function (x) { return x.id !== 'funcoes'; });
+      anunciar('Coluna ' + c.titulo + ' movida: posição ' + (v.indexOf(c) + 1) + ' de ' + v.length + '.');
     }
     function lancamento(codigo,id) {
       return Object.prototype.hasOwnProperty.call(estado.valores,codigo) ? estado.valores[codigo][id] : (mapaColunas[codigo] || {})[id];
@@ -174,8 +184,29 @@
         var resize = daAlca;
         if (!resize && c.id === 'funcoes') return;
         e.preventDefault(); th.setPointerCapture(e.pointerId);
-        var inicio = e.clientX, largura = 0, alvo = null, ativo = false;
+        var inicio = e.clientX, largura = 0, destino = null, ativo = false, fantasma, linha, rolar, px = e.clientX, py = e.clientY;
         arrastando = true;
+        function calcular() {
+          var rol = document.querySelector('.gi-tabela-rolagem').getBoundingClientRect(), cab = tabela.querySelector('thead').getBoundingClientRect(), fr = tabela.querySelector('th[data-coluna="funcoes"]').getBoundingClientRect();
+          fantasma.style.left = Math.max(4,Math.min(px + 12,window.innerWidth - fantasma.offsetWidth - 4)) + 'px'; fantasma.style.top = (py + 12) + 'px';
+          var fora = py < cab.top - 6 || py > cab.bottom + 44 || px < rol.left - 24 || px > rol.right + 24;
+          destino = fora ? null : C.pontoDeInsercao(Array.prototype.filter.call(tabela.querySelectorAll('th[data-coluna]'),function (h) { return h.getAttribute('data-coluna') !== 'funcoes'; }).map(function (h) { var r = h.getBoundingClientRect(); return { id:h.getAttribute('data-coluna'), esquerda:r.left, largura:r.width }; }),c.id,Math.min(px,fr.left - 1));
+          fantasma.classList.toggle('gi-col-fantasma-fora',!destino);
+          linha.style.display = destino ? '' : 'none';
+          if (destino) {
+            var x = Math.max(rol.left,Math.min(destino.x,fr.left - 1));
+            linha.style.left = (x - 1) + 'px'; linha.style.top = cab.top + 'px'; linha.style.height = Math.max(0,Math.min(tabela.getBoundingClientRect().bottom,rol.bottom) - cab.top) + 'px';
+          }
+          return { rol:rol, fr:fr, fora:fora };
+        }
+        function rolagem() {
+          var g = calcular(), area = document.querySelector('.gi-tabela-rolagem');
+          if (g.fora) return;
+          if (px >= g.fr.left - 32) area.scrollLeft += 16; else if (px - g.rol.left < 32) area.scrollLeft -= 16; else return;
+          calcular();
+        }
+        function esc(ev) { if (ev.key !== 'Escape') return; ev.preventDefault(); ev.stopPropagation(); fim(true); }
+        if (!resize) document.addEventListener('keydown',esc,true);
         th.onpointermove = function (ev) {
           if (resize) {
             if (!ativo) {
@@ -188,17 +219,43 @@
             return;
           }
           if (Math.abs(ev.clientX-inicio) < 4 && !ativo) return;
-          ativo = true;
-          Array.prototype.forEach.call(tabela.querySelectorAll('th'),function (h) { h.classList.remove('gi-col-destino'); }); var h = document.elementFromPoint(ev.clientX,ev.clientY); h = h && h.closest('th'); if (h && h !== th && h.hasAttribute('data-coluna')) { alvo = h.getAttribute('data-coluna'); h.classList.add('gi-col-destino'); }
+          px = ev.clientX; py = ev.clientY;
+          if (!ativo) {
+            ativo = true; th.classList.add('gi-col-origem');
+            fantasma = document.createElement('div'); fantasma.className = 'gi-col-fantasma'; fantasma.textContent = c.titulo;
+            linha = document.createElement('div'); linha.className = 'gi-col-indicador';
+            document.body.appendChild(linha); document.body.appendChild(fantasma);
+            rolar = setInterval(rolagem,50);
+          }
+          calcular();
         };
-        function fim() {
-          th.classList.remove('gi-col-redimensionando'); th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; arrastando = false;
-          if (ativo) { if (!resize && alvo) mover(c.id,alvo); redesenhoPendente = false; mudou(); }
+        function fim(cancelar) {
+          clearInterval(rolar); document.removeEventListener('keydown',esc,true);
+          if (linha) { linha.remove(); fantasma.remove(); }
+          th.classList.remove('gi-col-redimensionando','gi-col-origem'); th.onpointermove = null; th.onpointerup = null; th.onpointercancel = null; arrastando = false;
+          try { th.releasePointerCapture(e.pointerId); } catch (x) { /* captura já solta */ }
+          var mudar = false;
+          if (ativo) {
+            if (resize) mudar = true;
+            else if (!cancelar && destino) {
+              var novo = C.moverAntes(layout,c.id,destino.antesDe), ordemIds = function (l) { return l.map(function (x) { return x.id; }).join(); };
+              if (ordemIds(novo) !== ordemIds(layout)) { layout = novo; mudar = true; anunciarPosicao(c); }
+            }
+          }
+          if (mudar) { redesenhoPendente = false; mudou(); }
           else if (redesenhoPendente) { redesenhoPendente = false; op.redesenhar(); }
         }
-        th.onpointerup = fim; th.onpointercancel = fim;
+        th.onpointerup = function () { fim(false); }; th.onpointercancel = function () { fim(true); };
       };
       if (c.id === 'funcoes') return;
+      th.onkeydown = function (e) {
+        if (!e.altKey || e.target !== th || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+        e.preventDefault();
+        var novo = C.deslocarVisivel(layout,c.id,e.key === 'ArrowLeft' ? -1 : 1);
+        if (novo === layout) { anunciar('Coluna ' + c.titulo + ' já está na ponta.'); return; }
+        layout = novo; mudou(); anunciarPosicao(c);
+        var refeito = tabela.querySelector('th[data-coluna="' + c.id + '"]'); if (refeito) refeito.focus();
+      };
       // Com a captura do ponteiro o duplo clique chega ao th, não à alça: vale quando o gesto começou na alça.
       th.ondblclick = function (e) {
         if (!daAlca && !(e.target.hasAttribute && e.target.hasAttribute('data-redimensionar'))) return;
@@ -273,7 +330,7 @@
       geometria(cols);
     }
     function desenharCabecalho(cols) {
-      tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '" data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span>' + (c.id === 'funcoes' ? '' : '<span data-redimensionar role="separator" title="Arraste para ajustar a largura" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span>') + '</th>'; }).join('');
+      tabela.querySelector('thead tr').innerHTML = cols.map(function (c) { return '<th title="' + GI.escapar(c.titulo) + '"' + (c.id === 'funcoes' ? '' : ' tabindex="0" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"') + ' data-coluna="' + GI.escapar(c.id) + '" class="gi-alinha-' + c.alinhamento + '"><span class="gi-col-cabecalho' + (c.vertical ? ' gi-col-cabecalho-vertical' : '') + '"><span class="gi-col-titulo' + (c.vertical ? ' gi-col-vertical' : '') + '">' + GI.escapar(c.titulo) + '</span>' + (c.id === 'capa' || c.id === 'funcoes' ? '' : '<button type="button" class="gi-col-funil' + (filtros[c.id] || ordem && ordem.id === c.id ? ' gi-col-ativo' : '') + '" data-funil="' + GI.escapar(c.id) + '" aria-label="Filtrar ' + GI.escapar(c.titulo) + '">▾</button>') + '</span>' + (c.id === 'funcoes' ? '' : '<span data-redimensionar role="separator" title="Arraste para ajustar a largura" aria-label="Largura de ' + GI.escapar(c.titulo) + '"></span>') + '</th>'; }).join('');
       Array.prototype.forEach.call(tabela.querySelectorAll('th[data-coluna]'),function (th) { var c = porId(th.getAttribute('data-coluna')); arrastar(th,c); var b = th.querySelector('[data-funil]'); if (b) b.onclick = function () { funil(c.id,b); }; });
     }
     function desenharCorpo(cols) {
@@ -297,13 +354,23 @@
     }
     function editor() {
       var rascunho = layout.map(function (c) { var n = C.copiar(c); n.titulo = c.titulo; return n; });
-      GI.modal({titulo:'Colunas',largura:900,corpo:'<div id="gi-editor-colunas"></div><button type="button" id="gi-col-padrao" class="btn">Restaurar padrão</button>',rotuloOk:'Salvar',aoAbrir:function () {
-        var caixa = document.getElementById('gi-editor-colunas');
+      GI.modal({titulo:'Colunas',largura:900,corpo:'<div id="gi-col-fichas"></div><div id="gi-editor-colunas"></div><button type="button" id="gi-col-padrao" class="btn">Restaurar padrão</button>',rotuloOk:'Salvar',aoAbrir:function () {
+        var caixa = document.getElementById('gi-editor-colunas'), fichasCaixa = document.getElementById('gi-col-fichas');
+        function fichas() {
+          var ocultas = rascunho.filter(function (c) { return !c.visivel && c.id !== 'funcoes'; });
+          fichasCaixa.innerHTML = (ocultas.length ? '<strong>Colunas ocultas</strong><div class="gi-col-fichas-lista">' + ocultas.map(function (c) { return '<button type="button" class="gi-col-ficha" data-mostrar="' + GI.escapar(c.id) + '" title="Mostrar ' + GI.escapar(c.titulo) + '">' + GI.escapar(c.titulo) + '</button>'; }).join('') + '</div>' : '<span>Todas as colunas estão visíveis.</span>') +
+            '<small>Para mudar a ordem, arraste o título no cabeçalho ou use Alt+← e Alt+→ com o título em foco.</small>';
+          Array.prototype.forEach.call(fichasCaixa.querySelectorAll('[data-mostrar]'),function (b,k) { b.onclick = function () {
+            var c = rascunho.filter(function (x) { return x.id === b.getAttribute('data-mostrar'); })[0];
+            c.visivel = true; rascunho.splice(rascunho.indexOf(c),1); rascunho.splice(rascunho.length - 1,0,c); montar();
+            var proxima = fichasCaixa.querySelectorAll('.gi-col-ficha')[k]; (proxima || document.querySelector('.gi-modal [data-ok]')).focus();
+          }; });
+        }
         function montar() {
           caixa.innerHTML = rascunho.map(function (c,i) { return '<div class="gi-col-editor-linha" data-indice="' + i + '">' + (c.id !== 'funcoes' ? '<span data-arrastar aria-label="Arrastar ' + GI.escapar(c.titulo) + '">⋮⋮</span>' : '<span class="gi-col-sem-alca"></span>') + '<label><input type="checkbox" data-visivel' + (c.visivel ? ' checked' : '') + (c.id === 'funcoes' ? ' disabled' : '') + '> ' + GI.escapar(c.titulo) + '</label><button type="button" data-subir aria-label="Subir ' + GI.escapar(c.titulo) + '"' + (i === 0 || c.id === 'funcoes' ? ' disabled' : '') + '>↑</button><button type="button" data-descer aria-label="Descer ' + GI.escapar(c.titulo) + '"' + (i >= rascunho.length-2 ? ' disabled' : '') + '>↓</button><input type="number" data-largura min="40" max="1200" aria-label="Largura de ' + GI.escapar(c.titulo) + '" placeholder="auto" value="' + (c.largura || '') + '"' + (c.id === 'funcoes' ? ' disabled' : '') + '><div>' + ['esquerda','centro','direita'].map(function (a) { return '<button type="button" data-alinhamento="' + a + '" aria-pressed="' + (c.alinhamento === a) + '">' + a + '</button>'; }).join('') + '</div><label><input type="checkbox" data-vertical' + (c.vertical ? ' checked' : '') + '> Texto vertical</label></div>'; }).join('');
           Array.prototype.forEach.call(caixa.children,function (linha,i) {
             var c = rascunho[i];
-            linha.querySelector('[data-visivel]').onchange = function (e) { c.visivel = e.target.checked; };
+            linha.querySelector('[data-visivel]').onchange = function (e) { c.visivel = e.target.checked; fichas(); };
             linha.querySelector('[data-largura]').oninput = function (e) { c.largura = e.target.value === '' ? null : Number(e.target.value); };
             linha.querySelector('[data-vertical]').onchange = function (e) { c.vertical = e.target.checked; };
             Array.prototype.forEach.call(linha.querySelectorAll('[data-alinhamento]'),function (b) { b.onclick = function () { c.alinhamento = b.getAttribute('data-alinhamento'); montar(); }; });
@@ -333,12 +400,13 @@
               document.addEventListener('pointermove',movimento); document.addEventListener('pointerup',soltar); document.addEventListener('pointercancel',cancelar);
             };
           });
+          fichas();
         }
-        document.getElementById('gi-col-padrao').onclick = function () { gravar(true).then(function () { layout = C.mesclar(null,estado.campos); rascunho = layout.map(function (c) { var n=C.copiar(c); n.titulo=c.titulo; return n; }); montar(); op.carregar().catch(GI.erroFatal); }).catch(function () {}); };
+        document.getElementById('gi-col-padrao').onclick = function () { gravar(true).then(function () { layout = C.mesclar(null,estado.campos); limparOcultas(); rascunho = layout.map(function (c) { var n=C.copiar(c); n.titulo=c.titulo; return n; }); montar(); op.carregar().catch(GI.erroFatal); }).catch(function () {}); };
         montar();
       },aoConfirmar:function () {
         C.validar(rascunho, GI.modo === 'local'); var anterior = layout; layout = C.mesclar(rascunho,estado.campos);
-        return gravar().then(function () { return op.carregar(); }).then(function () { return true; },function (e) { layout = anterior; throw e; });
+        return gravar().then(function () { limparOcultas(); return op.carregar(); }).then(function () { return true; },function (e) { layout = anterior; throw e; });
       }}).catch(GI.erroFatal);
     }
     document.getElementById('b-colunas').onclick = editor;

@@ -63,9 +63,9 @@ test('ativos: erros simples, campos ativos, códigos e falhas de rede', () => {
   }
 });
 
-test('ativos: manifest 0.34.1 monta quatro telas e o painel de busca e cabeçalho segue sua ordem', () => {
+test('ativos: manifest 0.35.0 monta quatro telas e o painel de busca e cabeçalho segue sua ordem', () => {
   const m = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url)));
-  assert.equal(m.version, '0.34.1');
+  assert.equal(m.version, '0.35.0');
   assert.equal(m.contributions.length, 2);
   assert.deepEqual(m.contributions[1], { id: 'gi-busca', type: 'chatPanel', title: 'Imóveis', url: 'app/cockpit.html', visibility: { userTypes: [0, 1, 2] } });
   assert.equal(m.config.find(c => c.key === 'permitirEnvio').default, false);
