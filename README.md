@@ -1,7 +1,13 @@
-# Gerenciamento de Imóveis — 0.34.0
+# Gerenciamento de Imóveis — 0.34.1
 
 Quatro telas: Imóveis, Campos, Histórico e Configurações.
 Ordens de serviço estão na extensão `evotalks.ordens-servico`.
+
+## 0.34.1 — Tela de Imóveis
+
+- A sobra de largura da tabela não aparece mais como uma coluna vazia antes de Funções.
+- Quem só ligou uma coluna de campo, sem redimensionar, mantém a sobra na coluna Imóvel.
+- A paginação foi para o canto direito do rodapé; o total de imóveis ficou à esquerda.
 
 ## 0.34.0 — Cockpit de busca de imóveis
 

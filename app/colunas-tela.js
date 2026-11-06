@@ -221,10 +221,12 @@
       if (c.id === 'funcoes') return C.LARGURA_FUNCOES;
       return c.largura || (c.id === 'imovel' ? 300 : padroes[c.id] || 220);
     }
+    // Quem nunca redimensionou o Imóvel segue com a sobra nele: sem espaçadora mesmo com coluna de campo visível.
+    function imovelElastico(cols) { return cols.some(function (c) { return c.id === 'imovel' && !c.largura; }); }
     // Congela a tabela padrão (colunas automáticas) em larguras explícitas, mantendo cada borda a menos de 1 px.
     function congelar() {
       var cols = visiveis();
-      if (personalizado(cols)) { cols.forEach(function (c) { if (!c.largura && c.id !== 'funcoes') c.largura = larguraDe(c,largurasPadrao()); }); geometria(cols); return; }
+      if (personalizado(cols) && !imovelElastico(cols)) { cols.forEach(function (c) { if (!c.largura && c.id !== 'funcoes') c.largura = larguraDe(c,largurasPadrao()); }); geometria(cols); return; }
       var ths = Array.prototype.slice.call(tabela.querySelectorAll('th[data-coluna]'));
       var base = ths[0].getBoundingClientRect().left, anterior = 0;
       ths.forEach(function (h) {
@@ -245,13 +247,14 @@
       Array.prototype.forEach.call(grupo.querySelectorAll('col'),function (e) { e.remove(); });
       cols.forEach(function (c) {
         var col = document.createElement('col'); col.setAttribute('data-coluna',c.id);
-        if (fixo) col.style.width = larguraDe(c,padroes) + 'px';
+        var explicita = fixo && !(c.id === 'imovel' && !c.largura);
+        if (explicita) col.style.width = larguraDe(c,padroes) + 'px';
         else if (c.largura) col.style.width = c.largura + 'px';
         grupo.appendChild(col);
         var th = tabela.querySelector('th[data-coluna="' + c.id + '"]');
-        if (th) th.style.width = fixo ? larguraDe(c,padroes) + 'px' : (c.largura ? c.largura + 'px' : '');
+        if (th) th.style.width = explicita ? larguraDe(c,padroes) + 'px' : (c.largura ? c.largura + 'px' : '');
       });
-      if (!fixo) return;
+      if (!fixo || imovelElastico(cols)) return;
       var espacador = document.createElement('col'); espacador.setAttribute('data-espacador',''); grupo.insertBefore(espacador,grupo.lastChild);
       function inserir(tr, celula) { var f = tr.querySelector('[data-coluna="funcoes"]'); if (f) tr.insertBefore(celula,f); }
       var th = document.createElement('th'); th.setAttribute('data-espacador',''); th.setAttribute('aria-hidden','true');
